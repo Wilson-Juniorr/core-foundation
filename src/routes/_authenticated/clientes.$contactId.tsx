@@ -190,7 +190,7 @@ function ContactDetailPage() {
               {timeline.map((event) => (
                 <li key={event.id} className="rounded-lg border px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{describeEvent(event)}</p>
+                    <p className="text-sm font-medium">{timelineEventLabel(event.event_type)}</p>
                     <Badge variant="outline">{formatDateTime(event.created_at)}</Badge>
                   </div>
                 </li>
