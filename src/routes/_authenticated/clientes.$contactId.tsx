@@ -14,7 +14,17 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { setContactArchived } from "@/lib/crm.functions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { setContactArchived, updateOpportunity } from "@/lib/crm.functions";
 import { contactDetailQuery } from "@/lib/crm.queries";
 import type { OpportunityWithRelations } from "@/lib/crm.types";
 import { formatDateTime } from "@/lib/domain/datetime";
@@ -45,10 +55,15 @@ function ContactDetailPage() {
   const queryClient = useQueryClient();
   const detail = useQuery(contactDetailQuery(contactId));
   const archive = useServerFn(setContactArchived);
+  const update = useServerFn(updateOpportunity);
 
   const [editing, setEditing] = useState(false);
   const [creatingOpportunity, setCreatingOpportunity] = useState(false);
   const [nextActionTarget, setNextActionTarget] = useState<OpportunityWithRelations | null>(null);
+  const [statusTarget, setStatusTarget] = useState<{
+    opportunity: OpportunityWithRelations;
+    status: "won" | "lost";
+  } | null>(null);
 
   const archiveMutation = useMutation({
     mutationFn: (isArchived: boolean) =>
@@ -59,6 +74,20 @@ function ContactDetailPage() {
       toast.success(isArchived ? "Cliente arquivado" : "Cliente reativado");
     },
     onError: () => toast.error("Não foi possível alterar o status do cliente."),
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (input: { id: string; status: "won" | "lost" }) => update({ data: input }),
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success(
+        input.status === "won" ? "Oportunidade marcada como ganha" : "Oportunidade marcada como perdida",
+      );
+      setStatusTarget(null);
+    },
+    onError: () => toast.error("Não foi possível alterar o status da oportunidade."),
   });
 
   if (detail.isPending) {
@@ -171,6 +200,24 @@ function ContactDetailPage() {
                     <Button variant="ghost" size="sm" onClick={() => setNextActionTarget(opportunity)}>
                       Definir ação
                     </Button>
+                    {opportunity.status === "open" ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setStatusTarget({ opportunity, status: "won" })}
+                        >
+                          Marcar como ganha
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setStatusTarget({ opportunity, status: "lost" })}
+                        >
+                          Marcar como perdida
+                        </Button>
+                      </>
+                    ) : null}
                   </div>
                 </li>
               ))}
@@ -215,6 +262,44 @@ function ContactDetailPage() {
           opportunity={nextActionTarget}
         />
       ) : null}
+
+      <AlertDialog
+        open={statusTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !statusMutation.isPending) setStatusTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {statusTarget?.status === "won"
+                ? "Marcar oportunidade como ganha?"
+                : "Marcar oportunidade como perdida?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusTarget
+                ? `“${statusTarget.opportunity.title}” sairá do pipeline aberto e o evento será registrado no histórico. Você pode reabrir depois editando a oportunidade.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={statusMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={statusMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!statusTarget) return;
+                statusMutation.mutate({
+                  id: statusTarget.opportunity.id,
+                  status: statusTarget.status,
+                });
+              }}
+            >
+              {statusMutation.isPending ? "Salvando..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
