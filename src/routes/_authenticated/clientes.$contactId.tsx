@@ -83,7 +83,9 @@ function ContactDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success(
-        input.status === "won" ? "Oportunidade marcada como ganha" : "Oportunidade marcada como perdida",
+        input.status === "won"
+          ? "Oportunidade marcada como ganha"
+          : "Oportunidade marcada como perdida",
       );
       setStatusTarget(null);
     },
@@ -197,7 +199,11 @@ function ContactDetailPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <NextActionBadge nextActionAt={opportunity.next_action_at} withDate />
-                    <Button variant="ghost" size="sm" onClick={() => setNextActionTarget(opportunity)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setNextActionTarget(opportunity)}
+                    >
                       Definir ação
                     </Button>
                     {opportunity.status === "open" ? (

@@ -43,9 +43,7 @@ function PipelinePage() {
       update({ data: { id: input.id, pipeline_stage_id: input.pipeline_stage_id } }),
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: crmKeys.opportunities });
-      const previous = queryClient.getQueryData<OpportunityWithRelations[]>(
-        crmKeys.opportunities,
-      );
+      const previous = queryClient.getQueryData<OpportunityWithRelations[]>(crmKeys.opportunities);
       queryClient.setQueryData<OpportunityWithRelations[]>(crmKeys.opportunities, (current) =>
         (current ?? []).map((item) =>
           item.id === input.id
@@ -106,7 +104,9 @@ function PipelinePage() {
                   event.preventDefault();
                   setDragOverStage(stage.id);
                 }}
-                onDragLeave={() => setDragOverStage((current) => (current === stage.id ? null : current))}
+                onDragLeave={() =>
+                  setDragOverStage((current) => (current === stage.id ? null : current))
+                }
                 onDrop={(event) => {
                   event.preventDefault();
                   setDragOverStage(null);

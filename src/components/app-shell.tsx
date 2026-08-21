@@ -119,7 +119,12 @@ export function AppShell({
         <header className="flex items-center gap-3 border-b px-4 py-4 sm:px-8">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir navegação">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Abrir navegação"
+              >
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
