@@ -1,5 +1,8 @@
 import type { OpportunityStatus } from "./domain/opportunity-status";
 
+/** Valor serializável usado no metadata flexível dos eventos de timeline. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
 export type Contact = {
   id: string;
   name: string;
@@ -43,7 +46,7 @@ export type TimelineEvent = {
   id: string;
   event_type: string;
   opportunity_id: string | null;
-  metadata: Record<string, unknown>;
+  metadata: Json;
   created_at: string;
 };
 

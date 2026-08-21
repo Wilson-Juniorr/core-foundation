@@ -10,6 +10,7 @@ import {
   opportunityInputSchema,
   opportunityUpdateSchema,
 } from "./crm.schemas";
+import type { Database } from "@/integrations/supabase/types";
 import type {
   Contact,
   ContactDetail,
@@ -229,7 +230,10 @@ export const updateOpportunity = createServerFn({ method: "POST" })
       "./crm.server"
     );
 
-    const { id, ...patch } = data;
+    const { id, ...changes } = data;
+    const patch = Object.fromEntries(
+      Object.entries(changes).filter(([, value]) => value !== undefined),
+    ) as Database["public"]["Tables"]["opportunities"]["Update"];
 
     const { data: before, error: beforeError } = await context.supabase
       .from("opportunities")
