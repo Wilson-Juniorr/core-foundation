@@ -28,9 +28,14 @@ export const Route = createFileRoute("/auth")({
 function friendlyAuthError(message: string): string {
   if (/invalid login credentials/i.test(message)) return "E-mail ou senha incorretos.";
   if (/email not confirmed/i.test(message)) return "Confirme seu e-mail antes de entrar.";
-  if (/user already registered/i.test(message)) return "Este e-mail já possui conta. Faça login.";
+  if (/already registered/i.test(message)) return "Este e-mail já possui conta. Faça login.";
+  if (/weak|pwned/i.test(message))
+    return "Esta senha é muito comum e já apareceu em vazamentos. Escolha outra.";
+  if (/invalid.*email/i.test(message)) return "Informe um e-mail válido.";
   if (/password/i.test(message) && /6/.test(message))
     return "A senha deve ter no mínimo 6 caracteres.";
+  if (/rate limit|too many/i.test(message))
+    return "Muitas tentativas. Aguarde alguns instantes e tente novamente.";
   return "Não foi possível concluir a operação. Tente novamente.";
 }
 
