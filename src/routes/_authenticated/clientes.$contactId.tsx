@@ -18,7 +18,7 @@ import { setContactArchived } from "@/lib/crm.functions";
 import { contactDetailQuery } from "@/lib/crm.queries";
 import type { OpportunityWithRelations } from "@/lib/crm.types";
 import { formatDateTime } from "@/lib/domain/datetime";
-import { describeEvent } from "@/lib/domain/events";
+import { timelineEventLabel } from "@/lib/domain/events";
 import { formatCurrency, OPPORTUNITY_STATUS_LABELS } from "@/lib/domain/opportunity-status";
 import { formatPhone } from "@/lib/domain/phone";
 
