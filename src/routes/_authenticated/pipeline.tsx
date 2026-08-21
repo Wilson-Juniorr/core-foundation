@@ -38,14 +38,34 @@ function PipelinePage() {
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   const moveMutation = useMutation({
-    mutationFn: (input: { id: string; pipeline_stage_id: string }) => update({ data: input }),
+    mutationFn: (input: { id: string; pipeline_stage_id: string; stage_name: string }) =>
+      update({ data: { id: input.id, pipeline_stage_id: input.pipeline_stage_id } }),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: crmKeys.opportunities });
+      const previous = queryClient.getQueryData<OpportunityWithRelations[]>(
+        crmKeys.opportunities,
+      );
+      queryClient.setQueryData<OpportunityWithRelations[]>(crmKeys.opportunities, (current) =>
+        (current ?? []).map((item) =>
+          item.id === input.id
+            ? { ...item, pipeline_stage_id: input.pipeline_stage_id, stage_name: input.stage_name }
+            : item,
+        ),
+      );
+      return { previous };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Oportunidade movida");
     },
-    onError: () => toast.error("Não foi possível mover a oportunidade."),
+    onError: (_error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(crmKeys.opportunities, context.previous);
+      }
+      toast.error("Não foi possível mover a oportunidade. Etapa anterior restaurada.");
+    },
   });
 
   const isPending = stages.isPending || opportunities.isPending;
