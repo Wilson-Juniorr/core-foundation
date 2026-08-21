@@ -8,7 +8,8 @@ import { AppShell } from "@/components/app-shell";
 import { NextActionBadge } from "@/components/next-action-badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { updateOpportunity } from "@/lib/crm.functions";
-import { opportunitiesQuery, pipelineStagesQuery } from "@/lib/crm.queries";
+import { crmKeys, opportunitiesQuery, pipelineStagesQuery } from "@/lib/crm.queries";
+import type { OpportunityWithRelations } from "@/lib/crm.types";
 import { formatCurrency } from "@/lib/domain/opportunity-status";
 import { cn } from "@/lib/utils";
 
@@ -112,7 +113,11 @@ function PipelinePage() {
                   const id = event.dataTransfer.getData("text/plain");
                   const dragged = (opportunities.data ?? []).find((item) => item.id === id);
                   if (!dragged || dragged.pipeline_stage_id === stage.id) return;
-                  moveMutation.mutate({ id, pipeline_stage_id: stage.id });
+                  moveMutation.mutate({
+                    id,
+                    pipeline_stage_id: stage.id,
+                    stage_name: stage.name,
+                  });
                 }}
                 className={cn(
                   "flex w-72 shrink-0 flex-col rounded-lg border bg-card/50 p-3 transition-colors",
