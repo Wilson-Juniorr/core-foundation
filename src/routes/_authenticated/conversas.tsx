@@ -6,6 +6,7 @@ import { z } from "zod";
 import { AppShell } from "@/components/app-shell";
 import { ChatWindow } from "@/components/whatsapp/chat-window";
 import { ConversationList } from "@/components/whatsapp/conversation-list";
+import { FollowupPanel } from "@/components/followup/followup-panel";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { useWhatsAppRealtime } from "@/hooks/use-whatsapp-realtime";
 import { markConversationRead } from "@/lib/whatsapp.functions";
@@ -78,6 +79,14 @@ function ConversasPage() {
             WhatsApp não conectado. Você pode ler o histórico, mas o envio fica indisponível até
             reconectar em Configurações.
           </p>
+        )}
+
+        {selectedId && detail.data?.conversation.contact_id && (
+          <FollowupPanel
+            contactId={detail.data.conversation.contact_id}
+            conversationId={selectedId}
+            compact
+          />
         )}
 
         {conversations.isLoading ? (
