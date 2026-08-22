@@ -78,7 +78,12 @@ export interface PolicyRequest {
 }
 
 function pass(rule: string, detail?: string): PolicyRuleResult {
-  return { rule, label: POLICY_RULE_LABELS[rule] ?? rule, passed: true, ...(detail ? { detail } : {}) };
+  return {
+    rule,
+    label: POLICY_RULE_LABELS[rule] ?? rule,
+    passed: true,
+    ...(detail ? { detail } : {}),
+  };
 }
 
 function fail(rule: string, detail: string): PolicyRuleResult {
@@ -198,7 +203,15 @@ export async function evaluatePolicy(
 
   if (request.ignoreCooldown) {
     rules.push(pass("active_conversation", "Silêncio inteligente ignorado nesta etapa"));
-    return { decision: settings.test_mode ? "simulated" : "allowed", blockedBy: null, reason: settings.test_mode ? "Modo teste: envio simulado." : "Todas as políticas foram atendidas.", rules, deferUntil: null };
+    return {
+      decision: settings.test_mode ? "simulated" : "allowed",
+      blockedBy: null,
+      reason: settings.test_mode
+        ? "Modo teste: envio simulado."
+        : "Todas as políticas foram atendidas.",
+      rules,
+      deferUntil: null,
+    };
   }
 
   // 4. Silêncio inteligente: conversa acontecendo agora.

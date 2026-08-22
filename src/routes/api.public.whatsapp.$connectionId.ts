@@ -73,9 +73,8 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                 if (conversation) {
                   /* Módulo 07: pedido explícito de parada tem prioridade sobre
                      qualquer automação e vale para sempre. */
-                  const { detectOptOut, applyCustomerOptOut } = await import(
-                    "@/lib/automation/optout.server"
-                  );
+                  const { detectOptOut, applyCustomerOptOut } =
+                    await import("@/lib/automation/optout.server");
                   if (conversation.contact_id && detectOptOut(event.message.text ?? null)) {
                     await applyCustomerOptOut(supabaseAdmin, {
                       userId: connection.user_id,

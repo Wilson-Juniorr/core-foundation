@@ -941,7 +941,9 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
   }
 
   if (evaluation.decision === "deferred") {
-    const target = evaluation.deferUntil ? new Date(evaluation.deferUntil) : new Date(now.getTime() + 60 * 60_000);
+    const target = evaluation.deferUntil
+      ? new Date(evaluation.deferUntil)
+      : new Date(now.getTime() + 60 * 60_000);
     const retryAt = nextAllowedInstant(target, window, settings.timezone);
     await releaseAction(db, action, {
       status: "scheduled",
@@ -962,7 +964,12 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
   const adaptive = await resolveAdaptiveContent(db, action, policy, text);
 
   if (adaptive.kind !== "send") {
-    const decision = adaptive.kind === "approval_required" ? "approval_required" : adaptive.kind === "handoff" ? "handoff" : "blocked";
+    const decision =
+      adaptive.kind === "approval_required"
+        ? "approval_required"
+        : adaptive.kind === "handoff"
+          ? "handoff"
+          : "blocked";
     await releaseAction(db, action, {
       status: "blocked",
       last_error: decision,

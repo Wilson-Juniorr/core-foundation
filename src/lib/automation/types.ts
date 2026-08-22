@@ -1,10 +1,5 @@
 export type AutomationDecisionKind =
-  | "allowed"
-  | "blocked"
-  | "deferred"
-  | "simulated"
-  | "approval_required"
-  | "handoff";
+  "allowed" | "blocked" | "deferred" | "simulated" | "approval_required" | "handoff";
 
 export interface AutomationPolicySettings {
   automation_paused: boolean;

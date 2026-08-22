@@ -26,11 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { saveFollowupFlow, uploadFollowupMedia } from "@/lib/followup.functions";
 import { flowQuery, followupKeys } from "@/lib/followup.queries";
 import { ACTION_TYPE_LABELS, DELAY_UNIT_LABELS } from "@/lib/followup/labels";
-import type {
-  DelayUnit,
-  FollowupActionType,
-  FollowupContentMode,
-} from "@/lib/followup/types";
+import type { DelayUnit, FollowupActionType, FollowupContentMode } from "@/lib/followup/types";
 import { listContentAssets, listMessageStrategies } from "@/lib/library.functions";
 
 interface StepDraft {

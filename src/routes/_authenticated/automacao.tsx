@@ -53,7 +53,10 @@ const decisionsQuery = () => ({
   queryFn: () => listAutomationDecisions({ data: { limit: 40 } }),
 });
 
-const DECISION_VARIANT: Record<AutomationDecisionKind, "default" | "secondary" | "destructive" | "outline"> = {
+const DECISION_VARIANT: Record<
+  AutomationDecisionKind,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   allowed: "secondary",
   blocked: "destructive",
   deferred: "outline",
