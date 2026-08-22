@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import type { AutomationDecisionKind, PolicyRuleResult } from "./types";
 
 type Admin = SupabaseClient<Database>;
@@ -33,8 +33,8 @@ export async function recordDecision(db: Admin, input: DecisionInput): Promise<v
     decision: input.decision,
     reason: input.reason.slice(0, 500),
     blocked_by: input.blockedBy ?? null,
-    rules: (input.rules ?? []) as unknown as Database["public"]["Tables"]["automation_decisions"]["Insert"]["rules"],
-    context: (input.context ?? {}) as unknown as Database["public"]["Tables"]["automation_decisions"]["Insert"]["context"],
+    rules: JSON.parse(JSON.stringify(input.rules ?? [])) as Json,
+    context: JSON.parse(JSON.stringify(input.context ?? {})) as Json,
     contact_id: input.contactId ?? null,
     conversation_id: input.conversationId ?? null,
     opportunity_id: input.opportunityId ?? null,
