@@ -90,10 +90,6 @@ export async function resolveAdaptiveContent(
   }
 
   if (mode === "asset_selection") {
-    const { data: asset } = action.strategy_id
-      ? { data: null }
-      : { data: null };
-    void asset;
     const { data: material } = await db
       .from("content_assets")
       .select("id, name, type, body, storage_reference, mime_type, filename, is_active")
