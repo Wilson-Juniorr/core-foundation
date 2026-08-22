@@ -54,6 +54,30 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                 connectionId: connection.id,
                 message: event.message,
               });
+
+              /* Resposta real do cliente interrompe follow-ups server-side.
+                 Só mensagens novas (não duplicadas) disparam a interrupção,
+                 então um webhook reentregue é inofensivo. */
+              const isRealInbound =
+                event.message.direction === "inbound" &&
+                ["text", "audio", "image", "document", "video"].includes(event.message.type);
+
+              if (outcome === "created" && isRealInbound) {
+                const { stopRunsForReply } = await import("@/lib/followup/engine.server");
+                const { data: conversation } = await supabaseAdmin
+                  .from("conversations")
+                  .select("id")
+                  .eq("whatsapp_connection_id", connection.id)
+                  .eq("external_chat_id", event.message.externalChatId)
+                  .maybeSingle();
+                if (conversation) {
+                  await stopRunsForReply({
+                    userId: connection.user_id,
+                    conversationId: conversation.id,
+                    repliedAt: event.message.timestamp,
+                  });
+                }
+              }
               waLog.info("webhook_message", {
                 connection_id: connection.id,
                 direction: event.message.direction,
@@ -67,7 +91,14 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
               break;
             }
             case "connection": {
+              const wasConnected = connection.status === "connected";
               await applyConnectionUpdate(supabaseAdmin, connection.id, event.update);
+              // Reconexão: ações vencidas são recalculadas, nunca disparadas
+              // todas de uma vez.
+              if (!wasConnected && event.update.status === "connected") {
+                const { reevaluateAfterReconnect } = await import("@/lib/followup/engine.server");
+                await reevaluateAfterReconnect(connection.user_id);
+              }
               break;
             }
             default:
