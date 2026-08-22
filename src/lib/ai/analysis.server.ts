@@ -310,7 +310,7 @@ export async function analyzeContact(
       });
     if (insights.length > 0) {
       const { error: insightError } = await admin.from("conversation_insights").upsert(insights, {
-        onConflict: "user_id,contact_id,insight_type,md5(content),source_message_id",
+        onConflict: "user_id,contact_id,dedupe_key",
         ignoreDuplicates: true,
       });
       if (insightError) aiLog("warn", "insights_partial", { code: insightError.code });
