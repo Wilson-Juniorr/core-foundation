@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedAtencaoRouteImport } from './routes/_authenticated/atencao'
 import { Route as AuthenticatedAutomacaoRouteImport } from './routes/_authenticated/automacao'
 import { Route as AuthenticatedBibliotecaRouteImport } from './routes/_authenticated/biblioteca'
@@ -40,6 +41,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAnalyticsRoute = AuthenticatedAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAtencaoRoute = AuthenticatedAtencaoRouteImport.update({
   id: '/atencao',
@@ -121,6 +127,7 @@ const ApiPublicWhatsappConnectionIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/analytics': typeof AuthenticatedAnalyticsRoute
   '/atencao': typeof AuthenticatedAtencaoRoute
   '/automacao': typeof AuthenticatedAutomacaoRoute
   '/biblioteca': typeof AuthenticatedBibliotecaRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/analytics': typeof AuthenticatedAnalyticsRoute
   '/atencao': typeof AuthenticatedAtencaoRoute
   '/automacao': typeof AuthenticatedAutomacaoRoute
   '/biblioteca': typeof AuthenticatedBibliotecaRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/atencao': typeof AuthenticatedAtencaoRoute
   '/_authenticated/automacao': typeof AuthenticatedAutomacaoRoute
   '/_authenticated/biblioteca': typeof AuthenticatedBibliotecaRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/analytics'
     | '/atencao'
     | '/automacao'
     | '/biblioteca'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/analytics'
     | '/atencao'
     | '/automacao'
     | '/biblioteca'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/analytics'
     | '/_authenticated/atencao'
     | '/_authenticated/automacao'
     | '/_authenticated/biblioteca'
@@ -264,6 +276,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/analytics': {
+      id: '/_authenticated/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AuthenticatedAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/atencao': {
       id: '/_authenticated/atencao'
@@ -367,6 +386,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedAtencaoRoute: typeof AuthenticatedAtencaoRoute
   AuthenticatedAutomacaoRoute: typeof AuthenticatedAutomacaoRoute
   AuthenticatedBibliotecaRoute: typeof AuthenticatedBibliotecaRoute
@@ -380,6 +400,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedAtencaoRoute: AuthenticatedAtencaoRoute,
   AuthenticatedAutomacaoRoute: AuthenticatedAutomacaoRoute,
   AuthenticatedBibliotecaRoute: AuthenticatedBibliotecaRoute,
