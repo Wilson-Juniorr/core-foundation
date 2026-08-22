@@ -120,6 +120,14 @@ function ContactDetailPage() {
       description={formatPhone(contact.phone) || contact.email || "Sem contato registrado"}
       actions={
         <>
+          {conversation.data && (
+            <Button asChild variant="outline">
+              <Link to="/conversas" search={{ conversa: conversation.data.id }}>
+                <MessageSquare className="size-4" />
+                Conversa
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setEditing(true)}>
             <Pencil className="size-4" />
             Editar
