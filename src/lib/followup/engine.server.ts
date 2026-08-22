@@ -188,9 +188,14 @@ async function scheduleStep(
       opportunity_id: input.run.opportunity_id,
       action_type: input.step.action_type,
       content: input.step.content,
-      media_reference: input.step.media_reference,
+      media_reference:
+        input.step.content_mode === "asset_selection"
+          ? input.step.asset_id
+          : input.step.media_reference,
       media_mime_type: input.step.media_mime_type,
       media_filename: input.step.media_filename,
+      content_mode: input.step.content_mode,
+      strategy_id: input.step.strategy_id,
       scheduled_for: scheduledFor.toISOString(),
       cancel_on_reply: input.flow.stop_on_reply,
       idempotency_key: key,
