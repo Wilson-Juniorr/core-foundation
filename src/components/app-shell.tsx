@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import {
   BellRing,
+  BarChart3,
   BookOpen,
   CalendarDays,
   LayoutDashboard,
@@ -31,6 +32,7 @@ const ACTIVE_ITEMS = [
   { to: "/conversas", label: "Conversas", icon: MessagesSquare },
   { to: "/followups", label: "Follow-ups", icon: Repeat },
   { to: "/biblioteca", label: "Biblioteca", icon: BookOpen },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/automacao", label: "Orquestrador", icon: ShieldCheck },
   { to: "/configuracoes/whatsapp", label: "Configurações", icon: Settings },
 ] as const;
