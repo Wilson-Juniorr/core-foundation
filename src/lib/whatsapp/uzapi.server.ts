@@ -57,7 +57,7 @@ async function request<T>(
         token: creds.token,
         ...(creds.instanceIdentifier ? { instance: creds.instanceIdentifier } : {}),
       },
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      body: init.body === undefined ? null : JSON.stringify(init.body),
       signal: controller.signal,
     });
 
