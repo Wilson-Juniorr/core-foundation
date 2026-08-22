@@ -27,13 +27,11 @@ const ACTIVE_ITEMS = [
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/conversas", label: "Conversas", icon: MessagesSquare },
   { to: "/followups", label: "Follow-ups", icon: Repeat },
+  { to: "/biblioteca", label: "Biblioteca", icon: BookOpen },
   { to: "/configuracoes/whatsapp", label: "Configurações", icon: Settings },
 ] as const;
 
-const UPCOMING_ITEMS = [
-  { label: "Agenda", icon: CalendarDays },
-  { label: "Biblioteca", icon: BookOpen },
-] as const;
+const UPCOMING_ITEMS = [{ label: "Agenda", icon: CalendarDays }] as const;
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
