@@ -171,6 +171,7 @@ export const userSettingsSchema = z.object({
   timezone: z.string().trim().min(3).max(80),
   send_window_start: timeOfDay,
   send_window_end: timeOfDay,
+  pause_automation_on_handoff: z.boolean().optional().default(true),
 });
 
 export const followupListSchema = z.object({

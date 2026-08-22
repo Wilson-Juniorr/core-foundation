@@ -161,12 +161,18 @@ function RunList({ status }: { status: "active" | "paused" | "history" }) {
 function SettingsCard() {
   const queryClient = useQueryClient();
   const settings = useQuery(userSettingsQuery());
-  const [draft, setDraft] = useState<{ start: string; end: string; timezone: string } | null>(null);
+  const [draft, setDraft] = useState<{
+    start: string;
+    end: string;
+    timezone: string;
+    handoff: boolean;
+  } | null>(null);
 
   const current = draft ?? {
     start: settings.data?.send_window_start ?? "08:00",
     end: settings.data?.send_window_end ?? "20:00",
     timezone: settings.data?.timezone ?? "America/Sao_Paulo",
+    handoff: settings.data?.pause_automation_on_handoff ?? true,
   };
 
   const save = useMutation({
@@ -176,6 +182,7 @@ function SettingsCard() {
           timezone: current.timezone,
           send_window_start: current.start,
           send_window_end: current.end,
+          pause_automation_on_handoff: current.handoff,
         },
       }),
     onSuccess: async () => {
@@ -222,6 +229,22 @@ function SettingsCard() {
           {save.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
           Salvar
         </Button>
+
+        <label className="flex items-start gap-3 rounded-md border p-3 sm:col-span-4">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-primary"
+            checked={current.handoff}
+            onChange={(event) => setDraft({ ...current, handoff: event.target.checked })}
+          />
+          <span className="text-sm">
+            <span className="font-medium">Pausar automações quando eu precisar intervir</span>
+            <span className="block text-muted-foreground">
+              Ao detectar pedido de desconto, objeção, pedido de ligação ou intenção de fechar, os
+              follow-ups genéricos daquele cliente ficam pausados até você resolver o item.
+            </span>
+          </span>
+        </label>
       </CardContent>
     </Card>
   );

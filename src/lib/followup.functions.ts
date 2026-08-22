@@ -183,13 +183,14 @@ export const getUserSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<UserSettings> => {
     const { data } = await context.supabase
       .from("user_settings")
-      .select("timezone, send_window_start, send_window_end")
+      .select("timezone, send_window_start, send_window_end, pause_automation_on_handoff")
       .eq("user_id", context.userId)
       .maybeSingle();
     return {
       timezone: data?.timezone ?? "America/Sao_Paulo",
       send_window_start: (data?.send_window_start ?? "08:00").slice(0, 5),
       send_window_end: (data?.send_window_end ?? "20:00").slice(0, 5),
+      pause_automation_on_handoff: data?.pause_automation_on_handoff ?? true,
     };
   });
 

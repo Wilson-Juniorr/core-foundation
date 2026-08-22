@@ -86,6 +86,8 @@ export interface UserSettings {
   timezone: string;
   send_window_start: string;
   send_window_end: string;
+  /** Módulo 06: pausar automações quando um item exigir intervenção humana. */
+  pause_automation_on_handoff: boolean;
 }
 
 export interface StartFlowPreview {
