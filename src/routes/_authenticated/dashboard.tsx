@@ -93,10 +93,7 @@ function DashboardPage() {
             <MetricCard label="Sem próxima ação" value={operational.data.withoutNextAction} />
             <MetricCard label="Respostas nas últimas 24h" value={operational.data.recentReplies} />
             <MetricCard label="Falhas de envio" value={operational.data.failures} tone="danger" />
-            <MetricCard
-              label="Clientes ativos"
-              value={dashboard.data?.activeContacts ?? 0}
-            />
+            <MetricCard label="Clientes ativos" value={dashboard.data?.activeContacts ?? 0} />
           </div>
 
           <section className="space-y-4">

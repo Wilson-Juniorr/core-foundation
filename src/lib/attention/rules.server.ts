@@ -59,8 +59,10 @@ function valueFactor(value: number | null): ScoreFactor | null {
   return null;
 }
 
-const DISCOUNT_RE = /\b(desconto|abatimento|melhor pre[çc]o|mais barato|condi[çc][ãa]o especial)\b/i;
-const CALL_RE = /\b(me liga|pode ligar|ligar para mim|liga[çc][ãa]o|chamada|me chama no telefone)\b/i;
+const DISCOUNT_RE =
+  /\b(desconto|abatimento|melhor pre[çc]o|mais barato|condi[çc][ãa]o especial)\b/i;
+const CALL_RE =
+  /\b(me liga|pode ligar|ligar para mim|liga[çc][ãa]o|chamada|me chama no telefone)\b/i;
 
 /** Constrói um candidato aplicando fatores em cima do peso base. */
 function build(input: {

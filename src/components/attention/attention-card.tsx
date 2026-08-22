@@ -18,11 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GenerateMessageDialog } from "@/components/library/generate-message-dialog";
 import { StartFollowupDialog } from "@/components/followup/start-followup-dialog";
 import {
@@ -31,7 +27,12 @@ import {
   suggestAttentionAction,
 } from "@/lib/attention.functions";
 import { attentionKeys } from "@/lib/attention.queries";
-import { kindLabel, nextActionLabel, PRIORITY_CLASSES, PRIORITY_LABELS } from "@/lib/attention/labels";
+import {
+  kindLabel,
+  nextActionLabel,
+  PRIORITY_CLASSES,
+  PRIORITY_LABELS,
+} from "@/lib/attention/labels";
 import type { AttentionItem, AttentionPriority } from "@/lib/attention/types";
 import { formatDateTime, fromDateTimeInputValue } from "@/lib/domain/datetime";
 import { cn } from "@/lib/utils";
@@ -94,9 +95,7 @@ export function AttentionCard({ item }: { item: AttentionItem }) {
                 {kindLabel(item.kind)}
               </span>
               {item.occurrences > 1 ? (
-                <span className="text-xs text-muted-foreground">
-                  {item.occurrences}× detectado
-                </span>
+                <span className="text-xs text-muted-foreground">{item.occurrences}× detectado</span>
               ) : null}
               {item.blocks_automation ? (
                 <Badge variant="outline" className="border-amber-500/40 text-amber-600">
@@ -112,9 +111,7 @@ export function AttentionCard({ item }: { item: AttentionItem }) {
               {item.contact_name ? `${item.contact_name} — ` : ""}
               {item.title}
             </p>
-            {item.summary ? (
-              <p className="text-sm text-muted-foreground">{item.summary}</p>
-            ) : null}
+            {item.summary ? <p className="text-sm text-muted-foreground">{item.summary}</p> : null}
           </div>
 
           <span className="text-xs text-muted-foreground">
@@ -195,12 +192,7 @@ export function AttentionCard({ item }: { item: AttentionItem }) {
             </Button>
           ) : null}
 
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            onClick={() => suggest.mutate()}
-          >
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => suggest.mutate()}>
             {suggest.isPending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (

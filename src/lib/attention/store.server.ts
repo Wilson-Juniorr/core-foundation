@@ -34,7 +34,9 @@ export function mapItem(row: Row): AttentionItem {
     kind: row.kind,
     priority: row.priority,
     priority_score: row.priority_score,
-    score_factors: (Array.isArray(row.score_factors) ? row.score_factors : []) as unknown as ScoreFactor[],
+    score_factors: (Array.isArray(row.score_factors)
+      ? row.score_factors
+      : []) as unknown as ScoreFactor[],
     bucket: row.bucket,
     status: row.status,
     title: row.title,
@@ -263,7 +265,9 @@ export async function listAttention(
     .order("last_detected_at", { ascending: false })
     .limit(200);
 
-  query = filter.status ? query.eq("status", filter.status) : query.in("status", ["open", "snoozed"]);
+  query = filter.status
+    ? query.eq("status", filter.status)
+    : query.in("status", ["open", "snoozed"]);
   if (filter.bucket) query = query.eq("bucket", filter.bucket);
   if (filter.contactId) query = query.eq("contact_id", filter.contactId);
 
@@ -309,34 +313,33 @@ export async function operationalDashboard(
   const now = new Date();
   const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [runs, itemRows, scheduled, opportunities, replies, failures, critical] = await Promise.all([
-    db
-      .from("followup_runs")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active"),
-    db.from("attention_items").select("bucket, kind, status").eq("status", "open"),
-    db
-      .from("scheduled_actions")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "scheduled"),
-    db.from("opportunities").select("id, next_action_at").eq("status", "open"),
-    db
-      .from("messages")
-      .select("id", { count: "exact", head: true })
-      .eq("direction", "inbound")
-      .gte("sent_at", since),
-    db
-      .from("scheduled_actions")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "failed"),
-    db
-      .from("attention_items")
-      .select(SELECT)
-      .eq("status", "open")
-      .eq("priority", "critical")
-      .order("priority_score", { ascending: false })
-      .limit(5),
-  ]);
+  const [runs, itemRows, scheduled, opportunities, replies, failures, critical] = await Promise.all(
+    [
+      db.from("followup_runs").select("id", { count: "exact", head: true }).eq("status", "active"),
+      db.from("attention_items").select("bucket, kind, status").eq("status", "open"),
+      db
+        .from("scheduled_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "scheduled"),
+      db.from("opportunities").select("id, next_action_at").eq("status", "open"),
+      db
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("direction", "inbound")
+        .gte("sent_at", since),
+      db
+        .from("scheduled_actions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed"),
+      db
+        .from("attention_items")
+        .select(SELECT)
+        .eq("status", "open")
+        .eq("priority", "critical")
+        .order("priority_score", { ascending: false })
+        .limit(5),
+    ],
+  );
 
   const open = opportunities.data ?? [];
   const items = itemRows.data ?? [];
