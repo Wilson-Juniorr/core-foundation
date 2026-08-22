@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { ContactFormDialog } from "@/components/contact-form-dialog";
+import { FollowupPanel } from "@/components/followup/followup-panel";
 import { NextActionBadge } from "@/components/next-action-badge";
 import { NextActionDialog } from "@/components/next-action-dialog";
 import { OpportunityFormDialog } from "@/components/opportunity-form-dialog";
@@ -176,6 +177,11 @@ function ContactDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        <FollowupPanel
+          contactId={contactId}
+          conversationId={conversation.data?.id ?? null}
+        />
 
         <section className="space-y-4">
           <h2 className="text-base font-semibold">Oportunidades</h2>
