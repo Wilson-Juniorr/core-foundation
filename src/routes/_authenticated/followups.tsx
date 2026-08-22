@@ -134,7 +134,7 @@ function RunRow({ run }: { run: FollowupRunView }) {
 function RunList({ status }: { status: "active" | "paused" | "history" }) {
   const runs = useQuery(runsQuery(status));
 
-  if (runs.isLoading) return <LoadingState label="Carregando follow-ups" />;
+  if (runs.isLoading) return <LoadingState />;
   if (runs.isError) return <ErrorState onRetry={() => runs.refetch()} />;
   if ((runs.data ?? []).length === 0) {
     return (
@@ -248,7 +248,7 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
     onError: () => toast.error("Não foi possível duplicar."),
   });
 
-  if (flows.isLoading) return <LoadingState label="Carregando fluxos" />;
+  if (flows.isLoading) return <LoadingState />;
   if (flows.isError) return <ErrorState onRetry={() => flows.refetch()} />;
   if ((flows.data ?? []).length === 0) {
     return (
@@ -321,7 +321,7 @@ function ScheduledTab() {
     onError: () => toast.error("Não foi possível cancelar."),
   });
 
-  if (scheduled.isLoading) return <LoadingState label="Carregando agendamentos" />;
+  if (scheduled.isLoading) return <LoadingState />;
   if (scheduled.isError) return <ErrorState onRetry={() => scheduled.refetch()} />;
 
   const failures = failed.data ?? [];
