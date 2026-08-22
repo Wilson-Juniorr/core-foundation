@@ -119,6 +119,197 @@ export type Database = {
           },
         ]
       }
+      followup_flow_steps: {
+        Row: {
+          action_type: Database["public"]["Enums"]["followup_action_type"]
+          content: string | null
+          created_at: string
+          delay_unit: Database["public"]["Enums"]["followup_delay_unit"]
+          delay_value: number
+          flow_id: string
+          id: string
+          media_filename: string | null
+          media_mime_type: string | null
+          media_reference: string | null
+          position: number
+          preferred_time_end: string | null
+          preferred_time_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type?: Database["public"]["Enums"]["followup_action_type"]
+          content?: string | null
+          created_at?: string
+          delay_unit?: Database["public"]["Enums"]["followup_delay_unit"]
+          delay_value?: number
+          flow_id: string
+          id?: string
+          media_filename?: string | null
+          media_mime_type?: string | null
+          media_reference?: string | null
+          position: number
+          preferred_time_end?: string | null
+          preferred_time_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["followup_action_type"]
+          content?: string | null
+          created_at?: string
+          delay_unit?: Database["public"]["Enums"]["followup_delay_unit"]
+          delay_value?: number
+          flow_id?: string
+          id?: string
+          media_filename?: string | null
+          media_mime_type?: string | null
+          media_reference?: string | null
+          position?: number
+          preferred_time_end?: string | null
+          preferred_time_start?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followup_flow_steps_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "followup_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      followup_flows: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          stop_on_reply: boolean
+          updated_at: string
+          user_id: string
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          stop_on_reply?: boolean
+          updated_at?: string
+          user_id: string
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          stop_on_reply?: boolean
+          updated_at?: string
+          user_id?: string
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
+      followup_runs: {
+        Row: {
+          completed_at: string | null
+          contact_id: string
+          conversation_id: string
+          created_at: string
+          current_step_id: string | null
+          flow_id: string
+          id: string
+          opportunity_id: string | null
+          paused_at: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["followup_run_status"]
+          stop_reason: string | null
+          stopped_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          contact_id: string
+          conversation_id: string
+          created_at?: string
+          current_step_id?: string | null
+          flow_id: string
+          id?: string
+          opportunity_id?: string | null
+          paused_at?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["followup_run_status"]
+          stop_reason?: string | null
+          stopped_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          contact_id?: string
+          conversation_id?: string
+          created_at?: string
+          current_step_id?: string | null
+          flow_id?: string
+          id?: string
+          opportunity_id?: string | null
+          paused_at?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["followup_run_status"]
+          stop_reason?: string | null
+          stopped_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followup_runs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_runs_current_step_id_fkey"
+            columns: ["current_step_id"]
+            isOneToOne: false
+            referencedRelation: "followup_flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_runs_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "followup_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_runs_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           contact_id: string | null
@@ -320,6 +511,127 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_actions: {
+        Row: {
+          action_type: Database["public"]["Enums"]["followup_action_type"]
+          attempts: number
+          cancel_on_reply: boolean
+          contact_id: string | null
+          content: string | null
+          conversation_id: string
+          created_at: string
+          executed_at: string | null
+          external_message_id: string | null
+          flow_run_id: string | null
+          flow_step_id: string | null
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          media_filename: string | null
+          media_mime_type: string | null
+          media_reference: string | null
+          message_id: string | null
+          opportunity_id: string | null
+          scheduled_for: string
+          status: Database["public"]["Enums"]["scheduled_action_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type?: Database["public"]["Enums"]["followup_action_type"]
+          attempts?: number
+          cancel_on_reply?: boolean
+          contact_id?: string | null
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          executed_at?: string | null
+          external_message_id?: string | null
+          flow_run_id?: string | null
+          flow_step_id?: string | null
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          media_filename?: string | null
+          media_mime_type?: string | null
+          media_reference?: string | null
+          message_id?: string | null
+          opportunity_id?: string | null
+          scheduled_for: string
+          status?: Database["public"]["Enums"]["scheduled_action_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["followup_action_type"]
+          attempts?: number
+          cancel_on_reply?: boolean
+          contact_id?: string | null
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          executed_at?: string | null
+          external_message_id?: string | null
+          flow_run_id?: string | null
+          flow_step_id?: string | null
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          media_filename?: string | null
+          media_mime_type?: string | null
+          media_reference?: string | null
+          message_id?: string | null
+          opportunity_id?: string | null
+          scheduled_for?: string
+          status?: Database["public"]["Enums"]["scheduled_action_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_actions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_flow_run_id_fkey"
+            columns: ["flow_run_id"]
+            isOneToOne: false
+            referencedRelation: "followup_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_flow_step_id_fkey"
+            columns: ["flow_step_id"]
+            isOneToOne: false
+            referencedRelation: "followup_flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timeline_events: {
         Row: {
           contact_id: string | null
@@ -364,6 +676,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          send_window_end: string
+          send_window_start: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          send_window_end?: string
+          send_window_start?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          send_window_end?: string
+          send_window_start?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       whatsapp_connections: {
         Row: {
@@ -465,6 +804,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      followup_action_type: "text_message" | "audio" | "image" | "document"
+      followup_delay_unit: "minutes" | "hours" | "days"
+      followup_run_status:
+        | "active"
+        | "paused"
+        | "stopped"
+        | "completed"
+        | "cancelled"
+        | "failed"
       message_direction: "inbound" | "outbound"
       message_status:
         | "pending"
@@ -481,6 +829,13 @@ export type Database = {
         | "video"
         | "unsupported"
       opportunity_status: "open" | "won" | "lost" | "archived"
+      scheduled_action_status:
+        | "scheduled"
+        | "processing"
+        | "sent"
+        | "cancelled"
+        | "failed"
+        | "skipped"
       whatsapp_connection_status:
         | "not_configured"
         | "disconnected"
@@ -614,6 +969,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      followup_action_type: ["text_message", "audio", "image", "document"],
+      followup_delay_unit: ["minutes", "hours", "days"],
+      followup_run_status: [
+        "active",
+        "paused",
+        "stopped",
+        "completed",
+        "cancelled",
+        "failed",
+      ],
       message_direction: ["inbound", "outbound"],
       message_status: [
         "pending",
@@ -632,6 +997,14 @@ export const Constants = {
         "unsupported",
       ],
       opportunity_status: ["open", "won", "lost", "archived"],
+      scheduled_action_status: [
+        "scheduled",
+        "processing",
+        "sent",
+        "cancelled",
+        "failed",
+        "skipped",
+      ],
       whatsapp_connection_status: [
         "not_configured",
         "disconnected",

@@ -13,6 +13,14 @@ export const TIMELINE_EVENT_TYPES = [
   "whatsapp_conversation_unlinked",
   "whatsapp_message_received",
   "whatsapp_message_sent",
+  "followup_started",
+  "followup_paused",
+  "followup_resumed",
+  "followup_stopped",
+  "followup_completed",
+  "scheduled_message_created",
+  "scheduled_message_cancelled",
+  "scheduled_message_sent",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
@@ -32,6 +40,14 @@ export const TIMELINE_EVENT_LABELS: Record<TimelineEventType, string> = {
   whatsapp_conversation_unlinked: "Conversa do WhatsApp desvinculada",
   whatsapp_message_received: "Mensagem recebida no WhatsApp",
   whatsapp_message_sent: "Mensagem enviada no WhatsApp",
+  followup_started: "Follow-up iniciado",
+  followup_paused: "Follow-up pausado",
+  followup_resumed: "Follow-up retomado",
+  followup_stopped: "Follow-up interrompido",
+  followup_completed: "Follow-up concluído",
+  scheduled_message_created: "Mensagem agendada",
+  scheduled_message_cancelled: "Agendamento cancelado",
+  scheduled_message_sent: "Mensagem automática enviada",
 };
 
 export function timelineEventLabel(type: string): string {
