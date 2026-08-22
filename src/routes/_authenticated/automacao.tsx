@@ -20,7 +20,7 @@ import {
 } from "@/lib/automation.functions";
 import type { AutomationDecisionKind, AutomationPolicySettings } from "@/lib/automation/types";
 import { DECISION_LABELS } from "@/lib/automation/types";
-import { formatDateTime } from "@/lib/domain/utils";
+import { formatDateTime } from "@/lib/domain/datetime";
 
 export const Route = createFileRoute("/_authenticated/automacao")({
   head: () => ({
@@ -252,7 +252,7 @@ function PolicyForm({ policy }: { policy: AutomationPolicySettings }) {
 function DecisionLog() {
   const decisions = useQuery(decisionsQuery());
 
-  if (decisions.isPending) return <LoadingState label="Carregando decisões..." />;
+  if (decisions.isPending) return <LoadingState />;
   if (!decisions.data?.length) {
     return (
       <EmptyState
@@ -314,7 +314,7 @@ function AutomationPage() {
     >
       <div className="space-y-6">
         {policy.isPending || !policy.data ? (
-          <LoadingState label="Carregando políticas..." />
+          <LoadingState />
         ) : (
           <>
             <EmergencyCard policy={policy.data} />
