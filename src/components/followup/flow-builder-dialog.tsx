@@ -101,6 +101,16 @@ export function FlowBuilderDialog({
   const [windowStart, setWindowStart] = useState("");
   const [windowEnd, setWindowEnd] = useState("");
   const [steps, setSteps] = useState<StepDraft[]>([{ ...emptyStep(), delay_value: 0 }]);
+  const strategies = useQuery({
+    queryKey: ["message-strategies", "flow-builder"],
+    queryFn: () => listMessageStrategies(),
+    enabled: open,
+  });
+  const assets = useQuery({
+    queryKey: ["content-assets", "flow-builder"],
+    queryFn: () => listContentAssets({ data: {} }),
+    enabled: open,
+  });
 
   useEffect(() => {
     if (!open) return;
