@@ -26,11 +26,11 @@ const ACTIVE_ITEMS = [
   { to: "/pipeline", label: "Pipeline", icon: Workflow },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/conversas", label: "Conversas", icon: MessagesSquare },
+  { to: "/followups", label: "Follow-ups", icon: Repeat },
   { to: "/configuracoes/whatsapp", label: "Configurações", icon: Settings },
 ] as const;
 
 const UPCOMING_ITEMS = [
-  { label: "Follow-ups", icon: Repeat },
   { label: "Agenda", icon: CalendarDays },
   { label: "Biblioteca", icon: BookOpen },
 ] as const;
