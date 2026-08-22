@@ -249,9 +249,24 @@ async function pauseConflictingAutomation(
   }
 
   if (paused.length > 0) {
+    const { data: currentItem } = await db
+      .from("attention_items")
+      .select("metadata")
+      .eq("id", itemId)
+      .maybeSingle();
+    const currentMeta = (currentItem?.metadata ?? {}) as Record<string, unknown>;
+    const previous = Array.isArray(currentMeta["paused_run_ids"])
+      ? (currentMeta["paused_run_ids"] as string[])
+      : [];
+
     await db
       .from("attention_items")
-      .update({ metadata: { paused_run_ids: paused } as unknown as Row["metadata"] })
+      .update({
+        metadata: {
+          ...currentMeta,
+          paused_run_ids: Array.from(new Set([...previous, ...paused])),
+        } as unknown as Row["metadata"],
+      })
       .eq("id", itemId);
 
     await logEvent(db, userId, {
