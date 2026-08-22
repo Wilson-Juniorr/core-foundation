@@ -70,15 +70,11 @@ function ConversasPage() {
   }, [selectedId, unread]);
 
   return (
-    <AppShell>
+    <AppShell
+      title="Conversas"
+      description="Atendimento no WhatsApp com histórico ligado aos clientes."
+    >
       <div className="space-y-4">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Conversas</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Atendimento no WhatsApp com histórico ligado aos clientes.
-          </p>
-        </div>
-
         {connection.data && connection.data.status !== "connected" && (
           <p className="bg-muted text-muted-foreground rounded-md border px-4 py-3 text-sm">
             WhatsApp não conectado. Você pode ler o histórico, mas o envio fica indisponível até
@@ -90,7 +86,7 @@ function ConversasPage() {
           <LoadingState />
         ) : conversations.isError ? (
           <ErrorState
-            message="Não foi possível carregar as conversas."
+            title="Não foi possível carregar as conversas."
             onRetry={() => void conversations.refetch()}
           />
         ) : (conversations.data?.length ?? 0) === 0 ? (
