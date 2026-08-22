@@ -248,6 +248,175 @@ export type Database = {
           },
         ]
       }
+      automation_decisions: {
+        Row: {
+          blocked_by: string | null
+          confidence: number | null
+          contact_id: string | null
+          context: Json
+          conversation_id: string | null
+          created_at: string
+          decision: Database["public"]["Enums"]["automation_decision"]
+          flow_run_id: string | null
+          flow_step_id: string | null
+          id: string
+          model: string | null
+          opportunity_id: string | null
+          prompt_version: string | null
+          reason: string
+          rules: Json
+          scheduled_action_id: string | null
+          strategy_id: string | null
+          strategy_name: string | null
+          strategy_version: number | null
+          user_id: string
+        }
+        Insert: {
+          blocked_by?: string | null
+          confidence?: number | null
+          contact_id?: string | null
+          context?: Json
+          conversation_id?: string | null
+          created_at?: string
+          decision: Database["public"]["Enums"]["automation_decision"]
+          flow_run_id?: string | null
+          flow_step_id?: string | null
+          id?: string
+          model?: string | null
+          opportunity_id?: string | null
+          prompt_version?: string | null
+          reason: string
+          rules?: Json
+          scheduled_action_id?: string | null
+          strategy_id?: string | null
+          strategy_name?: string | null
+          strategy_version?: number | null
+          user_id: string
+        }
+        Update: {
+          blocked_by?: string | null
+          confidence?: number | null
+          contact_id?: string | null
+          context?: Json
+          conversation_id?: string | null
+          created_at?: string
+          decision?: Database["public"]["Enums"]["automation_decision"]
+          flow_run_id?: string | null
+          flow_step_id?: string | null
+          id?: string
+          model?: string | null
+          opportunity_id?: string | null
+          prompt_version?: string | null
+          reason?: string
+          rules?: Json
+          scheduled_action_id?: string | null
+          strategy_id?: string | null
+          strategy_name?: string | null
+          strategy_version?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_decisions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_decisions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_decisions_flow_run_id_fkey"
+            columns: ["flow_run_id"]
+            isOneToOne: false
+            referencedRelation: "followup_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_decisions_flow_step_id_fkey"
+            columns: ["flow_step_id"]
+            isOneToOne: false
+            referencedRelation: "followup_flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_decisions_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_decisions_scheduled_action_id_fkey"
+            columns: ["scheduled_action_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_decisions_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "message_strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_preferences: {
+        Row: {
+          automation_allowed: boolean
+          contact_id: string
+          contact_not_before: string | null
+          created_at: string
+          do_not_contact: boolean
+          do_not_contact_reason: string | null
+          do_not_contact_source: string
+          max_automations_per_day: number | null
+          updated_at: string
+          user_id: string
+          whatsapp_allowed: boolean
+        }
+        Insert: {
+          automation_allowed?: boolean
+          contact_id: string
+          contact_not_before?: string | null
+          created_at?: string
+          do_not_contact?: boolean
+          do_not_contact_reason?: string | null
+          do_not_contact_source?: string
+          max_automations_per_day?: number | null
+          updated_at?: string
+          user_id: string
+          whatsapp_allowed?: boolean
+        }
+        Update: {
+          automation_allowed?: boolean
+          contact_id?: string
+          contact_not_before?: string | null
+          created_at?: string
+          do_not_contact?: boolean
+          do_not_contact_reason?: string | null
+          do_not_contact_source?: string
+          max_automations_per_day?: number | null
+          updated_at?: string
+          user_id?: string
+          whatsapp_allowed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_preferences_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: true
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -614,7 +783,9 @@ export type Database = {
       followup_flow_steps: {
         Row: {
           action_type: Database["public"]["Enums"]["followup_action_type"]
+          asset_id: string | null
           content: string | null
+          content_mode: Database["public"]["Enums"]["followup_content_mode"]
           created_at: string
           delay_unit: Database["public"]["Enums"]["followup_delay_unit"]
           delay_value: number
@@ -623,15 +794,19 @@ export type Database = {
           media_filename: string | null
           media_mime_type: string | null
           media_reference: string | null
+          objective: string | null
           position: number
           preferred_time_end: string | null
           preferred_time_start: string | null
+          strategy_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           action_type?: Database["public"]["Enums"]["followup_action_type"]
+          asset_id?: string | null
           content?: string | null
+          content_mode?: Database["public"]["Enums"]["followup_content_mode"]
           created_at?: string
           delay_unit?: Database["public"]["Enums"]["followup_delay_unit"]
           delay_value?: number
@@ -640,15 +815,19 @@ export type Database = {
           media_filename?: string | null
           media_mime_type?: string | null
           media_reference?: string | null
+          objective?: string | null
           position: number
           preferred_time_end?: string | null
           preferred_time_start?: string | null
+          strategy_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           action_type?: Database["public"]["Enums"]["followup_action_type"]
+          asset_id?: string | null
           content?: string | null
+          content_mode?: Database["public"]["Enums"]["followup_content_mode"]
           created_at?: string
           delay_unit?: Database["public"]["Enums"]["followup_delay_unit"]
           delay_value?: number
@@ -657,18 +836,34 @@ export type Database = {
           media_filename?: string | null
           media_mime_type?: string | null
           media_reference?: string | null
+          objective?: string | null
           position?: number
           preferred_time_end?: string | null
           preferred_time_start?: string | null
+          strategy_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "followup_flow_steps_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "content_assets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "followup_flow_steps_flow_id_fkey"
             columns: ["flow_id"]
             isOneToOne: false
             referencedRelation: "followup_flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followup_flow_steps_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "message_strategies"
             referencedColumns: ["id"]
           },
         ]
@@ -1200,8 +1395,10 @@ export type Database = {
           cancel_on_reply: boolean
           contact_id: string | null
           content: string | null
+          content_mode: Database["public"]["Enums"]["followup_content_mode"]
           conversation_id: string
           created_at: string
+          draft_id: string | null
           executed_at: string | null
           external_message_id: string | null
           flow_run_id: string | null
@@ -1215,7 +1412,9 @@ export type Database = {
           message_id: string | null
           opportunity_id: string | null
           scheduled_for: string
+          simulated_at: string | null
           status: Database["public"]["Enums"]["scheduled_action_status"]
+          strategy_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1225,8 +1424,10 @@ export type Database = {
           cancel_on_reply?: boolean
           contact_id?: string | null
           content?: string | null
+          content_mode?: Database["public"]["Enums"]["followup_content_mode"]
           conversation_id: string
           created_at?: string
+          draft_id?: string | null
           executed_at?: string | null
           external_message_id?: string | null
           flow_run_id?: string | null
@@ -1240,7 +1441,9 @@ export type Database = {
           message_id?: string | null
           opportunity_id?: string | null
           scheduled_for: string
+          simulated_at?: string | null
           status?: Database["public"]["Enums"]["scheduled_action_status"]
+          strategy_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1250,8 +1453,10 @@ export type Database = {
           cancel_on_reply?: boolean
           contact_id?: string | null
           content?: string | null
+          content_mode?: Database["public"]["Enums"]["followup_content_mode"]
           conversation_id?: string
           created_at?: string
+          draft_id?: string | null
           executed_at?: string | null
           external_message_id?: string | null
           flow_run_id?: string | null
@@ -1265,7 +1470,9 @@ export type Database = {
           message_id?: string | null
           opportunity_id?: string | null
           scheduled_for?: string
+          simulated_at?: string | null
           status?: Database["public"]["Enums"]["scheduled_action_status"]
+          strategy_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1282,6 +1489,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "message_drafts"
             referencedColumns: ["id"]
           },
           {
@@ -1310,6 +1524,13 @@ export type Database = {
             columns: ["opportunity_id"]
             isOneToOne: false
             referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_actions_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "message_strategies"
             referencedColumns: ["id"]
           },
         ]
@@ -1361,28 +1582,61 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          active_conversation_minutes: number
+          automation_paused: boolean
+          automation_paused_at: string | null
+          confidence_approval_min: number
+          confidence_auto_min: number
+          conversation_cooldown_minutes: number
           created_at: string
+          manual_message_cooldown_minutes: number
+          max_automations_per_day: number
+          max_flow_automations_per_day: number
           pause_automation_on_handoff: boolean
           send_window_end: string
           send_window_start: string
+          test_mode: boolean
+          test_mode_phone: string | null
           timezone: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          active_conversation_minutes?: number
+          automation_paused?: boolean
+          automation_paused_at?: string | null
+          confidence_approval_min?: number
+          confidence_auto_min?: number
+          conversation_cooldown_minutes?: number
           created_at?: string
+          manual_message_cooldown_minutes?: number
+          max_automations_per_day?: number
+          max_flow_automations_per_day?: number
           pause_automation_on_handoff?: boolean
           send_window_end?: string
           send_window_start?: string
+          test_mode?: boolean
+          test_mode_phone?: string | null
           timezone?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          active_conversation_minutes?: number
+          automation_paused?: boolean
+          automation_paused_at?: string | null
+          confidence_approval_min?: number
+          confidence_auto_min?: number
+          conversation_cooldown_minutes?: number
           created_at?: string
+          manual_message_cooldown_minutes?: number
+          max_automations_per_day?: number
+          max_flow_automations_per_day?: number
           pause_automation_on_handoff?: boolean
           send_window_end?: string
           send_window_start?: string
+          test_mode?: boolean
+          test_mode_phone?: string | null
           timezone?: string
           updated_at?: string
           user_id?: string
@@ -1492,9 +1746,21 @@ export type Database = {
       ai_job_status: "pending" | "processing" | "done" | "failed"
       attention_priority: "critical" | "high" | "medium" | "low"
       attention_status: "open" | "snoozed" | "resolved" | "dismissed"
+      automation_decision:
+        | "allowed"
+        | "blocked"
+        | "deferred"
+        | "simulated"
+        | "approval_required"
+        | "handoff"
       content_asset_type: "text" | "audio" | "image" | "document"
       draft_status: "generated" | "edited" | "approved" | "rejected" | "sent"
       followup_action_type: "text_message" | "audio" | "image" | "document"
+      followup_content_mode:
+        | "fixed_content"
+        | "ai_generated"
+        | "asset_selection"
+        | "human_required"
       followup_delay_unit: "minutes" | "hours" | "days"
       followup_run_status:
         | "active"
@@ -1528,6 +1794,8 @@ export type Database = {
         | "cancelled"
         | "failed"
         | "skipped"
+        | "blocked"
+        | "simulated"
       strategy_autonomy: "manual" | "approval_required" | "automatic"
       whatsapp_connection_status:
         | "not_configured"
@@ -1665,9 +1933,23 @@ export const Constants = {
       ai_job_status: ["pending", "processing", "done", "failed"],
       attention_priority: ["critical", "high", "medium", "low"],
       attention_status: ["open", "snoozed", "resolved", "dismissed"],
+      automation_decision: [
+        "allowed",
+        "blocked",
+        "deferred",
+        "simulated",
+        "approval_required",
+        "handoff",
+      ],
       content_asset_type: ["text", "audio", "image", "document"],
       draft_status: ["generated", "edited", "approved", "rejected", "sent"],
       followup_action_type: ["text_message", "audio", "image", "document"],
+      followup_content_mode: [
+        "fixed_content",
+        "ai_generated",
+        "asset_selection",
+        "human_required",
+      ],
       followup_delay_unit: ["minutes", "hours", "days"],
       followup_run_status: [
         "active",
@@ -1704,6 +1986,8 @@ export const Constants = {
         "cancelled",
         "failed",
         "skipped",
+        "blocked",
+        "simulated",
       ],
       strategy_autonomy: ["manual", "approval_required", "automatic"],
       whatsapp_connection_status: [
