@@ -2,7 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 import { MEDIA_BUCKET, STORAGE_PREFIX } from "@/lib/whatsapp/store.server";
+import type { AssetInput } from "./api-types";
 import type { ContentAsset, ContentAssetType } from "./types";
+
+export type { AssetInput };
 
 type Client = SupabaseClient<Database>;
 type Row = Database["public"]["Tables"]["content_assets"]["Row"];
@@ -44,22 +47,6 @@ export async function listAssets(
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAsset);
-}
-
-export interface AssetInput {
-  id?: string | undefined;
-  name: string;
-  type: ContentAssetType;
-  purpose: string | null;
-  description: string | null;
-  body: string | null;
-  transcript: string | null;
-  tags: string[];
-  is_active: boolean;
-  storage_reference?: string | null;
-  mime_type?: string | null;
-  filename?: string | null;
-  duration_seconds?: number | null;
 }
 
 export async function saveAsset(

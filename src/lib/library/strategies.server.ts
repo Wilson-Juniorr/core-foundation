@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
+import type { StrategyInput } from "./api-types";
 import type { ContentAssetType, MessageStrategy, StrategyAutonomy } from "./types";
+
+export type { StrategyInput };
 
 type Client = SupabaseClient<Database>;
 type Row = Database["public"]["Tables"]["message_strategies"]["Row"];
@@ -46,22 +49,6 @@ export async function getStrategy(client: Client, strategyId: string): Promise<M
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Estratégia não encontrada.");
   return mapStrategy(data);
-}
-
-export interface StrategyInput {
-  id?: string | undefined;
-  name: string;
-  objective: string;
-  tone: string;
-  should_mention: string | null;
-  should_avoid: string | null;
-  when_to_use: string | null;
-  allowed_asset_types: ContentAssetType[];
-  allowed_assets: string[];
-  forbidden_behaviors: string[];
-  autonomy_mode: StrategyAutonomy;
-  max_length: number;
-  is_active: boolean;
 }
 
 /**
