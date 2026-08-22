@@ -51,7 +51,7 @@ export async function adminClient(): Promise<Admin> {
 export async function loadUserSettings(db: Admin, userId: string): Promise<UserSettings> {
   const { data } = await db
     .from("user_settings")
-    .select("timezone, send_window_start, send_window_end")
+    .select("timezone, send_window_start, send_window_end, pause_automation_on_handoff")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -59,6 +59,7 @@ export async function loadUserSettings(db: Admin, userId: string): Promise<UserS
     timezone: data?.timezone ?? DEFAULT_TIMEZONE,
     send_window_start: data?.send_window_start ?? DEFAULT_WINDOW_START,
     send_window_end: data?.send_window_end ?? DEFAULT_WINDOW_END,
+    pause_automation_on_handoff: data?.pause_automation_on_handoff ?? true,
   };
 }
 

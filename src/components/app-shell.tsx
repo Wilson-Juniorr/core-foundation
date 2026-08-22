@@ -2,6 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import {
+  BellRing,
   BookOpen,
   CalendarDays,
   LayoutDashboard,
@@ -23,6 +24,7 @@ const PRODUCT_NAME = "Próximo Passo";
 
 const ACTIVE_ITEMS = [
   { to: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
+  { to: "/atencao", label: "Precisa de Mim", icon: BellRing },
   { to: "/pipeline", label: "Pipeline", icon: Workflow },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/conversas", label: "Conversas", icon: MessagesSquare },

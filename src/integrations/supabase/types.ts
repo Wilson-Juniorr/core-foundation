@@ -133,6 +133,121 @@ export type Database = {
           },
         ]
       }
+      attention_items: {
+        Row: {
+          blocks_automation: boolean
+          bucket: string
+          contact_id: string | null
+          conversation_id: string | null
+          created_at: string
+          dedupe_key: string
+          first_detected_at: string
+          id: string
+          kind: string
+          last_detected_at: string
+          metadata: Json
+          occurrences: number
+          opportunity_id: string | null
+          priority: Database["public"]["Enums"]["attention_priority"]
+          priority_score: number
+          reason: string
+          resolution_note: string | null
+          resolved_at: string | null
+          score_factors: Json
+          snoozed_until: string | null
+          status: Database["public"]["Enums"]["attention_status"]
+          suggested_action: string | null
+          suggested_action_kind: string | null
+          suggested_action_source: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocks_automation?: boolean
+          bucket?: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key: string
+          first_detected_at?: string
+          id?: string
+          kind: string
+          last_detected_at?: string
+          metadata?: Json
+          occurrences?: number
+          opportunity_id?: string | null
+          priority?: Database["public"]["Enums"]["attention_priority"]
+          priority_score?: number
+          reason: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          score_factors?: Json
+          snoozed_until?: string | null
+          status?: Database["public"]["Enums"]["attention_status"]
+          suggested_action?: string | null
+          suggested_action_kind?: string | null
+          suggested_action_source?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blocks_automation?: boolean
+          bucket?: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key?: string
+          first_detected_at?: string
+          id?: string
+          kind?: string
+          last_detected_at?: string
+          metadata?: Json
+          occurrences?: number
+          opportunity_id?: string | null
+          priority?: Database["public"]["Enums"]["attention_priority"]
+          priority_score?: number
+          reason?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          score_factors?: Json
+          snoozed_until?: string | null
+          status?: Database["public"]["Enums"]["attention_status"]
+          suggested_action?: string | null
+          suggested_action_kind?: string | null
+          suggested_action_source?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attention_items_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attention_items_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attention_items_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -1247,6 +1362,7 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
+          pause_automation_on_handoff: boolean
           send_window_end: string
           send_window_start: string
           timezone: string
@@ -1255,6 +1371,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          pause_automation_on_handoff?: boolean
           send_window_end?: string
           send_window_start?: string
           timezone?: string
@@ -1263,6 +1380,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          pause_automation_on_handoff?: boolean
           send_window_end?: string
           send_window_start?: string
           timezone?: string
@@ -1372,6 +1490,8 @@ export type Database = {
     }
     Enums: {
       ai_job_status: "pending" | "processing" | "done" | "failed"
+      attention_priority: "critical" | "high" | "medium" | "low"
+      attention_status: "open" | "snoozed" | "resolved" | "dismissed"
       content_asset_type: "text" | "audio" | "image" | "document"
       draft_status: "generated" | "edited" | "approved" | "rejected" | "sent"
       followup_action_type: "text_message" | "audio" | "image" | "document"
@@ -1543,6 +1663,8 @@ export const Constants = {
   public: {
     Enums: {
       ai_job_status: ["pending", "processing", "done", "failed"],
+      attention_priority: ["critical", "high", "medium", "low"],
+      attention_status: ["open", "snoozed", "resolved", "dismissed"],
       content_asset_type: ["text", "audio", "image", "document"],
       draft_status: ["generated", "edited", "approved", "rejected", "sent"],
       followup_action_type: ["text_message", "audio", "image", "document"],
