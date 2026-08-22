@@ -124,9 +124,7 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
         </div>
       </header>
 
-      {conversation.contact_id ? (
-        <IntelligenceStrip contactId={conversation.contact_id} />
-      ) : null}
+      {conversation.contact_id ? <IntelligenceStrip contactId={conversation.contact_id} /> : null}
 
       {messages.length === 0 ? (
         <p className="text-muted-foreground flex-1 p-6 text-sm">
