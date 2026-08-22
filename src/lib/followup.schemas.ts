@@ -45,8 +45,46 @@ export const flowStepInputSchema = z
       .transform((value) => (value && value !== "" ? value : null)),
     preferred_time_start: optionalTime,
     preferred_time_end: optionalTime,
+    content_mode: z
+      .enum(["fixed_content", "ai_generated", "asset_selection", "human_required"])
+      .optional()
+      .default("fixed_content"),
+    strategy_id: z
+      .string()
+      .uuid()
+      .optional()
+      .nullable()
+      .transform((value) => value ?? null),
+    asset_id: z
+      .string()
+      .uuid()
+      .optional()
+      .nullable()
+      .transform((value) => value ?? null),
+    objective: z
+      .string()
+      .trim()
+      .max(300)
+      .optional()
+      .nullable()
+      .transform((value) => (value && value !== "" ? value : null)),
   })
   .superRefine((step, ctx) => {
+    if (step.content_mode === "ai_generated" && !step.strategy_id) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Escolha a estratégia usada pela IA",
+        path: ["strategy_id"],
+      });
+    }
+    if (step.content_mode === "asset_selection" && !step.asset_id) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Escolha o material desta etapa",
+        path: ["asset_id"],
+      });
+    }
+    if (step.content_mode !== "fixed_content") return;
     if (step.action_type === "text_message" && !step.content) {
       ctx.addIssue({ code: "custom", message: "Escreva o texto da etapa", path: ["content"] });
     }

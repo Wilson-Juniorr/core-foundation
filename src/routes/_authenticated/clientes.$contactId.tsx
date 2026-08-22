@@ -9,6 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { ContactFormDialog } from "@/components/contact-form-dialog";
 import { FollowupPanel } from "@/components/followup/followup-panel";
 import { MessageGeneratorCard } from "@/components/library/message-generator-card";
+import { ContactPreferencesCard } from "@/components/automation/contact-preferences-card";
 import { IntelligenceCard } from "@/components/intelligence/intelligence-card";
 import { NextActionBadge } from "@/components/next-action-badge";
 import { NextActionDialog } from "@/components/next-action-dialog";
@@ -179,6 +180,8 @@ function ContactDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        <ContactPreferencesCard contactId={contactId} />
 
         <IntelligenceCard contactId={contactId} conversationId={conversation.data?.id ?? null} />
 

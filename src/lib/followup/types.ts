@@ -4,6 +4,7 @@ export type DelayUnit = Database["public"]["Enums"]["followup_delay_unit"];
 export type FollowupActionType = Database["public"]["Enums"]["followup_action_type"];
 export type FollowupRunStatus = Database["public"]["Enums"]["followup_run_status"];
 export type ScheduledActionStatus = Database["public"]["Enums"]["scheduled_action_status"];
+export type FollowupContentMode = Database["public"]["Enums"]["followup_content_mode"];
 
 export interface FlowStep {
   id: string;
@@ -18,6 +19,11 @@ export interface FlowStep {
   media_filename: string | null;
   preferred_time_start: string | null;
   preferred_time_end: string | null;
+  /** Módulo 07: etapa fixa, gerada por IA, material da biblioteca ou humana. */
+  content_mode: FollowupContentMode;
+  strategy_id: string | null;
+  asset_id: string | null;
+  objective: string | null;
 }
 
 export interface Flow {

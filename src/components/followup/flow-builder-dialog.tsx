@@ -26,7 +26,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { saveFollowupFlow, uploadFollowupMedia } from "@/lib/followup.functions";
 import { flowQuery, followupKeys } from "@/lib/followup.queries";
 import { ACTION_TYPE_LABELS, DELAY_UNIT_LABELS } from "@/lib/followup/labels";
-import type { DelayUnit, FollowupActionType } from "@/lib/followup/types";
+import type { DelayUnit, FollowupActionType, FollowupContentMode } from "@/lib/followup/types";
+import { listContentAssets, listMessageStrategies } from "@/lib/library.functions";
 
 interface StepDraft {
   id?: string;
@@ -39,7 +40,18 @@ interface StepDraft {
   media_filename: string | null;
   preferred_time_start: string;
   preferred_time_end: string;
+  content_mode: FollowupContentMode;
+  strategy_id: string | null;
+  asset_id: string | null;
+  objective: string;
 }
+
+const CONTENT_MODE_LABELS: Record<FollowupContentMode, string> = {
+  fixed_content: "Texto fixo",
+  ai_generated: "Gerada pela IA",
+  asset_selection: "Material da biblioteca",
+  human_required: "Somente humano",
+};
 
 const emptyStep = (): StepDraft => ({
   delay_value: 4,
@@ -51,6 +63,10 @@ const emptyStep = (): StepDraft => ({
   media_filename: null,
   preferred_time_start: "",
   preferred_time_end: "",
+  content_mode: "fixed_content",
+  strategy_id: null,
+  asset_id: null,
+  objective: "",
 });
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
@@ -81,6 +97,16 @@ export function FlowBuilderDialog({
   const [windowStart, setWindowStart] = useState("");
   const [windowEnd, setWindowEnd] = useState("");
   const [steps, setSteps] = useState<StepDraft[]>([{ ...emptyStep(), delay_value: 0 }]);
+  const strategies = useQuery({
+    queryKey: ["message-strategies", "flow-builder"],
+    queryFn: () => listMessageStrategies(),
+    enabled: open,
+  });
+  const assets = useQuery({
+    queryKey: ["content-assets", "flow-builder"],
+    queryFn: () => listContentAssets({ data: {} }),
+    enabled: open,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -114,6 +140,10 @@ export function FlowBuilderDialog({
         media_filename: step.media_filename,
         preferred_time_start: step.preferred_time_start?.slice(0, 5) ?? "",
         preferred_time_end: step.preferred_time_end?.slice(0, 5) ?? "",
+        content_mode: step.content_mode,
+        strategy_id: step.strategy_id,
+        asset_id: step.asset_id,
+        objective: step.objective ?? "",
       })),
     );
   }, [open, flowId, existing.data]);
@@ -164,6 +194,10 @@ export function FlowBuilderDialog({
             media_filename: step.media_filename,
             preferred_time_start: step.preferred_time_start || null,
             preferred_time_end: step.preferred_time_end || null,
+            content_mode: step.content_mode,
+            strategy_id: step.strategy_id,
+            asset_id: step.asset_id,
+            objective: step.objective || null,
           })),
         },
       }),
@@ -347,6 +381,26 @@ export function FlowBuilderDialog({
                     </Select>
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Conteúdo</Label>
+                    <Select
+                      value={step.content_mode}
+                      onValueChange={(value) =>
+                        updateStep(index, { content_mode: value as FollowupContentMode })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(CONTENT_MODE_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Ação</Label>
                     <Select
                       value={step.action_type}
@@ -390,6 +444,64 @@ export function FlowBuilderDialog({
                     />
                   </div>
                 </div>
+
+                {step.content_mode === "ai_generated" && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Estratégia</Label>
+                      <Select
+                        value={step.strategy_id ?? ""}
+                        onValueChange={(value) => updateStep(index, { strategy_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Escolha a estratégia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(strategies.data ?? []).map((strategy) => (
+                            <SelectItem key={strategy.id} value={strategy.id}>
+                              {strategy.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Objetivo desta etapa</Label>
+                      <Input
+                        value={step.objective}
+                        placeholder="Ex.: retomar a cotação enviada"
+                        onChange={(event) => updateStep(index, { objective: event.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {step.content_mode === "asset_selection" && (
+                  <div className="space-y-1.5">
+                    <Label>Material</Label>
+                    <Select
+                      value={step.asset_id ?? ""}
+                      onValueChange={(value) => updateStep(index, { asset_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escolha o material" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(assets.data ?? []).map((asset) => (
+                          <SelectItem key={asset.id} value={asset.id}>
+                            {asset.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {step.content_mode === "human_required" && (
+                  <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                    Nesta etapa o sistema não envia nada: ele apenas avisa que é a sua vez.
+                  </p>
+                )}
 
                 <div className="space-y-1.5">
                   <Label>

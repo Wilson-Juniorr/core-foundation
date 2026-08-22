@@ -188,9 +188,14 @@ async function scheduleStep(
       opportunity_id: input.run.opportunity_id,
       action_type: input.step.action_type,
       content: input.step.content,
-      media_reference: input.step.media_reference,
+      media_reference:
+        input.step.content_mode === "asset_selection"
+          ? input.step.asset_id
+          : input.step.media_reference,
       media_mime_type: input.step.media_mime_type,
       media_filename: input.step.media_filename,
+      content_mode: input.step.content_mode,
+      strategy_id: input.step.strategy_id,
       scheduled_for: scheduledFor.toISOString(),
       cancel_on_reply: input.flow.stop_on_reply,
       idempotency_key: key,
@@ -869,14 +874,185 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
     }
   }
 
+  /* Módulo 07 — Orquestrador: políticas, silêncio inteligente e guardrails.
+     Nada é enviado sem passar por aqui, e toda decisão fica auditada. */
+  const { loadPolicySettings, evaluatePolicy } = await import("@/lib/automation/policy.server");
+  const { recordDecision } = await import("@/lib/automation/audit.server");
+  const { resolveAdaptiveContent } = await import("@/lib/automation/adaptive.server");
+
+  const policy = await loadPolicySettings(db, action.user_id);
+  const evaluation = await evaluatePolicy(db, policy, {
+    userId: action.user_id,
+    conversationId: action.conversation_id,
+    contactId: action.contact_id,
+    flowRunId: action.flow_run_id,
+    now,
+  });
+
+  const auditBase = {
+    userId: action.user_id,
+    contactId: action.contact_id,
+    conversationId: action.conversation_id,
+    opportunityId: action.opportunity_id,
+    scheduledActionId: action.id,
+    flowRunId: action.flow_run_id,
+    flowStepId: action.flow_step_id,
+    rules: evaluation.rules,
+  };
+
+  if (evaluation.decision === "blocked" || evaluation.decision === "handoff") {
+    await releaseAction(db, action, {
+      status: "blocked",
+      last_error: evaluation.blockedBy ?? "policy_blocked",
+    });
+    await recordDecision(db, {
+      ...auditBase,
+      decision: evaluation.decision,
+      blockedBy: evaluation.blockedBy,
+      reason: evaluation.reason,
+    });
+    if (run) {
+      const isHandoff = evaluation.decision === "handoff";
+      await db
+        .from("followup_runs")
+        .update(
+          isHandoff
+            ? { status: "paused", paused_at: new Date().toISOString() }
+            : {
+                status: "stopped",
+                stopped_at: new Date().toISOString(),
+                stop_reason: evaluation.blockedBy ?? "policy_blocked",
+              },
+        )
+        .eq("id", run.id)
+        .eq("status", "active");
+    }
+    await logEvent(db, action.user_id, {
+      event_type: "automation_blocked",
+      contact_id: action.contact_id,
+      opportunity_id: action.opportunity_id,
+      metadata: {
+        scheduled_action_id: action.id,
+        blocked_by: evaluation.blockedBy,
+        reason: evaluation.reason,
+      },
+    });
+    return "cancelled";
+  }
+
+  if (evaluation.decision === "deferred") {
+    const target = evaluation.deferUntil
+      ? new Date(evaluation.deferUntil)
+      : new Date(now.getTime() + 60 * 60_000);
+    const retryAt = nextAllowedInstant(target, window, settings.timezone);
+    await releaseAction(db, action, {
+      status: "scheduled",
+      scheduled_for: retryAt.toISOString(),
+      last_error: evaluation.blockedBy ?? "policy_deferred",
+    });
+    await recordDecision(db, {
+      ...auditBase,
+      decision: "deferred",
+      blockedBy: evaluation.blockedBy,
+      reason: evaluation.reason,
+      context: { deferred_to: retryAt.toISOString() },
+    });
+    return "rescheduled";
+  }
+
+  // Conteúdo adaptativo (Biblioteca Estratégica) quando a etapa pede IA/material.
+  const adaptive = await resolveAdaptiveContent(db, action, policy, text);
+
+  if (adaptive.kind !== "send") {
+    const decision =
+      adaptive.kind === "approval_required"
+        ? "approval_required"
+        : adaptive.kind === "handoff"
+          ? "handoff"
+          : "blocked";
+    await releaseAction(db, action, {
+      status: "blocked",
+      last_error: decision,
+      draft_id: adaptive.draftId,
+    });
+    await recordDecision(db, {
+      ...auditBase,
+      decision,
+      blockedBy: decision === "approval_required" ? "low_confidence" : decision,
+      reason: adaptive.reason,
+      confidence: adaptive.confidence,
+      strategyName: adaptive.strategyName,
+      strategyId: action.strategy_id,
+    });
+    if (run) {
+      await db
+        .from("followup_runs")
+        .update({ status: "paused", paused_at: new Date().toISOString() })
+        .eq("id", run.id)
+        .eq("status", "active");
+    }
+    return "cancelled";
+  }
+
+  text = adaptive.text;
+  const effectiveAction: ActionRow = adaptive.media
+    ? {
+        ...action,
+        action_type: adaptive.media.actionType,
+        media_reference: adaptive.media.reference,
+        media_mime_type: adaptive.media.mimeType,
+        media_filename: adaptive.media.filename,
+      }
+    : action.content_mode === "fixed_content"
+      ? action
+      : { ...action, action_type: "text_message", media_reference: null };
+
+  // Modo teste: a decisão é completa, mas nada chega ao cliente.
+  if (evaluation.decision === "simulated") {
+    await releaseAction(db, action, {
+      status: "simulated",
+      simulated_at: new Date().toISOString(),
+      draft_id: adaptive.draftId,
+      last_error: null,
+    });
+    await recordDecision(db, {
+      ...auditBase,
+      decision: "simulated",
+      blockedBy: "test_mode",
+      reason: evaluation.reason,
+      confidence: adaptive.confidence,
+      strategyName: adaptive.strategyName,
+      context: { simulated_text: text },
+    });
+    await logEvent(db, action.user_id, {
+      event_type: "automation_simulated",
+      contact_id: action.contact_id,
+      opportunity_id: action.opportunity_id,
+      metadata: { scheduled_action_id: action.id, preview: text },
+    });
+    if (run && flow) await advanceRun(db, run, flow, settings);
+    return "skipped";
+  }
+
   try {
-    const sendResult = await deliverAction(db, action, text);
+    const sendResult = await deliverAction(db, effectiveAction, text);
 
     await releaseAction(db, action, {
       status: "sent",
       executed_at: new Date().toISOString(),
       message_id: sendResult.messageId,
       last_error: null,
+    });
+
+    await recordDecision(db, {
+      ...auditBase,
+      decision: "allowed",
+      reason: evaluation.reason,
+      confidence: adaptive.confidence,
+      strategyName: adaptive.strategyName,
+      strategyId: action.strategy_id,
+      model: adaptive.model,
+      promptVersion: adaptive.promptVersion,
     });
 
     await logEvent(db, action.user_id, {

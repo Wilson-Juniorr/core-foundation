@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   Repeat,
   Settings,
+  ShieldCheck,
   Users,
   Workflow,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const ACTIVE_ITEMS = [
   { to: "/conversas", label: "Conversas", icon: MessagesSquare },
   { to: "/followups", label: "Follow-ups", icon: Repeat },
   { to: "/biblioteca", label: "Biblioteca", icon: BookOpen },
+  { to: "/automacao", label: "Orquestrador", icon: ShieldCheck },
   { to: "/configuracoes/whatsapp", label: "Configurações", icon: Settings },
 ] as const;
 

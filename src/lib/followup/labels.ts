@@ -34,6 +34,8 @@ export const SCHEDULED_STATUS_LABELS: Record<ScheduledActionStatus, string> = {
   cancelled: "Cancelada",
   failed: "Falhou",
   skipped: "Ignorada",
+  blocked: "Bloqueada por política",
+  simulated: "Simulada (modo teste)",
 };
 
 export const STOP_REASON_LABELS: Record<string, string> = {

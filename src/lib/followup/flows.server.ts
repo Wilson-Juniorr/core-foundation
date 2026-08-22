@@ -17,7 +17,7 @@ type Client = SupabaseClient<Database>;
 type FlowInput = z.infer<typeof flowInputSchema>;
 
 const STEP_COLUMNS =
-  "id, flow_id, position, delay_value, delay_unit, action_type, content, media_reference, media_mime_type, media_filename, preferred_time_start, preferred_time_end";
+  "id, flow_id, position, delay_value, delay_unit, action_type, content, media_reference, media_mime_type, media_filename, preferred_time_start, preferred_time_end, content_mode, strategy_id, asset_id, objective";
 
 function mapStep(row: Database["public"]["Tables"]["followup_flow_steps"]["Row"]): FlowStep {
   return {
@@ -33,6 +33,10 @@ function mapStep(row: Database["public"]["Tables"]["followup_flow_steps"]["Row"]
     media_filename: row.media_filename,
     preferred_time_start: row.preferred_time_start,
     preferred_time_end: row.preferred_time_end,
+    content_mode: row.content_mode,
+    strategy_id: row.strategy_id,
+    asset_id: row.asset_id,
+    objective: row.objective,
   };
 }
 
@@ -148,6 +152,10 @@ export async function saveFlow(
       media_filename: step.media_filename,
       preferred_time_start: step.preferred_time_start,
       preferred_time_end: step.preferred_time_end,
+      content_mode: step.content_mode,
+      strategy_id: step.strategy_id,
+      asset_id: step.asset_id,
+      objective: step.objective,
     };
 
     if (step.id) {
@@ -188,6 +196,10 @@ export async function duplicateFlow(
       media_filename: step.media_filename,
       preferred_time_start: step.preferred_time_start,
       preferred_time_end: step.preferred_time_end,
+      content_mode: step.content_mode,
+      strategy_id: step.strategy_id,
+      asset_id: step.asset_id,
+      objective: step.objective,
     })),
   });
 }

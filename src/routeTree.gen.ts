@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAtencaoRouteImport } from './routes/_authenticated/atencao'
+import { Route as AuthenticatedAutomacaoRouteImport } from './routes/_authenticated/automacao'
 import { Route as AuthenticatedBibliotecaRouteImport } from './routes/_authenticated/biblioteca'
 import { Route as AuthenticatedConversasRouteImport } from './routes/_authenticated/conversas'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -43,6 +44,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedAtencaoRoute = AuthenticatedAtencaoRouteImport.update({
   id: '/atencao',
   path: '/atencao',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAutomacaoRoute = AuthenticatedAutomacaoRouteImport.update({
+  id: '/automacao',
+  path: '/automacao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBibliotecaRoute = AuthenticatedBibliotecaRouteImport.update({
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/atencao': typeof AuthenticatedAtencaoRoute
+  '/automacao': typeof AuthenticatedAutomacaoRoute
   '/biblioteca': typeof AuthenticatedBibliotecaRoute
   '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/atencao': typeof AuthenticatedAtencaoRoute
+  '/automacao': typeof AuthenticatedAutomacaoRoute
   '/biblioteca': typeof AuthenticatedBibliotecaRoute
   '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/atencao': typeof AuthenticatedAtencaoRoute
+  '/_authenticated/automacao': typeof AuthenticatedAutomacaoRoute
   '/_authenticated/biblioteca': typeof AuthenticatedBibliotecaRoute
   '/_authenticated/conversas': typeof AuthenticatedConversasRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/atencao'
+    | '/automacao'
     | '/biblioteca'
     | '/conversas'
     | '/dashboard'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/atencao'
+    | '/automacao'
     | '/biblioteca'
     | '/conversas'
     | '/dashboard'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/atencao'
+    | '/_authenticated/automacao'
     | '/_authenticated/biblioteca'
     | '/_authenticated/conversas'
     | '/_authenticated/dashboard'
@@ -258,6 +270,13 @@ declare module '@tanstack/react-router' {
       path: '/atencao'
       fullPath: '/atencao'
       preLoaderRoute: typeof AuthenticatedAtencaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/automacao': {
+      id: '/_authenticated/automacao'
+      path: '/automacao'
+      fullPath: '/automacao'
+      preLoaderRoute: typeof AuthenticatedAutomacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/biblioteca': {
@@ -349,6 +368,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAtencaoRoute: typeof AuthenticatedAtencaoRoute
+  AuthenticatedAutomacaoRoute: typeof AuthenticatedAutomacaoRoute
   AuthenticatedBibliotecaRoute: typeof AuthenticatedBibliotecaRoute
   AuthenticatedConversasRoute: typeof AuthenticatedConversasRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -361,6 +381,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAtencaoRoute: AuthenticatedAtencaoRoute,
+  AuthenticatedAutomacaoRoute: AuthenticatedAutomacaoRoute,
   AuthenticatedBibliotecaRoute: AuthenticatedBibliotecaRoute,
   AuthenticatedConversasRoute: AuthenticatedConversasRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
