@@ -176,6 +176,18 @@ export async function syncAttention(
     const { error } = await db.from("attention_items").update(patch).eq("id", current.id);
     if (error) console.error("attention_update_failed", error.message);
     else updated += 1;
+
+    // Handoff continua valendo enquanto o item está aberto: automações iniciadas
+    // depois da detecção também devem ser pausadas.
+    if (blocks && current.status === "open" && current.contact_id) {
+      pausedRuns += await pauseConflictingAutomation(
+        db,
+        userId,
+        current.contact_id,
+        current.id,
+        candidate.title,
+      );
+    }
   }
 
   // O que não foi detectado agora deixou de existir: fecha automaticamente.
@@ -237,9 +249,24 @@ async function pauseConflictingAutomation(
   }
 
   if (paused.length > 0) {
+    const { data: currentItem } = await db
+      .from("attention_items")
+      .select("metadata")
+      .eq("id", itemId)
+      .maybeSingle();
+    const currentMeta = (currentItem?.metadata ?? {}) as Record<string, unknown>;
+    const previous = Array.isArray(currentMeta["paused_run_ids"])
+      ? (currentMeta["paused_run_ids"] as string[])
+      : [];
+
     await db
       .from("attention_items")
-      .update({ metadata: { paused_run_ids: paused } as unknown as Row["metadata"] })
+      .update({
+        metadata: {
+          ...currentMeta,
+          paused_run_ids: Array.from(new Set([...previous, ...paused])),
+        } as unknown as Row["metadata"],
+      })
       .eq("id", itemId);
 
     await logEvent(db, userId, {
