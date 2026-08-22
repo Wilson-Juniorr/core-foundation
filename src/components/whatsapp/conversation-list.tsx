@@ -9,9 +9,9 @@ import type { ConversationListItem } from "@/lib/whatsapp/types";
 
 export function conversationTitle(conversation: ConversationListItem): string {
   return (
-    conversation.contact_name ??
-    conversation.display_name ??
-    formatPhone(conversation.phone_number) ??
+    conversation.contact_name ||
+    conversation.display_name ||
+    formatPhone(conversation.phone_number) ||
     "Contato sem número"
   );
 }
