@@ -250,7 +250,7 @@ export async function disconnect(userId: string): Promise<WhatsAppConnection> {
 
 export async function syncHistory(
   userId: string,
-  input: { chatLimit?: number; messageLimit?: number },
+  input: { chatLimit?: number | undefined; messageLimit?: number | undefined },
 ): Promise<SyncResult> {
   const { db, connection, creds } = await requireConnection(userId);
   const provider = await getWhatsAppProvider(connection.provider);
