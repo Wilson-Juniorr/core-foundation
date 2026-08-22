@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Paperclip, Send } from "lucide-react";
+import { Loader2, Paperclip, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import type { ConversationDetail } from "@/lib/whatsapp/types";
 import { ContactLinkDialog } from "./contact-link-dialog";
 import { conversationTitle } from "./conversation-list";
 import { IntelligenceStrip } from "@/components/intelligence/intelligence-strip";
+import { GenerateMessageDialog } from "@/components/library/generate-message-dialog";
 import { MessageBubble } from "./message-bubble";
 
 function mediaTypeFor(file: File): "audio" | "image" | "document" | "video" {
@@ -41,6 +42,7 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +113,12 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
         </div>
         <div className="ml-auto flex items-center gap-2">
           {conversation.contact_id ? (
+            <Button variant="outline" size="sm" onClick={() => setGenerateOpen(true)}>
+              <Sparkles className="mr-2 size-4" />
+              Gerar mensagem
+            </Button>
+          ) : null}
+          {conversation.contact_id ? (
             <Button asChild variant="outline" size="sm">
               <Link to="/clientes/$contactId" params={{ contactId: conversation.contact_id }}>
                 Ver cliente
@@ -125,6 +133,15 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
       </header>
 
       {conversation.contact_id ? <IntelligenceStrip contactId={conversation.contact_id} /> : null}
+
+      {conversation.contact_id ? (
+        <GenerateMessageDialog
+          open={generateOpen}
+          onOpenChange={setGenerateOpen}
+          contactId={conversation.contact_id}
+          conversationId={conversation.id}
+        />
+      ) : null}
 
       {messages.length === 0 ? (
         <p className="text-muted-foreground flex-1 p-6 text-sm">

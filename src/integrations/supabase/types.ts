@@ -172,6 +172,63 @@ export type Database = {
         }
         Relationships: []
       }
+      content_assets: {
+        Row: {
+          body: string | null
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          filename: string | null
+          id: string
+          is_active: boolean
+          mime_type: string | null
+          name: string
+          purpose: string | null
+          storage_reference: string | null
+          tags: string[]
+          transcript: string | null
+          type: Database["public"]["Enums"]["content_asset_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          filename?: string | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          name: string
+          purpose?: string | null
+          storage_reference?: string | null
+          tags?: string[]
+          transcript?: string | null
+          type: Database["public"]["Enums"]["content_asset_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          filename?: string | null
+          id?: string
+          is_active?: boolean
+          mime_type?: string | null
+          name?: string
+          purpose?: string | null
+          storage_reference?: string | null
+          tags?: string[]
+          transcript?: string | null
+          type?: Database["public"]["Enums"]["content_asset_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_insights: {
         Row: {
           confidence: number
@@ -629,6 +686,196 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      message_drafts: {
+        Row: {
+          approved_at: string | null
+          asset_rationale: string | null
+          contact_id: string | null
+          context_snapshot: Json
+          conversation_id: string | null
+          created_at: string
+          edited_content: string | null
+          generated_content: string
+          id: string
+          is_preview: boolean
+          message_id: string | null
+          model: string | null
+          opportunity_id: string | null
+          original_content: string
+          prompt_version: string | null
+          rejection_reason: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["draft_status"]
+          strategy_id: string | null
+          strategy_name: string | null
+          strategy_version: number | null
+          suggested_asset_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          asset_rationale?: string | null
+          contact_id?: string | null
+          context_snapshot?: Json
+          conversation_id?: string | null
+          created_at?: string
+          edited_content?: string | null
+          generated_content: string
+          id?: string
+          is_preview?: boolean
+          message_id?: string | null
+          model?: string | null
+          opportunity_id?: string | null
+          original_content: string
+          prompt_version?: string | null
+          rejection_reason?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["draft_status"]
+          strategy_id?: string | null
+          strategy_name?: string | null
+          strategy_version?: number | null
+          suggested_asset_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          asset_rationale?: string | null
+          contact_id?: string | null
+          context_snapshot?: Json
+          conversation_id?: string | null
+          created_at?: string
+          edited_content?: string | null
+          generated_content?: string
+          id?: string
+          is_preview?: boolean
+          message_id?: string | null
+          model?: string | null
+          opportunity_id?: string | null
+          original_content?: string
+          prompt_version?: string | null
+          rejection_reason?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["draft_status"]
+          strategy_id?: string | null
+          strategy_name?: string | null
+          strategy_version?: number | null
+          suggested_asset_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_drafts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "message_strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_drafts_suggested_asset_id_fkey"
+            columns: ["suggested_asset_id"]
+            isOneToOne: false
+            referencedRelation: "content_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_strategies: {
+        Row: {
+          allowed_asset_types: Database["public"]["Enums"]["content_asset_type"][]
+          allowed_assets: string[]
+          autonomy_mode: Database["public"]["Enums"]["strategy_autonomy"]
+          channel: string
+          created_at: string
+          forbidden_behaviors: string[]
+          id: string
+          instructions: string | null
+          is_active: boolean
+          max_length: number
+          name: string
+          objective: string
+          should_avoid: string | null
+          should_mention: string | null
+          tone: string
+          updated_at: string
+          user_id: string
+          version: number
+          when_to_use: string | null
+        }
+        Insert: {
+          allowed_asset_types?: Database["public"]["Enums"]["content_asset_type"][]
+          allowed_assets?: string[]
+          autonomy_mode?: Database["public"]["Enums"]["strategy_autonomy"]
+          channel?: string
+          created_at?: string
+          forbidden_behaviors?: string[]
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          max_length?: number
+          name: string
+          objective: string
+          should_avoid?: string | null
+          should_mention?: string | null
+          tone?: string
+          updated_at?: string
+          user_id: string
+          version?: number
+          when_to_use?: string | null
+        }
+        Update: {
+          allowed_asset_types?: Database["public"]["Enums"]["content_asset_type"][]
+          allowed_assets?: string[]
+          autonomy_mode?: Database["public"]["Enums"]["strategy_autonomy"]
+          channel?: string
+          created_at?: string
+          forbidden_behaviors?: string[]
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          max_length?: number
+          name?: string
+          objective?: string
+          should_avoid?: string | null
+          should_mention?: string | null
+          tone?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+          when_to_use?: string | null
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -1125,6 +1372,8 @@ export type Database = {
     }
     Enums: {
       ai_job_status: "pending" | "processing" | "done" | "failed"
+      content_asset_type: "text" | "audio" | "image" | "document"
+      draft_status: "generated" | "edited" | "approved" | "rejected" | "sent"
       followup_action_type: "text_message" | "audio" | "image" | "document"
       followup_delay_unit: "minutes" | "hours" | "days"
       followup_run_status:
@@ -1159,6 +1408,7 @@ export type Database = {
         | "cancelled"
         | "failed"
         | "skipped"
+      strategy_autonomy: "manual" | "approval_required" | "automatic"
       whatsapp_connection_status:
         | "not_configured"
         | "disconnected"
@@ -1293,6 +1543,8 @@ export const Constants = {
   public: {
     Enums: {
       ai_job_status: ["pending", "processing", "done", "failed"],
+      content_asset_type: ["text", "audio", "image", "document"],
+      draft_status: ["generated", "edited", "approved", "rejected", "sent"],
       followup_action_type: ["text_message", "audio", "image", "document"],
       followup_delay_unit: ["minutes", "hours", "days"],
       followup_run_status: [
@@ -1331,6 +1583,7 @@ export const Constants = {
         "failed",
         "skipped",
       ],
+      strategy_autonomy: ["manual", "approval_required", "automatic"],
       whatsapp_connection_status: [
         "not_configured",
         "disconnected",
