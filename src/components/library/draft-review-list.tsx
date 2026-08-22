@@ -136,7 +136,7 @@ function DraftCard({ draft }: { draft: MessageDraft }) {
 export function DraftReviewList({ status }: { status: DraftStatus | null }) {
   const drafts = useQuery(draftsQuery({ status }));
 
-  if (drafts.isLoading) return <LoadingState label="Carregando rascunhos…" />;
+  if (drafts.isLoading) return <LoadingState />;
   if (drafts.isError) return <ErrorState onRetry={() => drafts.refetch()} />;
 
   const items = (drafts.data ?? []).filter((draft) =>
