@@ -1740,7 +1740,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      analytics_flows: { Args: { _from: string; _to: string }; Returns: Json }
+      analytics_funnel: { Args: { _from: string; _to: string }; Returns: Json }
+      analytics_health: { Args: never; Returns: Json }
+      analytics_overview: {
+        Args: { _from: string; _to: string }
+        Returns: Json
+      }
+      analytics_strategies: {
+        Args: { _from: string; _to: string }
+        Returns: Json
+      }
     }
     Enums: {
       ai_job_status: "pending" | "processing" | "done" | "failed"
