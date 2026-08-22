@@ -14,6 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_jobs: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          contact_id: string
+          conversation_id: string | null
+          created_at: string
+          finished_at: string | null
+          id: string
+          last_error: string | null
+          reason: string
+          requested_at: string
+          status: Database["public"]["Enums"]["ai_job_status"]
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          contact_id: string
+          conversation_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          reason?: string
+          requested_at?: string
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          contact_id?: string
+          conversation_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          reason?: string
+          requested_at?: string
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analysis_jobs_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_analysis_jobs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_events: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          estimated_cost_usd: number | null
+          id: string
+          input_tokens: number | null
+          model: string
+          output_tokens: number | null
+          prompt_version: string
+          purpose: string
+          status: string
+          total_tokens: number | null
+          user_id: string
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost_usd?: number | null
+          id?: string
+          input_tokens?: number | null
+          model: string
+          output_tokens?: number | null
+          prompt_version: string
+          purpose?: string
+          status?: string
+          total_tokens?: number | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost_usd?: number | null
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          output_tokens?: number | null
+          prompt_version?: string
+          purpose?: string
+          status?: string
+          total_tokens?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
@@ -52,6 +171,89 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      conversation_insights: {
+        Row: {
+          confidence: number
+          contact_id: string
+          content: string
+          conversation_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          insight_type: string
+          metadata: Json
+          opportunity_id: string | null
+          source: Database["public"]["Enums"]["memory_source"]
+          source_message_id: string | null
+          status: Database["public"]["Enums"]["insight_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number
+          contact_id: string
+          content: string
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          insight_type: string
+          metadata?: Json
+          opportunity_id?: string | null
+          source?: Database["public"]["Enums"]["memory_source"]
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["insight_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          contact_id?: string
+          content?: string
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          id?: string
+          insight_type?: string
+          metadata?: Json
+          opportunity_id?: string | null
+          source?: Database["public"]["Enums"]["memory_source"]
+          source_message_id?: string | null
+          status?: Database["public"]["Enums"]["insight_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_insights_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_insights_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_insights_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_insights_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversations: {
         Row: {
@@ -115,6 +317,124 @@ export type Database = {
             columns: ["whatsapp_connection_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_memory: {
+        Row: {
+          analysis_status: string
+          competitors: Json
+          confidence: number
+          contact_id: string
+          created_at: string
+          current_summary: string | null
+          customer_commitments: Json
+          customer_intent: string
+          decision_factors: Json
+          do_not_contact: boolean
+          field_sources: Json
+          id: string
+          important_dates: Json
+          interest_level: string
+          last_analyzed_at: string | null
+          last_analyzed_message_id: string | null
+          last_error: string | null
+          main_objections: Json
+          model: string | null
+          next_step_detected: string | null
+          opportunity_id: string | null
+          pending_information: Json
+          products_or_services: Json
+          prompt_version: string | null
+          relevant_values: Json
+          seller_commitments: Json
+          sentiment: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_status?: string
+          competitors?: Json
+          confidence?: number
+          contact_id: string
+          created_at?: string
+          current_summary?: string | null
+          customer_commitments?: Json
+          customer_intent?: string
+          decision_factors?: Json
+          do_not_contact?: boolean
+          field_sources?: Json
+          id?: string
+          important_dates?: Json
+          interest_level?: string
+          last_analyzed_at?: string | null
+          last_analyzed_message_id?: string | null
+          last_error?: string | null
+          main_objections?: Json
+          model?: string | null
+          next_step_detected?: string | null
+          opportunity_id?: string | null
+          pending_information?: Json
+          products_or_services?: Json
+          prompt_version?: string | null
+          relevant_values?: Json
+          seller_commitments?: Json
+          sentiment?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_status?: string
+          competitors?: Json
+          confidence?: number
+          contact_id?: string
+          created_at?: string
+          current_summary?: string | null
+          customer_commitments?: Json
+          customer_intent?: string
+          decision_factors?: Json
+          do_not_contact?: boolean
+          field_sources?: Json
+          id?: string
+          important_dates?: Json
+          interest_level?: string
+          last_analyzed_at?: string | null
+          last_analyzed_message_id?: string | null
+          last_error?: string | null
+          main_objections?: Json
+          model?: string | null
+          next_step_detected?: string | null
+          opportunity_id?: string | null
+          pending_information?: Json
+          products_or_services?: Json
+          prompt_version?: string | null
+          relevant_values?: Json
+          seller_commitments?: Json
+          sentiment?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_memory_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_memory_last_analyzed_message_id_fkey"
+            columns: ["last_analyzed_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_memory_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
         ]
@@ -804,6 +1124,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      ai_job_status: "pending" | "processing" | "done" | "failed"
       followup_action_type: "text_message" | "audio" | "image" | "document"
       followup_delay_unit: "minutes" | "hours" | "days"
       followup_run_status:
@@ -813,6 +1134,8 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "failed"
+      insight_status: "open" | "accepted" | "dismissed"
+      memory_source: "ai" | "human" | "system"
       message_direction: "inbound" | "outbound"
       message_status:
         | "pending"
@@ -969,6 +1292,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_job_status: ["pending", "processing", "done", "failed"],
       followup_action_type: ["text_message", "audio", "image", "document"],
       followup_delay_unit: ["minutes", "hours", "days"],
       followup_run_status: [
@@ -979,6 +1303,8 @@ export const Constants = {
         "cancelled",
         "failed",
       ],
+      insight_status: ["open", "accepted", "dismissed"],
+      memory_source: ["ai", "human", "system"],
       message_direction: ["inbound", "outbound"],
       message_status: [
         "pending",

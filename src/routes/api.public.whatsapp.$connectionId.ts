@@ -66,7 +66,7 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                 const { stopRunsForReply } = await import("@/lib/followup/engine.server");
                 const { data: conversation } = await supabaseAdmin
                   .from("conversations")
-                  .select("id")
+                  .select("id, contact_id")
                   .eq("whatsapp_connection_id", connection.id)
                   .eq("external_chat_id", event.message.externalChatId)
                   .maybeSingle();
@@ -76,6 +76,16 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                     conversationId: conversation.id,
                     repliedAt: event.message.timestamp,
                   });
+                  /* Análise de IA é apenas enfileirada: o webhook responde
+                     rápido e nunca depende do modelo. */
+                  if (conversation.contact_id) {
+                    const { enqueueAnalysis } = await import("@/lib/ai/analysis.server");
+                    await enqueueAnalysis(supabaseAdmin, {
+                      userId: connection.user_id,
+                      contactId: conversation.contact_id,
+                      conversationId: conversation.id,
+                    });
+                  }
                 }
               }
               waLog.info("webhook_message", {
