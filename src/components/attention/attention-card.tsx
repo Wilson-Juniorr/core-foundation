@@ -166,7 +166,7 @@ export function AttentionCard({ item }: { item: AttentionItem }) {
         <div className="flex flex-wrap gap-2">
           {item.conversation_id ? (
             <Button asChild variant="outline" size="sm">
-              <Link to="/conversas" search={{ conversationId: item.conversation_id }}>
+              <Link to="/conversas" search={{ conversa: item.conversation_id }}>
                 <MessagesSquare className="size-4" />
                 Abrir conversa
               </Link>
