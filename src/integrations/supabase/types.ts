@@ -179,6 +179,7 @@ export type Database = {
           content: string
           conversation_id: string | null
           created_at: string
+          dedupe_key: string | null
           id: string
           insight_type: string
           metadata: Json
@@ -195,6 +196,7 @@ export type Database = {
           content: string
           conversation_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           insight_type: string
           metadata?: Json
@@ -211,6 +213,7 @@ export type Database = {
           content?: string
           conversation_id?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           insight_type?: string
           metadata?: Json
