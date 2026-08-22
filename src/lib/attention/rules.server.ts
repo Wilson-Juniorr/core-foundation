@@ -59,6 +59,14 @@ function valueFactor(value: number | null): ScoreFactor | null {
   return null;
 }
 
+/** Prefixos de explicação alinhados à prioridade final. */
+const PRIORITY_PREFIX: Record<AttentionPriority, string> = {
+  critical: "Prioridade crítica",
+  high: "Alta prioridade",
+  medium: "Média prioridade",
+  low: "Baixa prioridade",
+};
+
 const DISCOUNT_RE =
   /\b(desconto|abatimento|melhor pre[çc]o|mais barato|condi[çc][ãa]o especial)\b/i;
 const CALL_RE =
@@ -86,17 +94,24 @@ function build(input: {
     ...input.factors.filter((factor): factor is ScoreFactor => Boolean(factor)),
   ];
   const score = Math.max(1, Math.min(100, sum(factors)));
+  const priority = priorityFromScore(score);
+
+  // A explicação precisa combinar com a prioridade realmente calculada.
+  const reason = input.reason.replace(
+    /^(Prioridade cr[íi]tica|Alta prioridade|M[ée]dia prioridade|Baixa prioridade)/,
+    PRIORITY_PREFIX[priority],
+  );
 
   return {
     kind: input.kind,
     dedupe_key: input.dedupe_key,
-    priority: priorityFromScore(score),
+    priority,
     priority_score: score,
     score_factors: factors,
     bucket: input.bucket,
     title: input.title,
     summary: input.summary ?? null,
-    reason: input.reason,
+    reason,
     suggested_action: input.suggested_action,
     suggested_action_kind: input.suggested_action_kind,
     contact_id: input.contact_id ?? null,
@@ -582,5 +597,19 @@ export async function detectAttention(
     );
   }
 
-  return candidates;
+  // Deduplicação de contexto: um mesmo problema não deve gerar vários alertas.
+  // Quando a conversa já gerou um sinal específico (desconto, fechamento, objeção,
+  // ligação, documento...), o alerta genérico "cliente respondeu" é redundante.
+  const specificConversations = new Set(
+    candidates
+      .filter((candidate) => candidate.kind !== "customer_replied" && candidate.conversation_id)
+      .map((candidate) => candidate.conversation_id as string),
+  );
+
+  return candidates.filter(
+    (candidate) =>
+      candidate.kind !== "customer_replied" ||
+      !candidate.conversation_id ||
+      !specificConversations.has(candidate.conversation_id),
+  );
 }
