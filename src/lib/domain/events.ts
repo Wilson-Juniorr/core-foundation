@@ -9,6 +9,10 @@ export const TIMELINE_EVENT_TYPES = [
   "next_action_updated",
   "opportunity_won",
   "opportunity_lost",
+  "whatsapp_conversation_linked",
+  "whatsapp_conversation_unlinked",
+  "whatsapp_message_received",
+  "whatsapp_message_sent",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
