@@ -277,7 +277,9 @@ export async function analyzeContact(
         memory[field],
         toIncomingItems(payload.lists?.[field], now),
         now,
-      ) as unknown as Database["public"]["Tables"]["customer_memory"]["Update"][MemoryListField];
+      ) as unknown as NonNullable<
+        Database["public"]["Tables"]["customer_memory"]["Update"][MemoryListField]
+      >;
     }
 
     const { error: updateError } = await admin
