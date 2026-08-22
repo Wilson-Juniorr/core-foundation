@@ -63,11 +63,11 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
               break;
             }
             case "status": {
-              await applyStatusUpdate(supabaseAdmin, connection.user_id, event.status);
+              await applyStatusUpdate(supabaseAdmin, connection.user_id, event.update);
               break;
             }
             case "connection": {
-              await applyConnectionUpdate(supabaseAdmin, connection.id, event.connection);
+              await applyConnectionUpdate(supabaseAdmin, connection.id, event.update);
               break;
             }
             default:

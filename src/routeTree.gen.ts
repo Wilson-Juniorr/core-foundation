@@ -16,6 +16,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedClientesIndexRouteImport } from './routes/_authenticated/clientes.index'
 import { Route as AuthenticatedClientesContactIdRouteImport } from './routes/_authenticated/clientes.$contactId'
+import { Route as ApiPublicWhatsappConnectionIdRouteImport } from './routes/api.public.whatsapp.$connectionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -53,6 +54,12 @@ const AuthenticatedClientesContactIdRoute =
     path: '/clientes/$contactId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicWhatsappConnectionIdRoute =
+  ApiPublicWhatsappConnectionIdRouteImport.update({
+    id: '/api/public/whatsapp/$connectionId',
+    path: '/api/public/whatsapp/$connectionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,6 +77,7 @@ export interface FileRoutesByTo {
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/clientes': typeof AuthenticatedClientesIndexRoute
+  '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,6 +88,7 @@ export interface FileRoutesById {
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/_authenticated/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/clientes/$contactId'
     | '/clientes/'
+    | '/api/public/whatsapp/$connectionId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/pipeline'
     | '/clientes/$contactId'
     | '/clientes'
+    | '/api/public/whatsapp/$connectionId'
   id:
     | '__root__'
     | '/'
@@ -106,12 +118,14 @@ export interface FileRouteTypes {
     | '/_authenticated/pipeline'
     | '/_authenticated/clientes/$contactId'
     | '/_authenticated/clientes/'
+    | '/api/public/whatsapp/$connectionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicWhatsappConnectionIdRoute: typeof ApiPublicWhatsappConnectionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -165,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesContactIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/whatsapp/$connectionId': {
+      id: '/api/public/whatsapp/$connectionId'
+      path: '/api/public/whatsapp/$connectionId'
+      fullPath: '/api/public/whatsapp/$connectionId'
+      preLoaderRoute: typeof ApiPublicWhatsappConnectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -189,6 +210,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicWhatsappConnectionIdRoute: ApiPublicWhatsappConnectionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
