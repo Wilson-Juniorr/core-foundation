@@ -179,7 +179,12 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
           disabled={!canSend || sending}
           className="max-h-32 min-h-10 resize-none"
         />
-        <Button type="submit" size="icon" aria-label="Enviar mensagem" disabled={!canSend || sending}>
+        <Button
+          type="submit"
+          size="icon"
+          aria-label="Enviar mensagem"
+          disabled={!canSend || sending}
+        >
           {sending ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />
           ) : (

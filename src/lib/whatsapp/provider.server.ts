@@ -46,7 +46,10 @@ export type WhatsAppProvider = {
     input: { phoneNumber: string; media: OutboundMedia; caption: string | null },
   ): Promise<SendResult>;
 
-  fetchChats(creds: ProviderCredentials, input: { limit: number }): Promise<NormalizedChatSummary[]>;
+  fetchChats(
+    creds: ProviderCredentials,
+    input: { limit: number },
+  ): Promise<NormalizedChatSummary[]>;
 
   fetchChatHistory(
     creds: ProviderCredentials,

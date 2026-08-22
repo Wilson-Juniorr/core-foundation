@@ -56,10 +56,8 @@ function ConversasPage() {
   useWhatsAppRealtime(selectedId);
 
   const readMutation = useMutation({
-    mutationFn: (conversationId: string) =>
-      markConversationRead({ data: { conversationId } }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: whatsappKeys.conversationsRoot }),
+    mutationFn: (conversationId: string) => markConversationRead({ data: { conversationId } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: whatsappKeys.conversationsRoot }),
   });
 
   const unread = conversations.data?.find((item) => item.id === selectedId)?.unread_count ?? 0;

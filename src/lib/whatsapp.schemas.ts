@@ -32,7 +32,10 @@ export const sendTextSchema = z.object({
 export const sendMediaSchema = z.object({
   conversationId: z.string().uuid(),
   type: z.enum(["audio", "image", "document", "video"]),
-  base64: z.string().min(16).max(Math.ceil((MAX_MEDIA_BYTES * 4) / 3) + 1024),
+  base64: z
+    .string()
+    .min(16)
+    .max(Math.ceil((MAX_MEDIA_BYTES * 4) / 3) + 1024),
   mimeType: z.string().trim().min(3).max(150),
   filename: z.string().trim().min(1).max(200),
   caption: z

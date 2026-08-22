@@ -52,13 +52,16 @@ function WhatsAppSettingsPage() {
   const [instance, setInstance] = useState("");
   const [qrCode, setQrCode] = useState<string | null>(null);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: whatsappKeys.connection });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: whatsappKeys.connection });
 
   const saveMutation = useMutation({
     mutationFn: () =>
       saveWhatsAppSettings({
-        data: { base_url: baseUrl.trim(), token: token.trim(), instance_identifier: instance.trim() },
+        data: {
+          base_url: baseUrl.trim(),
+          token: token.trim(),
+          instance_identifier: instance.trim(),
+        },
       }),
     onSuccess: async () => {
       setToken("");
@@ -213,7 +216,10 @@ function WhatsAppSettingsPage() {
             ) : (
               <>
                 <div className="flex flex-wrap gap-2">
-                  <Button onClick={() => connectMutation.mutate()} disabled={connectMutation.isPending}>
+                  <Button
+                    onClick={() => connectMutation.mutate()}
+                    disabled={connectMutation.isPending}
+                  >
                     {connectMutation.isPending && (
                       <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
                     )}
@@ -256,7 +262,9 @@ function WhatsAppSettingsPage() {
                   </div>
                   <div className="flex gap-2">
                     <dt>Conectado em:</dt>
-                    <dd>{data?.last_connected_at ? formatDateTime(data.last_connected_at) : "—"}</dd>
+                    <dd>
+                      {data?.last_connected_at ? formatDateTime(data.last_connected_at) : "—"}
+                    </dd>
                   </div>
                   {data?.last_error && (
                     <div className="text-destructive flex gap-2">
@@ -274,8 +282,8 @@ function WhatsAppSettingsPage() {
           <CardHeader>
             <CardTitle>Importar histórico recente</CardTitle>
             <CardDescription>
-              Traz as conversas e mensagens recentes da instância. A importação é idempotente:
-              rodar de novo não duplica mensagens.
+              Traz as conversas e mensagens recentes da instância. A importação é idempotente: rodar
+              de novo não duplica mensagens.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -283,7 +291,9 @@ function WhatsAppSettingsPage() {
               onClick={() => syncMutation.mutate()}
               disabled={!configured || syncMutation.isPending}
             >
-              {syncMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
+              {syncMutation.isPending && (
+                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+              )}
               Importar histórico
             </Button>
             <p className="text-muted-foreground text-xs">

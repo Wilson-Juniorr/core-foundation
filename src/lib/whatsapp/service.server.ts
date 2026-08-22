@@ -171,7 +171,11 @@ export async function saveSettings(
   try {
     const provider = await getWhatsAppProvider(connection.provider);
     await provider.configureWebhook(
-      { baseUrl: input.base_url, token: input.token, instanceIdentifier: input.instance_identifier },
+      {
+        baseUrl: input.base_url,
+        token: input.token,
+        instanceIdentifier: input.instance_identifier,
+      },
       webhookUrl(connection),
     );
   } catch (error) {
@@ -326,7 +330,11 @@ export async function loadConversationDetail(
   conversationId: string,
 ): Promise<ConversationDetail> {
   const [conversationResult, messagesResult] = await Promise.all([
-    supabase.from("conversations").select("*, contacts(name)").eq("id", conversationId).maybeSingle(),
+    supabase
+      .from("conversations")
+      .select("*, contacts(name)")
+      .eq("id", conversationId)
+      .maybeSingle(),
     supabase
       .from("messages")
       .select(
@@ -554,7 +562,10 @@ export async function unlinkContact(
   if (error) throw new Error(error.message);
 
   if (before?.contact_id) {
-    await supabase.from("messages").update({ contact_id: null }).eq("conversation_id", conversationId);
+    await supabase
+      .from("messages")
+      .update({ contact_id: null })
+      .eq("conversation_id", conversationId);
     await logEvent(supabase, userId, {
       event_type: "whatsapp_conversation_unlinked",
       contact_id: before.contact_id,

@@ -301,10 +301,7 @@ export async function applyConnectionUpdate(
     patch.last_error = null;
   }
 
-  const { error } = await admin
-    .from("whatsapp_connections")
-    .update(patch)
-    .eq("id", connectionId);
+  const { error } = await admin.from("whatsapp_connections").update(patch).eq("id", connectionId);
   if (error) throw new Error(error.message);
 }
 

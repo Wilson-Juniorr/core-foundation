@@ -42,10 +42,12 @@ export const saveWhatsAppSettings = createServerFn({ method: "POST" })
 
 export const startWhatsAppSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ qrCode: string | null; connection: WhatsAppConnection }> => {
-    const { startSession } = await import("./whatsapp/service.server");
-    return startSession(context.userId);
-  });
+  .handler(
+    async ({ context }): Promise<{ qrCode: string | null; connection: WhatsAppConnection }> => {
+      const { startSession } = await import("./whatsapp/service.server");
+      return startSession(context.userId);
+    },
+  );
 
 export const refreshWhatsAppStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

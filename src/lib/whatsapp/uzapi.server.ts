@@ -201,16 +201,17 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
   const type = mapMessageType(
     pickString(message, ["messageType", "type", "msgType"]) ??
       pickString(content, ["type"]) ??
-      (Object.keys(content).find((entry) => entry.toLowerCase().includes("message")) ?? null),
+      Object.keys(content).find((entry) => entry.toLowerCase().includes("message")) ??
+      null,
   );
 
   const text =
     pickString(message, ["text", "body", "caption", "conversation"]) ??
     pickString(content, ["text", "conversation", "caption"]);
 
-  const phoneNumber = phoneFromChatId(externalChatId) ?? normalizePhone(
-    pickString(message, ["sender", "senderPhone", "phone", "number"]),
-  );
+  const phoneNumber =
+    phoneFromChatId(externalChatId) ??
+    normalizePhone(pickString(message, ["sender", "senderPhone", "phone", "number"]));
 
   return {
     externalMessageId:
@@ -224,10 +225,7 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
     timestamp: toIsoTimestamp(
       message["messageTimestamp"] ?? message["timestamp"] ?? message["t"] ?? message["date"],
     ),
-    status: mapMessageStatus(
-      pickString(message, ["status", "ack"]),
-      fromMe ? "sent" : "received",
-    ),
+    status: mapMessageStatus(pickString(message, ["status", "ack"]), fromMe ? "sent" : "received"),
     media:
       type === "text" || type === "unsupported"
         ? null
@@ -297,7 +295,11 @@ export const uzapiProvider: WhatsAppProvider = {
   async configureWebhook(creds, webhookUrl) {
     await request<unknown>(creds, ENDPOINTS.webhook, {
       method: "POST",
-      body: { url: webhookUrl, enabled: true, events: ["messages", "message_status", "connection"] },
+      body: {
+        url: webhookUrl,
+        enabled: true,
+        events: ["messages", "message_status", "connection"],
+      },
     });
   },
 
