@@ -109,18 +109,12 @@ function LibraryPage() {
   });
 
   return (
-    <AppShell>
+    <AppShell
+      title="Biblioteca estratégica"
+      description="Seus materiais comerciais e as regras que a IA segue para escrever mensagens."
+    >
       <div className="space-y-6">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">
-              Biblioteca estratégica
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Seus materiais comerciais e as regras que a IA segue para escrever mensagens.
-            </p>
-          </div>
-        </header>
+
 
         <Tabs defaultValue="materiais">
           <TabsList>
