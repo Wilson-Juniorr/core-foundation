@@ -235,7 +235,7 @@ export async function analyzeContact(
     });
 
     const payload = result.data;
-    const patch: Record<string, unknown> = {
+    const patch: Database["public"]["Tables"]["customer_memory"]["Update"] & Record<string, unknown> = {
       analysis_status: "ready",
       last_error: null,
       last_analyzed_message_id: lastMessage?.id ?? memory.last_analyzed_message_id,
@@ -277,7 +277,7 @@ export async function analyzeContact(
         memory[field],
         toIncomingItems(payload.lists?.[field], now),
         now,
-      ) as unknown as Database["public"]["Tables"]["customer_memory"]["Update"][MemoryListField];
+      ) as unknown as Database["public"]["Tables"]["customer_memory"]["Row"][MemoryListField];
     }
 
     const { error: updateError } = await admin
