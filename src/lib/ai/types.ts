@@ -75,11 +75,7 @@ export type MemoryListField =
   | "competitors";
 
 export type MemoryScalarField =
-  | "current_summary"
-  | "customer_intent"
-  | "interest_level"
-  | "sentiment"
-  | "next_step_detected";
+  "current_summary" | "customer_intent" | "interest_level" | "sentiment" | "next_step_detected";
 
 export type MemoryField = MemoryListField | MemoryScalarField;
 

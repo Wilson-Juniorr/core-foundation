@@ -94,11 +94,12 @@ function MemoryList({
       </div>
       <ul className="space-y-1">
         {items.map((item) => (
-          <li key={`${field}-${item.value}`} className="flex flex-wrap items-baseline gap-2 text-sm">
+          <li
+            key={`${field}-${item.value}`}
+            className="flex flex-wrap items-baseline gap-2 text-sm"
+          >
             <span>{item.value}</span>
-            {item.due ? (
-              <span className="text-xs text-muted-foreground">({item.due})</span>
-            ) : null}
+            {item.due ? <span className="text-xs text-muted-foreground">({item.due})</span> : null}
             <span className="text-[11px] text-muted-foreground">
               {item.source === "human" ? "você" : `IA · ${confidenceLabel(item.confidence)}`}
             </span>
@@ -324,7 +325,7 @@ export function IntelligenceCard({
             <Badge variant={stale ? "outline" : "secondary"}>
               {stale
                 ? analysisStatusLabels.stale
-                : analysisStatusLabels[memory.analysis_status] ?? "Atualizada"}
+                : (analysisStatusLabels[memory.analysis_status] ?? "Atualizada")}
             </Badge>
           ) : null}
           <Button
@@ -333,7 +334,10 @@ export function IntelligenceCard({
             onClick={() => analyze.mutate()}
             disabled={analyze.isPending}
           >
-            <RefreshCw className={analyze.isPending ? "size-4 animate-spin" : "size-4"} aria-hidden />
+            <RefreshCw
+              className={analyze.isPending ? "size-4 animate-spin" : "size-4"}
+              aria-hidden
+            />
             {analyze.isPending ? "Analisando..." : "Atualizar inteligência"}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
@@ -379,9 +383,7 @@ export function IntelligenceCard({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">
-                Interesse: {interestLabels[memory.interest_level]}
-              </Badge>
+              <Badge variant="secondary">Interesse: {interestLabels[memory.interest_level]}</Badge>
               <Badge variant="secondary">Intenção: {intentLabels[memory.customer_intent]}</Badge>
               <Badge variant="secondary">Sentimento: {sentimentLabels[memory.sentiment]}</Badge>
               <Badge variant="outline">Confiança: {confidenceLabel(memory.confidence)}</Badge>

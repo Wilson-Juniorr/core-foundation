@@ -3,13 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { adminClient } from "@/lib/followup/engine.server";
 import { AiGatewayError, completeStructured, estimateCost } from "./gateway.server";
-import {
-  clamp01,
-  ensureMemory,
-  isHumanLocked,
-  loadMemory,
-  mergeLists,
-} from "./memory.server";
+import { clamp01, ensureMemory, isHumanLocked, loadMemory, mergeLists } from "./memory.server";
 import {
   ANALYSIS_JSON_SCHEMA,
   ANALYSIS_MODEL,
@@ -78,7 +72,12 @@ export async function enqueueAnalysis(
     .is("opportunity_id", null);
 }
 
-async function loadMessages(admin: Admin, userId: string, contactId: string, afterId: string | null) {
+async function loadMessages(
+  admin: Admin,
+  userId: string,
+  contactId: string,
+  afterId: string | null,
+) {
   const { data: all, error } = await admin
     .from("messages")
     .select("id, direction, message_type, text_content, sent_at")
@@ -142,7 +141,9 @@ function renderPreviousMemory(memory: CustomerMemory | null): string {
     `next_step_detected: ${memory.next_step_detected ?? "—"}`,
     `do_not_contact: ${memory.do_not_contact}`,
     ...lists,
-    confirmed.length ? `campos confirmados pelo usuário (não contestar): ${confirmed.join(", ")}` : "",
+    confirmed.length
+      ? `campos confirmados pelo usuário (não contestar): ${confirmed.join(", ")}`
+      : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -205,10 +206,7 @@ export async function analyzeContact(
   const target = fresh.length > 0 ? fresh : context;
   const lastMessage = target[target.length - 1];
 
-  await admin
-    .from("customer_memory")
-    .update({ analysis_status: "processing" })
-    .eq("id", memory.id);
+  await admin.from("customer_memory").update({ analysis_status: "processing" }).eq("id", memory.id);
 
   const now = new Date().toISOString();
   const userPrompt = [
@@ -303,12 +301,10 @@ export async function analyzeContact(
         metadata: item.due_date?.trim() ? { due_date: item.due_date.trim() } : {},
       }));
     if (insights.length > 0) {
-      const { error: insightError } = await admin
-        .from("conversation_insights")
-        .upsert(insights, {
-          onConflict: "user_id,contact_id,insight_type,md5(content),source_message_id",
-          ignoreDuplicates: true,
-        });
+      const { error: insightError } = await admin.from("conversation_insights").upsert(insights, {
+        onConflict: "user_id,contact_id,insight_type,md5(content),source_message_id",
+        ignoreDuplicates: true,
+      });
       if (insightError) aiLog("warn", "insights_partial", { code: insightError.code });
     }
 

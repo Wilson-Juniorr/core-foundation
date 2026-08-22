@@ -75,9 +75,7 @@ export async function getIntelligenceView(
       analyses: successful.length,
       totalTokens: successful.reduce((sum, row) => sum + (row.total_tokens ?? 0), 0),
       estimatedCostUsd: Number(
-        successful
-          .reduce((sum, row) => sum + Number(row.estimated_cost_usd ?? 0), 0)
-          .toFixed(6),
+        successful.reduce((sum, row) => sum + Number(row.estimated_cost_usd ?? 0), 0).toFixed(6),
       ),
       lastModel: usageRows[0]?.model ?? null,
     },
