@@ -201,7 +201,7 @@ function AnalyticsPage() {
           )}
         </div>
 
-        {report.isLoading && <LoadingState label="Calculando métricas do período…" />}
+        {report.isLoading && <LoadingState rows={4} />}
         {report.isError && (
           <EmptyState
             title="Não foi possível carregar as métricas"
