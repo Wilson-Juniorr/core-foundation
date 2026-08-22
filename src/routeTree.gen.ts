@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedClientesIndexRouteImport } from './routes/_authenticated/clientes.index'
 import { Route as AuthenticatedClientesContactIdRouteImport } from './routes/_authenticated/clientes.$contactId'
+import { Route as AuthenticatedConfiguracoesWhatsappRouteImport } from './routes/_authenticated/configuracoes.whatsapp'
 import { Route as ApiPublicWhatsappConnectionIdRouteImport } from './routes/api.public.whatsapp.$connectionId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -60,6 +61,12 @@ const AuthenticatedClientesContactIdRoute =
     path: '/clientes/$contactId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConfiguracoesWhatsappRoute =
+  AuthenticatedConfiguracoesWhatsappRouteImport.update({
+    id: '/configuracoes/whatsapp',
+    path: '/configuracoes/whatsapp',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicWhatsappConnectionIdRoute =
   ApiPublicWhatsappConnectionIdRouteImport.update({
     id: '/api/public/whatsapp/$connectionId',
@@ -74,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
+  '/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/clientes/': typeof AuthenticatedClientesIndexRoute
   '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
@@ -84,6 +92,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/pipeline': typeof AuthenticatedPipelineRoute
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
+  '/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/clientes': typeof AuthenticatedClientesIndexRoute
   '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
@@ -96,6 +105,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/pipeline': typeof AuthenticatedPipelineRoute
   '/_authenticated/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
+  '/_authenticated/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/_authenticated/clientes/': typeof AuthenticatedClientesIndexRoute
   '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pipeline'
     | '/clientes/$contactId'
+    | '/configuracoes/whatsapp'
     | '/clientes/'
     | '/api/public/whatsapp/$connectionId'
   fileRoutesByTo: FileRoutesByTo
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/pipeline'
     | '/clientes/$contactId'
+    | '/configuracoes/whatsapp'
     | '/clientes'
     | '/api/public/whatsapp/$connectionId'
   id:
@@ -129,6 +141,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/pipeline'
     | '/_authenticated/clientes/$contactId'
+    | '/_authenticated/configuracoes/whatsapp'
     | '/_authenticated/clientes/'
     | '/api/public/whatsapp/$connectionId'
   fileRoutesById: FileRoutesById
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesContactIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/configuracoes/whatsapp': {
+      id: '/_authenticated/configuracoes/whatsapp'
+      path: '/configuracoes/whatsapp'
+      fullPath: '/configuracoes/whatsapp'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesWhatsappRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/whatsapp/$connectionId': {
       id: '/api/public/whatsapp/$connectionId'
       path: '/api/public/whatsapp/$connectionId'
@@ -213,6 +233,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPipelineRoute: typeof AuthenticatedPipelineRoute
   AuthenticatedClientesContactIdRoute: typeof AuthenticatedClientesContactIdRoute
+  AuthenticatedConfiguracoesWhatsappRoute: typeof AuthenticatedConfiguracoesWhatsappRoute
   AuthenticatedClientesIndexRoute: typeof AuthenticatedClientesIndexRoute
 }
 
@@ -221,6 +242,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPipelineRoute: AuthenticatedPipelineRoute,
   AuthenticatedClientesContactIdRoute: AuthenticatedClientesContactIdRoute,
+  AuthenticatedConfiguracoesWhatsappRoute:
+    AuthenticatedConfiguracoesWhatsappRoute,
   AuthenticatedClientesIndexRoute: AuthenticatedClientesIndexRoute,
 }
 
