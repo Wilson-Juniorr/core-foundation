@@ -14,6 +14,7 @@ import { whatsappKeys } from "@/lib/whatsapp.queries";
 import type { ConversationDetail } from "@/lib/whatsapp/types";
 import { ContactLinkDialog } from "./contact-link-dialog";
 import { conversationTitle } from "./conversation-list";
+import { IntelligenceStrip } from "@/components/intelligence/intelligence-strip";
 import { MessageBubble } from "./message-bubble";
 
 function mediaTypeFor(file: File): "audio" | "image" | "document" | "video" {
@@ -122,6 +123,10 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
           )}
         </div>
       </header>
+
+      {conversation.contact_id ? (
+        <IntelligenceStrip contactId={conversation.contact_id} />
+      ) : null}
 
       {messages.length === 0 ? (
         <p className="text-muted-foreground flex-1 p-6 text-sm">
