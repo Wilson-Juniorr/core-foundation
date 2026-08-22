@@ -47,7 +47,8 @@ export async function logEvent(
     contact_id: event.contact_id,
     opportunity_id: event.opportunity_id ?? null,
     event_type: event.event_type,
-    metadata: (event.metadata ?? {}) as Database["public"]["Tables"]["timeline_events"]["Row"]["metadata"],
+    metadata: (event.metadata ??
+      {}) as Database["public"]["Tables"]["timeline_events"]["Row"]["metadata"],
   });
 
   if (error) console.error("Falha ao registrar evento de timeline", error);

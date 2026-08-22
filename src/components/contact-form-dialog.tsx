@@ -66,9 +66,7 @@ export function ContactFormDialog({
         source: values.source,
         notes: values.notes,
       };
-      return contact
-        ? update({ data: { id: contact.id, ...payload } })
-        : create({ data: payload });
+      return contact ? update({ data: { id: contact.id, ...payload } }) : create({ data: payload });
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });

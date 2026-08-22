@@ -8,7 +8,8 @@ import { AppShell } from "@/components/app-shell";
 import { NextActionBadge } from "@/components/next-action-badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { updateOpportunity } from "@/lib/crm.functions";
-import { opportunitiesQuery, pipelineStagesQuery } from "@/lib/crm.queries";
+import { crmKeys, opportunitiesQuery, pipelineStagesQuery } from "@/lib/crm.queries";
+import type { OpportunityWithRelations } from "@/lib/crm.types";
 import { formatCurrency } from "@/lib/domain/opportunity-status";
 import { cn } from "@/lib/utils";
 
@@ -38,14 +39,32 @@ function PipelinePage() {
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
   const moveMutation = useMutation({
-    mutationFn: (input: { id: string; pipeline_stage_id: string }) => update({ data: input }),
+    mutationFn: (input: { id: string; pipeline_stage_id: string; stage_name: string }) =>
+      update({ data: { id: input.id, pipeline_stage_id: input.pipeline_stage_id } }),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: crmKeys.opportunities });
+      const previous = queryClient.getQueryData<OpportunityWithRelations[]>(crmKeys.opportunities);
+      queryClient.setQueryData<OpportunityWithRelations[]>(crmKeys.opportunities, (current) =>
+        (current ?? []).map((item) =>
+          item.id === input.id
+            ? { ...item, pipeline_stage_id: input.pipeline_stage_id, stage_name: input.stage_name }
+            : item,
+        ),
+      );
+      return { previous };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Oportunidade movida");
     },
-    onError: () => toast.error("Não foi possível mover a oportunidade."),
+    onError: (_error, _input, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(crmKeys.opportunities, context.previous);
+      }
+      toast.error("Não foi possível mover a oportunidade. Etapa anterior restaurada.");
+    },
   });
 
   const isPending = stages.isPending || opportunities.isPending;
@@ -85,14 +104,20 @@ function PipelinePage() {
                   event.preventDefault();
                   setDragOverStage(stage.id);
                 }}
-                onDragLeave={() => setDragOverStage((current) => (current === stage.id ? null : current))}
+                onDragLeave={() =>
+                  setDragOverStage((current) => (current === stage.id ? null : current))
+                }
                 onDrop={(event) => {
                   event.preventDefault();
                   setDragOverStage(null);
                   const id = event.dataTransfer.getData("text/plain");
                   const dragged = (opportunities.data ?? []).find((item) => item.id === id);
                   if (!dragged || dragged.pipeline_stage_id === stage.id) return;
-                  moveMutation.mutate({ id, pipeline_stage_id: stage.id });
+                  moveMutation.mutate({
+                    id,
+                    pipeline_stage_id: stage.id,
+                    stage_name: stage.name,
+                  });
                 }}
                 className={cn(
                   "flex w-72 shrink-0 flex-col rounded-lg border bg-card/50 p-3 transition-colors",

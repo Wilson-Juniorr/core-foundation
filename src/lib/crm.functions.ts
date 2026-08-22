@@ -226,9 +226,8 @@ export const updateOpportunity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => opportunityUpdateSchema.parse(input))
   .handler(async ({ data, context }): Promise<OpportunityWithRelations> => {
-    const { OPPORTUNITY_SELECT, mapOpportunity, logOpportunityChanges } = await import(
-      "./crm.server"
-    );
+    const { OPPORTUNITY_SELECT, mapOpportunity, logOpportunityChanges } =
+      await import("./crm.server");
 
     const { id, ...changes } = data;
     const patch = Object.fromEntries(
@@ -255,9 +254,7 @@ export const updateOpportunity = createServerFn({ method: "POST" })
 
     const after = mapOpportunity(row);
 
-    const { data: stages } = await context.supabase
-      .from("pipeline_stages")
-      .select("id, name");
+    const { data: stages } = await context.supabase.from("pipeline_stages").select("id, name");
     const stageNames = new Map((stages ?? []).map((stage) => [stage.id, stage.name]));
 
     await logOpportunityChanges(

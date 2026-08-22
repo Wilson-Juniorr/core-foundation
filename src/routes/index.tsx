@@ -12,8 +12,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Próximo Passo — acompanhamento comercial" },
       {
         property: "og:description",
-        content:
-          "Cada cliente ativo monitorado e cada negociação com um próximo passo definido.",
+        content: "Cada cliente ativo monitorado e cada negociação com um próximo passo definido.",
       },
     ],
   }),
