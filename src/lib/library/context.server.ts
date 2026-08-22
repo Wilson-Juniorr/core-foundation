@@ -50,7 +50,10 @@ function hoursBetween(from: string | null, to: Date): number | null {
 }
 
 function itemValues(items: { value: string }[] | undefined): string[] {
-  return (items ?? []).map((item) => item.value).filter(Boolean).slice(0, 8);
+  return (items ?? [])
+    .map((item) => item.value)
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 function truncate(text: string, max: number): string {
@@ -138,15 +141,13 @@ export async function buildGenerationContext(
       .eq("conversation_id", conversationId)
       .order("sent_at", { ascending: false })
       .limit(14);
-    messages = (rows ?? [])
-      .reverse()
-      .map((row) => ({
-        direction: row.direction,
-        sent_at: row.sent_at,
-        text:
-          row.text_content?.trim() ||
-          `[${row.message_type}${row.media_filename ? `: ${row.media_filename}` : ""}]`,
-      }));
+    messages = (rows ?? []).reverse().map((row) => ({
+      direction: row.direction,
+      sent_at: row.sent_at,
+      text:
+        row.text_content?.trim() ||
+        `[${row.message_type}${row.media_filename ? `: ${row.media_filename}` : ""}]`,
+    }));
   }
 
   const memory = memoryRow ? mapMemory(memoryRow) : null;
@@ -187,8 +188,7 @@ export async function buildGenerationContext(
       ? {
           id: opportunityRow.id,
           title: opportunityRow.title,
-          stage:
-            (opportunityRow.pipeline_stages as { name?: string } | null)?.name ?? "sem etapa",
+          stage: (opportunityRow.pipeline_stages as { name?: string } | null)?.name ?? "sem etapa",
           status: opportunityRow.status,
           estimated_value: opportunityRow.estimated_value
             ? Number(opportunityRow.estimated_value)

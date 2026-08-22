@@ -32,7 +32,8 @@ export function compileStrategyInstructions(strategy: MessageStrategy): string {
   parts.push(`OBJETIVO DESTA MENSAGEM: ${strategy.objective}`);
   parts.push(`TOM: ${strategy.tone}`);
   if (strategy.when_to_use) parts.push(`QUANDO ESTA ESTRATÉGIA É USADA: ${strategy.when_to_use}`);
-  if (strategy.should_mention) parts.push(`DEVE MENCIONAR (se houver base no contexto): ${strategy.should_mention}`);
+  if (strategy.should_mention)
+    parts.push(`DEVE MENCIONAR (se houver base no contexto): ${strategy.should_mention}`);
   if (strategy.should_avoid) parts.push(`DEVE EVITAR: ${strategy.should_avoid}`);
   if (strategy.forbidden_behaviors.length > 0) {
     parts.push(
@@ -81,7 +82,9 @@ export function buildUserPrompt(
   if (snapshot.opportunity) {
     lines.push(
       `OPORTUNIDADE: ${snapshot.opportunity.title} | etapa: ${snapshot.opportunity.stage} | situação: ${snapshot.opportunity.status}` +
-        (snapshot.opportunity.next_action ? ` | próximo passo combinado: ${snapshot.opportunity.next_action}` : ""),
+        (snapshot.opportunity.next_action
+          ? ` | próximo passo combinado: ${snapshot.opportunity.next_action}`
+          : ""),
     );
   } else {
     lines.push("OPORTUNIDADE: nenhuma registrada.");
@@ -127,14 +130,18 @@ export function buildUserPrompt(
         }).`,
   );
   if (snapshot.timing.hours_since_customer_reply !== null) {
-    lines.push(`Horas desde a última resposta do cliente: ${snapshot.timing.hours_since_customer_reply}.`);
+    lines.push(
+      `Horas desde a última resposta do cliente: ${snapshot.timing.hours_since_customer_reply}.`,
+    );
   }
 
   if (snapshot.recent_messages.length > 0) {
     lines.push("");
     lines.push("HISTÓRICO RECENTE (mais antigo primeiro)");
     for (const message of snapshot.recent_messages) {
-      lines.push(`[${message.direction === "inbound" ? "cliente" : "nós"} · ${message.at}] ${message.text}`);
+      lines.push(
+        `[${message.direction === "inbound" ? "cliente" : "nós"} · ${message.at}] ${message.text}`,
+      );
     }
   }
 
@@ -170,7 +177,15 @@ export function buildUserPrompt(
 export const MESSAGE_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["message", "asset_id", "asset_rationale", "used_context", "notes", "blocked", "blocked_reason"],
+  required: [
+    "message",
+    "asset_id",
+    "asset_rationale",
+    "used_context",
+    "notes",
+    "blocked",
+    "blocked_reason",
+  ],
   properties: {
     message: { type: "string" },
     asset_id: { type: "string" },

@@ -25,18 +25,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTime } from "@/lib/domain/datetime";
-import {
-  deleteContentAsset,
-  deleteMessageStrategy,
-  seedStrategies,
-} from "@/lib/library.functions";
+import { deleteContentAsset, deleteMessageStrategy, seedStrategies } from "@/lib/library.functions";
 import { assetsQuery, libraryKeys, strategiesQuery } from "@/lib/library.queries";
 import type { ContentAsset, MessageStrategy } from "@/lib/library/api-types";
-import {
-  assetTypeLabels,
-  autonomyLabels,
-  forbiddenBehaviorLabel,
-} from "@/lib/library/labels";
+import { assetTypeLabels, autonomyLabels, forbiddenBehaviorLabel } from "@/lib/library/labels";
 
 export const Route = createFileRoute("/_authenticated/biblioteca")({
   head: () => ({
@@ -114,8 +106,6 @@ function LibraryPage() {
       description="Seus materiais comerciais e as regras que a IA segue para escrever mensagens."
     >
       <div className="space-y-6">
-
-
         <Tabs defaultValue="materiais">
           <TabsList>
             <TabsTrigger value="materiais">Materiais</TabsTrigger>
@@ -247,9 +237,7 @@ function LibraryPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <CardTitle className="text-base">{strategy.name}</CardTitle>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {strategy.objective}
-                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">{strategy.objective}</p>
                         </div>
                         <div className="flex gap-1">
                           <Button
@@ -274,9 +262,7 @@ function LibraryPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2 pt-2">
-                        <Badge variant="secondary">
-                          {autonomyLabels[strategy.autonomy_mode]}
-                        </Badge>
+                        <Badge variant="secondary">{autonomyLabels[strategy.autonomy_mode]}</Badge>
                         <Badge variant="outline">versão {strategy.version}</Badge>
                         {!strategy.is_active ? <Badge variant="outline">Inativa</Badge> : null}
                         {strategy.allowed_asset_types.map((type) => (
@@ -361,9 +347,7 @@ function LibraryPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                strategyToDelete && deleteStrategyMutation.mutate(strategyToDelete.id)
-              }
+              onClick={() => strategyToDelete && deleteStrategyMutation.mutate(strategyToDelete.id)}
             >
               Remover
             </AlertDialogAction>

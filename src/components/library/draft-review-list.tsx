@@ -9,11 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/domain/datetime";
-import {
-  approveMessageDraft,
-  editMessageDraft,
-  rejectMessageDraft,
-} from "@/lib/library.functions";
+import { approveMessageDraft, editMessageDraft, rejectMessageDraft } from "@/lib/library.functions";
 import { draftsQuery, libraryKeys } from "@/lib/library.queries";
 import type { DraftStatus, MessageDraft } from "@/lib/library/api-types";
 import { draftStatusLabels } from "@/lib/library/labels";

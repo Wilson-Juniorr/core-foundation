@@ -23,8 +23,9 @@ export const listContentAssets = createServerFn({ method: "POST" })
 export const saveContentAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: AssetInput & { file?: { base64: string; mimeType: string; filename: string } | null }) =>
-      input,
+    (
+      input: AssetInput & { file?: { base64: string; mimeType: string; filename: string } | null },
+    ) => input,
   )
   .handler(async ({ data, context }): Promise<{ assetId: string }> => {
     const { saveAsset, storeAssetFile } = await import("@/lib/library/assets.server");

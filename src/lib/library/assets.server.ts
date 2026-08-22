@@ -64,7 +64,9 @@ export async function saveAsset(
     transcript: input.transcript,
     tags: input.tags,
     is_active: input.is_active,
-    ...(input.storage_reference !== undefined ? { storage_reference: input.storage_reference } : {}),
+    ...(input.storage_reference !== undefined
+      ? { storage_reference: input.storage_reference }
+      : {}),
     ...(input.mime_type !== undefined ? { mime_type: input.mime_type } : {}),
     ...(input.filename !== undefined ? { filename: input.filename } : {}),
     ...(input.duration_seconds !== undefined ? { duration_seconds: input.duration_seconds } : {}),
@@ -76,11 +78,7 @@ export async function saveAsset(
     return { assetId: input.id };
   }
 
-  const { data, error } = await client
-    .from("content_assets")
-    .insert(payload)
-    .select("id")
-    .single();
+  const { data, error } = await client.from("content_assets").insert(payload).select("id").single();
   if (error) throw new Error(error.message);
   return { assetId: data.id };
 }

@@ -216,9 +216,7 @@ export function GenerateMessageDialog({
               </Button>
               <Button
                 onClick={() => approveMutation.mutate()}
-                disabled={
-                  approveMutation.isPending || !content.trim() || !conversationId
-                }
+                disabled={approveMutation.isPending || !content.trim() || !conversationId}
               >
                 {approveMutation.isPending ? (
                   <Loader2 className="mr-2 size-4 animate-spin" />

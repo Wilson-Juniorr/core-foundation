@@ -2,7 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 import { loadAssetFile } from "./assets.server";
-import type { ContentAssetType, DraftStatus, GenerationContextSnapshot, MessageDraft } from "./types";
+import type {
+  ContentAssetType,
+  DraftStatus,
+  GenerationContextSnapshot,
+  MessageDraft,
+} from "./types";
 
 type Client = SupabaseClient<Database>;
 

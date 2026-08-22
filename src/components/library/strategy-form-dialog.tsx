@@ -26,11 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { saveMessageStrategy } from "@/lib/library.functions";
 import { assetsQuery, libraryKeys } from "@/lib/library.queries";
-import type {
-  ContentAssetType,
-  MessageStrategy,
-  StrategyAutonomy,
-} from "@/lib/library/api-types";
+import type { ContentAssetType, MessageStrategy, StrategyAutonomy } from "@/lib/library/api-types";
 import {
   assetTypeLabels,
   autonomyDescriptions,
@@ -75,7 +71,12 @@ export function StrategyFormDialog({
     setAssetTypes(strategy?.allowed_asset_types ?? []);
     setAllowedAssets(strategy?.allowed_assets ?? []);
     setForbidden(
-      strategy?.forbidden_behaviors ?? ["pressure", "false_urgency", "invent_offer", "invent_facts"],
+      strategy?.forbidden_behaviors ?? [
+        "pressure",
+        "false_urgency",
+        "invent_offer",
+        "invent_facts",
+      ],
     );
     setAutonomy(strategy?.autonomy_mode ?? "approval_required");
     setMaxLength(strategy?.max_length ?? 450);
