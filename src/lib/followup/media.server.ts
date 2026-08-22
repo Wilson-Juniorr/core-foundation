@@ -11,7 +11,7 @@ export async function storeFollowupMedia(
 ): Promise<{ reference: string }> {
   const db = await adminClient();
   const bytes = Uint8Array.from(atob(input.base64), (char) => char.charCodeAt(0));
-  const safeName = input.filename.replace(/[^\w.\-]+/g, "_").slice(0, 120);
+  const safeName = input.filename.replace(/[^\w.-]+/g, "_").slice(0, 120);
   const path = `${userId}/followup/${crypto.randomUUID()}-${safeName}`;
 
   const { error } = await db.storage

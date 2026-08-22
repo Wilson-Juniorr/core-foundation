@@ -261,7 +261,8 @@ async function mapRuns(supabase: Client, rows: RunRowJoined[]): Promise<Followup
       status: row.status,
       current_step_position: currentIndex >= 0 ? ordered[currentIndex]!.position : null,
       total_steps: ordered.length,
-      remaining_steps: currentIndex >= 0 ? Math.max(0, ordered.length - currentIndex - 1) : ordered.length,
+      remaining_steps:
+        currentIndex >= 0 ? Math.max(0, ordered.length - currentIndex - 1) : ordered.length,
       started_at: row.started_at,
       paused_at: row.paused_at,
       stopped_at: row.stopped_at,
@@ -272,8 +273,7 @@ async function mapRuns(supabase: Client, rows: RunRowJoined[]): Promise<Followup
   });
 }
 
-const RUN_SELECT =
-  "*, followup_flows(name, followup_flow_steps(id, position)), contacts(name)";
+const RUN_SELECT = "*, followup_flows(name, followup_flow_steps(id, position)), contacts(name)";
 
 export async function listRuns(
   supabase: Client,
@@ -291,7 +291,10 @@ export async function listRuns(
 
 export async function listScheduledActions(
   supabase: Client,
-  filter: { onlyManual?: boolean; statuses?: Database["public"]["Enums"]["scheduled_action_status"][] },
+  filter: {
+    onlyManual?: boolean;
+    statuses?: Database["public"]["Enums"]["scheduled_action_status"][];
+  },
 ): Promise<ScheduledActionView[]> {
   let query = supabase
     .from("scheduled_actions")
@@ -338,7 +341,8 @@ export async function loadFollowupSummary(
     .eq("status", "scheduled")
     .order("scheduled_for", { ascending: true })
     .limit(50);
-  if (filter.conversationId) scheduledQuery = scheduledQuery.eq("conversation_id", filter.conversationId);
+  if (filter.conversationId)
+    scheduledQuery = scheduledQuery.eq("conversation_id", filter.conversationId);
   else if (filter.contactId) scheduledQuery = scheduledQuery.eq("contact_id", filter.contactId);
 
   const { data: scheduled } = await scheduledQuery;

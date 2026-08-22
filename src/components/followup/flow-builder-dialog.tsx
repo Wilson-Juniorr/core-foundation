@@ -330,7 +330,9 @@ export function FlowBuilderDialog({
                     <Label>Unidade</Label>
                     <Select
                       value={step.delay_unit}
-                      onValueChange={(value) => updateStep(index, { delay_unit: value as DelayUnit })}
+                      onValueChange={(value) =>
+                        updateStep(index, { delay_unit: value as DelayUnit })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />

@@ -124,7 +124,8 @@ export function StartFollowupDialog({
 
             {hasActiveRun && (
               <p className="text-muted-foreground text-xs">
-                Já existe um follow-up em andamento nesta conversa. Ele será encerrado e substituído.
+                Já existe um follow-up em andamento nesta conversa. Ele será encerrado e
+                substituído.
               </p>
             )}
           </div>

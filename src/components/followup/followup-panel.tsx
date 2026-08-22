@@ -16,11 +16,7 @@ import {
   resumeFollowupRun,
 } from "@/lib/followup.functions";
 import { followupKeys, followupSummaryQuery } from "@/lib/followup.queries";
-import {
-  ACTION_TYPE_LABELS,
-  RUN_STATUS_LABELS,
-  stopReasonLabel,
-} from "@/lib/followup/labels";
+import { ACTION_TYPE_LABELS, RUN_STATUS_LABELS, stopReasonLabel } from "@/lib/followup/labels";
 
 /**
  * Painel de follow-up reutilizado na página do cliente e na conversa.
@@ -124,8 +120,8 @@ export function FollowupPanel({
               <Badge variant="secondary">{RUN_STATUS_LABELS[run.status]}</Badge>
             </div>
             <p className="text-muted-foreground">
-              Etapa {run.current_step_position ?? 1} de {run.total_steps} ·{" "}
-              {run.remaining_steps} restante(s)
+              Etapa {run.current_step_position ?? 1} de {run.total_steps} · {run.remaining_steps}{" "}
+              restante(s)
             </p>
             {run.next_action ? (
               <p className="text-muted-foreground">

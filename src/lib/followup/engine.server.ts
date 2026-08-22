@@ -34,12 +34,7 @@ export class FollowupError extends Error {
   constructor(
     message: string,
     public code:
-      | "flow_inactive"
-      | "flow_empty"
-      | "run_exists"
-      | "not_found"
-      | "invalid_state"
-      | "window",
+      "flow_inactive" | "flow_empty" | "run_exists" | "not_found" | "invalid_state" | "window",
   ) {
     super(message);
     this.name = "FollowupError";
@@ -149,9 +144,7 @@ async function conversationGapShift(
 
   const { data } = await query.maybeSingle();
   if (!data) return candidate;
-  return new Date(
-    new Date(data.scheduled_for).getTime() + MIN_CONVERSATION_GAP_MINUTES * 60_000,
-  );
+  return new Date(new Date(data.scheduled_for).getTime() + MIN_CONVERSATION_GAP_MINUTES * 60_000);
 }
 
 /**
@@ -218,10 +211,7 @@ async function scheduleStep(
     throw new Error(error.message);
   }
 
-  await db
-    .from("followup_runs")
-    .update({ current_step_id: input.step.id })
-    .eq("id", input.run.id);
+  await db.from("followup_runs").update({ current_step_id: input.step.id }).eq("id", input.run.id);
 
   return data;
 }
@@ -438,22 +428,14 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
 
   for (const action of pending ?? []) {
     const { data: step } = action.flow_step_id
-      ? await db
-          .from("followup_flow_steps")
-          .select("*")
-          .eq("id", action.flow_step_id)
-          .maybeSingle()
+      ? await db.from("followup_flow_steps").select("*").eq("id", action.flow_step_id).maybeSingle()
       : { data: null };
 
     // Preserva o intervalo relativo que faltava quando o fluxo foi pausado:
     // evita explosão de mensagens atrasadas ao retomar.
     const remainingMs = Math.max(0, new Date(action.scheduled_for).getTime() - pausedAt);
     const window = windowFor(settings, flow ?? null, step ?? null);
-    let next = nextAllowedInstant(
-      new Date(now.getTime() + remainingMs),
-      window,
-      settings.timezone,
-    );
+    let next = nextAllowedInstant(new Date(now.getTime() + remainingMs), window, settings.timezone);
     next = await conversationGapShift(db, action.conversation_id, next, action.id);
     next = nextAllowedInstant(next, window, settings.timezone);
 
@@ -542,8 +524,9 @@ export async function stopRunsForReply(input: {
     .in("status", ["active", "paused"]);
 
   for (const run of runs ?? []) {
-    const flow = (run as RunRow & { followup_flows: { stop_on_reply: boolean; name: string } | null })
-      .followup_flows;
+    const flow = (
+      run as RunRow & { followup_flows: { stop_on_reply: boolean; name: string } | null }
+    ).followup_flows;
     if (!flow?.stop_on_reply) continue;
     // Só respostas posteriores ao início do fluxo interrompem.
     if (new Date(input.repliedAt).getTime() < new Date(run.started_at).getTime()) continue;
@@ -828,13 +811,8 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
 
   // Janela permitida: nunca enviamos fora do horário configurado.
   const step = action.flow_step_id
-    ? (
-        await db
-          .from("followup_flow_steps")
-          .select("*")
-          .eq("id", action.flow_step_id)
-          .maybeSingle()
-      ).data
+    ? (await db.from("followup_flow_steps").select("*").eq("id", action.flow_step_id).maybeSingle())
+        .data
     : null;
   const window = windowFor(settings, flow, step ?? null);
   if (!isWithinWindow(now, window, settings.timezone)) {
@@ -994,7 +972,12 @@ async function deliverAction(
 
   return sendMedia(action.user_id, {
     conversationId: action.conversation_id,
-    type: action.action_type === "audio" ? "audio" : action.action_type === "image" ? "image" : "document",
+    type:
+      action.action_type === "audio"
+        ? "audio"
+        : action.action_type === "image"
+          ? "image"
+          : "document",
     base64: btoa(binary),
     mimeType: action.media_mime_type ?? "application/octet-stream",
     filename: action.media_filename ?? "arquivo",

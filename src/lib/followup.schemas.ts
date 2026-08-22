@@ -5,7 +5,10 @@ const timeOfDay = z
   .trim()
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use o formato HH:MM");
 
-const optionalTime = timeOfDay.optional().nullable().transform((value) => value ?? null);
+const optionalTime = timeOfDay
+  .optional()
+  .nullable()
+  .transform((value) => value ?? null);
 
 export const flowStepInputSchema = z
   .object({

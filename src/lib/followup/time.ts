@@ -127,11 +127,7 @@ export function zonedMinutesOfDay(date: Date, timezone: string): number {
  * Move o instante para o próximo horário permitido pela janela, no fuso do
  * usuário. Se já estiver dentro da janela, devolve o próprio instante.
  */
-export function nextAllowedInstant(
-  date: Date,
-  window: SendWindow | null,
-  timezone: string,
-): Date {
+export function nextAllowedInstant(date: Date, window: SendWindow | null, timezone: string): Date {
   if (!window) return date;
   const zone = safeTimezone(timezone);
 
@@ -154,11 +150,7 @@ export function nextAllowedInstant(
   return current;
 }
 
-export function isWithinWindow(
-  date: Date,
-  window: SendWindow | null,
-  timezone: string,
-): boolean {
+export function isWithinWindow(date: Date, window: SendWindow | null, timezone: string): boolean {
   if (!window) return true;
   const minutes = zonedMinutesOfDay(date, safeTimezone(timezone));
   return minutes >= window.startMinutes && minutes < window.endMinutes;

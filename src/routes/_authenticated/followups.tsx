@@ -290,9 +290,7 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
             <Switch
               checked={flow.is_active}
               aria-label="Ativar fluxo"
-              onCheckedChange={(checked) =>
-                toggle.mutate({ flowId: flow.id, isActive: checked })
-              }
+              onCheckedChange={(checked) => toggle.mutate({ flowId: flow.id, isActive: checked })}
             />
             <Button size="sm" variant="outline" onClick={() => onEdit(flow.id)}>
               <Pencil className="mr-1 size-4" /> Editar
@@ -343,8 +341,8 @@ function ScheduledTab() {
               <div className="space-y-1">
                 <p className="font-medium">{action.contact_name ?? "Cliente"}</p>
                 <p className="text-muted-foreground text-sm">
-                  {ACTION_TYPE_LABELS[action.action_type]} ·{" "}
-                  {formatDateTime(action.scheduled_for)} · {SCHEDULED_STATUS_LABELS[action.status]}
+                  {ACTION_TYPE_LABELS[action.action_type]} · {formatDateTime(action.scheduled_for)}{" "}
+                  · {SCHEDULED_STATUS_LABELS[action.status]}
                 </p>
                 {action.content && (
                   <p className="text-muted-foreground text-xs">{action.content.slice(0, 120)}</p>
@@ -436,11 +434,7 @@ function FollowupsPage() {
         </Tabs>
       </div>
 
-      <FlowBuilderDialog
-        open={builderOpen}
-        onOpenChange={setBuilderOpen}
-        flowId={editingFlowId}
-      />
+      <FlowBuilderDialog open={builderOpen} onOpenChange={setBuilderOpen} flowId={editingFlowId} />
     </AppShell>
   );
 }

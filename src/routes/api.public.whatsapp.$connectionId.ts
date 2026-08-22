@@ -96,9 +96,7 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
               // Reconexão: ações vencidas são recalculadas, nunca disparadas
               // todas de uma vez.
               if (!wasConnected && event.update.status === "connected") {
-                const { reevaluateAfterReconnect } = await import(
-                  "@/lib/followup/engine.server"
-                );
+                const { reevaluateAfterReconnect } = await import("@/lib/followup/engine.server");
                 await reevaluateAfterReconnect(connection.user_id);
               }
               break;
