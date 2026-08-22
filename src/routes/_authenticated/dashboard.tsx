@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
+import { AttentionCard } from "@/components/attention/attention-card";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { NextActionBadge } from "@/components/next-action-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { operationalDashboardQuery } from "@/lib/attention.queries";
 import { dashboardQuery } from "@/lib/crm.queries";
 import { formatCurrency } from "@/lib/domain/opportunity-status";
 
@@ -14,61 +18,130 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "Visão geral — Próximo Passo" },
       {
         name: "description",
-        content: "Indicadores do seu acompanhamento comercial e o que precisa de atenção hoje.",
+        content: "Sua fila operacional: quem espera por você, o que está atrasado e o que falhou.",
       },
       { property: "og:title", content: "Visão geral — Próximo Passo" },
       {
         property: "og:description",
-        content: "Indicadores do seu acompanhamento comercial e o que precisa de atenção hoje.",
+        content: "Sua fila operacional: quem espera por você, o que está atrasado e o que falhou.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: DashboardPage,
 });
 
-function MetricCard({ label, value }: { label: string; value: number }) {
+function MetricCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "danger" | "default";
+}) {
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="font-display text-3xl font-semibold">{value}</p>
+        <p
+          className={`font-display text-3xl font-semibold ${
+            tone === "danger" && value > 0 ? "text-destructive" : ""
+          }`}
+        >
+          {value}
+        </p>
       </CardContent>
     </Card>
   );
 }
 
 function DashboardPage() {
+  const operational = useQuery(operationalDashboardQuery());
   const dashboard = useQuery(dashboardQuery());
 
   return (
-    <AppShell title="Visão geral" description="O estado atual do seu acompanhamento comercial.">
-      {dashboard.isPending ? (
+    <AppShell
+      title="Visão geral"
+      description="O estado operacional do seu acompanhamento comercial."
+      actions={
+        <Button asChild>
+          <Link to="/atencao">
+            Precisa de Mim
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      }
+    >
+      {operational.isPending ? (
         <LoadingState rows={4} />
-      ) : dashboard.isError ? (
-        <ErrorState onRetry={() => dashboard.refetch()} />
+      ) : operational.isError ? (
+        <ErrorState onRetry={() => operational.refetch()} />
       ) : (
         <div className="space-y-8">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard label="Clientes ativos" value={dashboard.data.activeContacts} />
-            <MetricCard label="Oportunidades abertas" value={dashboard.data.openOpportunities} />
-            <MetricCard label="Sem próxima ação" value={dashboard.data.withoutNextAction} />
-            <MetricCard label="Ações para hoje" value={dashboard.data.dueToday} />
+            <MetricCard label="Aguardando você" value={operational.data.waitingOnYou} />
+            <MetricCard label="Atrasados" value={operational.data.overdue} tone="danger" />
+            <MetricCard label="Em acompanhamento" value={operational.data.followingUp} />
+            <MetricCard
+              label="Automações programadas"
+              value={operational.data.scheduledAutomations}
+            />
+            <MetricCard label="Sem próxima ação" value={operational.data.withoutNextAction} />
+            <MetricCard label="Respostas nas últimas 24h" value={operational.data.recentReplies} />
+            <MetricCard label="Falhas de envio" value={operational.data.failures} tone="danger" />
+            <MetricCard
+              label="Clientes ativos"
+              value={dashboard.data?.activeContacts ?? 0}
+            />
           </div>
 
           <section className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold">Prioridade crítica agora</h2>
+                <p className="text-sm text-muted-foreground">
+                  Itens que não podem esperar, com a prioridade explicada.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/atencao">Ver fila completa</Link>
+              </Button>
+            </div>
+
+            {operational.data.criticalItems.length === 0 ? (
+              <EmptyState
+                title="Nada crítico no momento"
+                description="Nenhum item de prioridade crítica. Confira a fila completa para o que é importante, mas pode esperar."
+              />
+            ) : (
+              <div className="space-y-4">
+                {operational.data.criticalItems.map((item) => (
+                  <AttentionCard key={item.id} item={item} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-4">
             <div>
-              <h2 className="text-base font-semibold">Precisa de atenção</h2>
+              <h2 className="text-base font-semibold">Oportunidades sem próximo passo</h2>
               <p className="text-sm text-muted-foreground">
-                Oportunidades abertas sem próxima ação definida ou com ação atrasada.
+                Negociações abertas sem próxima ação definida ou com ação atrasada.
               </p>
             </div>
 
-            {dashboard.data.attention.length === 0 ? (
+            {dashboard.isPending ? (
+              <LoadingState rows={2} />
+            ) : dashboard.isError ? (
+              <ErrorState onRetry={() => dashboard.refetch()} />
+            ) : dashboard.data.attention.length === 0 ? (
               <EmptyState
                 title="Nada pendente por aqui"
-                description="Todas as oportunidades abertas têm uma próxima ação agendada. Bom trabalho."
+                description="Todas as oportunidades abertas têm uma próxima ação agendada."
               />
             ) : (
               <ul className="divide-y rounded-lg border">
