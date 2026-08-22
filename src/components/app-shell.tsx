@@ -25,14 +25,14 @@ const ACTIVE_ITEMS = [
   { to: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
   { to: "/pipeline", label: "Pipeline", icon: Workflow },
   { to: "/clientes", label: "Clientes", icon: Users },
+  { to: "/conversas", label: "Conversas", icon: MessagesSquare },
+  { to: "/configuracoes/whatsapp", label: "Configurações", icon: Settings },
 ] as const;
 
 const UPCOMING_ITEMS = [
-  { label: "Conversas", icon: MessagesSquare },
   { label: "Follow-ups", icon: Repeat },
   { label: "Agenda", icon: CalendarDays },
   { label: "Biblioteca", icon: BookOpen },
-  { label: "Configurações", icon: Settings },
 ] as const;
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {

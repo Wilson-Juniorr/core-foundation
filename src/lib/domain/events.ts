@@ -9,6 +9,10 @@ export const TIMELINE_EVENT_TYPES = [
   "next_action_updated",
   "opportunity_won",
   "opportunity_lost",
+  "whatsapp_conversation_linked",
+  "whatsapp_conversation_unlinked",
+  "whatsapp_message_received",
+  "whatsapp_message_sent",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
@@ -24,6 +28,10 @@ export const TIMELINE_EVENT_LABELS: Record<TimelineEventType, string> = {
   next_action_updated: "Próxima ação atualizada",
   opportunity_won: "Oportunidade ganha",
   opportunity_lost: "Oportunidade perdida",
+  whatsapp_conversation_linked: "Conversa do WhatsApp vinculada",
+  whatsapp_conversation_unlinked: "Conversa do WhatsApp desvinculada",
+  whatsapp_message_received: "Mensagem recebida no WhatsApp",
+  whatsapp_message_sent: "Mensagem enviada no WhatsApp",
 };
 
 export function timelineEventLabel(type: string): string {
