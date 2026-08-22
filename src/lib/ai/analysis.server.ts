@@ -290,16 +290,24 @@ export async function analyzeContact(
     const insights = (payload.insights ?? [])
       .filter((item) => item?.content?.trim())
       .slice(0, 25)
-      .map((item) => ({
-        user_id: userId,
-        contact_id: contactId,
-        conversation_id: options.conversationId ?? null,
-        insight_type: (item.type || "other").slice(0, 60),
-        content: item.content.trim().slice(0, 600),
-        confidence: clamp01(Number(item.confidence ?? 0)),
-        source_message_id: lastMessage?.id ?? null,
-        metadata: item.due_date?.trim() ? { due_date: item.due_date.trim() } : {},
-      }));
+      .map((item) => {
+        const insightType = (item.type || "other").slice(0, 60);
+        const content = item.content.trim().slice(0, 600);
+        return {
+          user_id: userId,
+          contact_id: contactId,
+          conversation_id: options.conversationId ?? null,
+          insight_type: insightType,
+          content,
+          confidence: clamp01(Number(item.confidence ?? 0)),
+          source_message_id: lastMessage?.id ?? null,
+          metadata: item.due_date?.trim() ? { due_date: item.due_date.trim() } : {},
+          // Idempotência: o mesmo sinal, da mesma mensagem, nunca é gravado duas vezes.
+          dedupe_key: `${insightType}|${lastMessage?.id ?? "none"}|${content
+            .slice(0, 200)
+            .toLowerCase()}`,
+        };
+      });
     if (insights.length > 0) {
       const { error: insightError } = await admin.from("conversation_insights").upsert(insights, {
         onConflict: "user_id,contact_id,insight_type,md5(content),source_message_id",
