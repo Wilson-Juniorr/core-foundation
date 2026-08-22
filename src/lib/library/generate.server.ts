@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 import { AiGatewayError, completeStructured, estimateCost } from "@/lib/ai/gateway.server";
+import { adminClient } from "@/lib/followup/engine.server";
 import { buildGenerationContext, similarity } from "./context.server";
 import { mapDraft } from "./drafts.server";
 import {
@@ -107,7 +108,8 @@ export async function generateDraft(
       };
     }
   } catch (error) {
-    await client.from("ai_usage_events").insert({
+    const admin = await adminClient();
+    await admin.from("ai_usage_events").insert({
       user_id: userId,
       contact_id: input.contactId,
       purpose: "message_generation",
@@ -128,7 +130,8 @@ export async function generateDraft(
     throw error;
   }
 
-  await client.from("ai_usage_events").insert({
+  const admin = await adminClient();
+  await admin.from("ai_usage_events").insert({
     user_id: userId,
     contact_id: input.contactId,
     purpose: "message_generation",
