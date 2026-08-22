@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   Repeat,
   Settings,
+  ShieldCheck,
   Users,
   Workflow,
 } from "lucide-react";
