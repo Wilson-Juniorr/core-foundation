@@ -25,6 +25,9 @@ export const TIMELINE_EVENT_TYPES = [
   "attention_snoozed",
   "attention_resolved",
   "attention_dismissed",
+  "customer_opt_out",
+  "automation_blocked",
+  "automation_simulated",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
@@ -56,6 +59,9 @@ export const TIMELINE_EVENT_LABELS: Record<TimelineEventType, string> = {
   attention_snoozed: "Item de atenção adiado",
   attention_resolved: "Item de atenção resolvido",
   attention_dismissed: "Item de atenção descartado",
+  customer_opt_out: "Cliente pediu para não receber mensagens",
+  automation_blocked: "Automação bloqueada por política",
+  automation_simulated: "Automação simulada (modo teste)",
 };
 
 export function timelineEventLabel(type: string): string {
