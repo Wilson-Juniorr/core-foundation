@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, MessageSquare, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -31,6 +31,7 @@ import { formatDateTime } from "@/lib/domain/datetime";
 import { timelineEventLabel } from "@/lib/domain/events";
 import { formatCurrency, OPPORTUNITY_STATUS_LABELS } from "@/lib/domain/opportunity-status";
 import { formatPhone } from "@/lib/domain/phone";
+import { contactConversationQuery } from "@/lib/whatsapp.queries";
 
 export const Route = createFileRoute("/_authenticated/clientes/$contactId")({
   head: () => ({
@@ -54,6 +55,7 @@ function ContactDetailPage() {
   const { contactId } = Route.useParams();
   const queryClient = useQueryClient();
   const detail = useQuery(contactDetailQuery(contactId));
+  const conversation = useQuery(contactConversationQuery(contactId));
   const archive = useServerFn(setContactArchived);
   const update = useServerFn(updateOpportunity);
 
