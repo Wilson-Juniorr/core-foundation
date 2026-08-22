@@ -602,7 +602,12 @@ export async function detectAttention(
   // ligação, documento...), o alerta genérico "cliente respondeu" é redundante.
   const specificConversations = new Set(
     candidates
-      .filter((candidate) => candidate.kind !== "customer_replied" && candidate.conversation_id)
+      .filter(
+        (candidate) =>
+          candidate.kind !== "customer_replied" &&
+          candidate.kind !== "unlinked_conversation" &&
+          candidate.conversation_id,
+      )
       .map((candidate) => candidate.conversation_id as string),
   );
 
