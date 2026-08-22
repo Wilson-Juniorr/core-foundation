@@ -34,7 +34,7 @@ export function mapItem(row: Row): AttentionItem {
     kind: row.kind,
     priority: row.priority,
     priority_score: row.priority_score,
-    score_factors: (Array.isArray(row.score_factors) ? row.score_factors : []) as ScoreFactor[],
+    score_factors: (Array.isArray(row.score_factors) ? row.score_factors : []) as unknown as ScoreFactor[],
     bucket: row.bucket,
     status: row.status,
     title: row.title,

@@ -21,6 +21,10 @@ export const TIMELINE_EVENT_TYPES = [
   "scheduled_message_created",
   "scheduled_message_cancelled",
   "scheduled_message_sent",
+  "attention_handoff_paused",
+  "attention_snoozed",
+  "attention_resolved",
+  "attention_dismissed",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
@@ -48,6 +52,10 @@ export const TIMELINE_EVENT_LABELS: Record<TimelineEventType, string> = {
   scheduled_message_created: "Mensagem agendada",
   scheduled_message_cancelled: "Agendamento cancelado",
   scheduled_message_sent: "Mensagem automática enviada",
+  attention_handoff_paused: "Automação pausada para intervenção humana",
+  attention_snoozed: "Item de atenção adiado",
+  attention_resolved: "Item de atenção resolvido",
+  attention_dismissed: "Item de atenção descartado",
 };
 
 export function timelineEventLabel(type: string): string {
