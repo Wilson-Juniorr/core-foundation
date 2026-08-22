@@ -54,7 +54,7 @@ export function mapItem(row: Row): AttentionItem {
     resolution_note: row.resolution_note,
     first_detected_at: row.first_detected_at,
     last_detected_at: row.last_detected_at,
-    metadata: (row.metadata ?? {}) as Record<string, unknown>,
+    metadata: (row.metadata ?? {}) as AttentionItem["metadata"],
   };
 }
 

@@ -77,7 +77,7 @@ export interface AttentionItem {
   resolution_note: string | null;
   first_detected_at: string | null;
   last_detected_at: string;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string | number | boolean | null | string[]>;
 }
 
 export interface AttentionCounts {
@@ -124,5 +124,5 @@ export interface AttentionCandidate {
   opportunity_id: string | null;
   conversation_id: string | null;
   blocks_automation: boolean;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string | number | boolean | null | string[]>;
 }
