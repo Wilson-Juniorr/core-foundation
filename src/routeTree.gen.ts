@@ -19,6 +19,7 @@ import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedClientesIndexRouteImport } from './routes/_authenticated/clientes.index'
 import { Route as AuthenticatedClientesContactIdRouteImport } from './routes/_authenticated/clientes.$contactId'
 import { Route as AuthenticatedConfiguracoesWhatsappRouteImport } from './routes/_authenticated/configuracoes.whatsapp'
+import { Route as ApiPublicHooksAiTickRouteImport } from './routes/api.public.hooks.ai-tick'
 import { Route as ApiPublicHooksFollowupTickRouteImport } from './routes/api.public.hooks.followup-tick'
 import { Route as ApiPublicWhatsappConnectionIdRouteImport } from './routes/api.public.whatsapp.$connectionId'
 
@@ -74,6 +75,11 @@ const AuthenticatedConfiguracoesWhatsappRoute =
     path: '/configuracoes/whatsapp',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicHooksAiTickRoute = ApiPublicHooksAiTickRouteImport.update({
+  id: '/api/public/hooks/ai-tick',
+  path: '/api/public/hooks/ai-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksFollowupTickRoute =
   ApiPublicHooksFollowupTickRouteImport.update({
     id: '/api/public/hooks/followup-tick',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/api/public/hooks/ai-tick': typeof ApiPublicHooksAiTickRoute
   '/api/public/hooks/followup-tick': typeof ApiPublicHooksFollowupTickRoute
   '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/clientes': typeof AuthenticatedClientesIndexRoute
+  '/api/public/hooks/ai-tick': typeof ApiPublicHooksAiTickRoute
   '/api/public/hooks/followup-tick': typeof ApiPublicHooksFollowupTickRoute
   '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/_authenticated/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/_authenticated/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/_authenticated/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/api/public/hooks/ai-tick': typeof ApiPublicHooksAiTickRoute
   '/api/public/hooks/followup-tick': typeof ApiPublicHooksFollowupTickRoute
   '/api/public/whatsapp/$connectionId': typeof ApiPublicWhatsappConnectionIdRoute
 }
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/clientes/$contactId'
     | '/configuracoes/whatsapp'
     | '/clientes/'
+    | '/api/public/hooks/ai-tick'
     | '/api/public/hooks/followup-tick'
     | '/api/public/whatsapp/$connectionId'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/clientes/$contactId'
     | '/configuracoes/whatsapp'
     | '/clientes'
+    | '/api/public/hooks/ai-tick'
     | '/api/public/hooks/followup-tick'
     | '/api/public/whatsapp/$connectionId'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clientes/$contactId'
     | '/_authenticated/configuracoes/whatsapp'
     | '/_authenticated/clientes/'
+    | '/api/public/hooks/ai-tick'
     | '/api/public/hooks/followup-tick'
     | '/api/public/whatsapp/$connectionId'
   fileRoutesById: FileRoutesById
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicHooksAiTickRoute: typeof ApiPublicHooksAiTickRoute
   ApiPublicHooksFollowupTickRoute: typeof ApiPublicHooksFollowupTickRoute
   ApiPublicWhatsappConnectionIdRoute: typeof ApiPublicWhatsappConnectionIdRoute
 }
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConfiguracoesWhatsappRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/hooks/ai-tick': {
+      id: '/api/public/hooks/ai-tick'
+      path: '/api/public/hooks/ai-tick'
+      fullPath: '/api/public/hooks/ai-tick'
+      preLoaderRoute: typeof ApiPublicHooksAiTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/followup-tick': {
       id: '/api/public/hooks/followup-tick'
       path: '/api/public/hooks/followup-tick'
@@ -296,6 +316,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicHooksAiTickRoute: ApiPublicHooksAiTickRoute,
   ApiPublicHooksFollowupTickRoute: ApiPublicHooksFollowupTickRoute,
   ApiPublicWhatsappConnectionIdRoute: ApiPublicWhatsappConnectionIdRoute,
 }
