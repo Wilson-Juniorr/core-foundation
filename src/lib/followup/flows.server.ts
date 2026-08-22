@@ -196,6 +196,10 @@ export async function duplicateFlow(
       media_filename: step.media_filename,
       preferred_time_start: step.preferred_time_start,
       preferred_time_end: step.preferred_time_end,
+      content_mode: step.content_mode,
+      strategy_id: step.strategy_id,
+      asset_id: step.asset_id,
+      objective: step.objective,
     })),
   });
 }
