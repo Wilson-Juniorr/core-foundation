@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 import { AiGatewayError, completeStructured, estimateCost } from "@/lib/ai/gateway.server";
+import { adminClient } from "@/lib/followup/engine.server";
 import { buildGenerationContext, similarity } from "./context.server";
 import { mapDraft } from "./drafts.server";
 import {
