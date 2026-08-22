@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { formatTime } from "@/lib/domain/datetime";
+import { formatDateTime } from "@/lib/domain/datetime";
 import { MESSAGE_STATUS_LABELS } from "@/lib/whatsapp/labels";
 import type { ConversationMessage } from "@/lib/whatsapp/types";
 import { MediaPreview } from "./media-preview";
@@ -34,7 +34,7 @@ export function MessageBubble({ message }: { message: ConversationMessage }) {
             outbound ? "text-primary-foreground/80" : "text-muted-foreground",
           )}
         >
-          <time dateTime={message.sent_at}>{formatTime(message.sent_at)}</time>
+          <time dateTime={message.sent_at}>{formatDateTime(message.sent_at)}</time>
           {outbound && <span>{MESSAGE_STATUS_LABELS[message.status]}</span>}
         </p>
       </div>
