@@ -77,7 +77,7 @@ function build(input: {
   opportunity_id?: string | null;
   conversation_id?: string | null;
   blocks_automation?: boolean;
-  metadata?: Record<string, unknown>;
+  metadata?: AttentionCandidate["metadata"];
 }): AttentionCandidate {
   const factors: ScoreFactor[] = [
     { label: `Situação: ${input.title}`, points: BASE[input.kind] },
