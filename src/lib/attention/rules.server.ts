@@ -177,8 +177,8 @@ export async function detectAttention(
     stagePosition.set(stage.id, { name: stage.name, position: stage.position, total: maxPosition });
   }
 
-  const opportunityByContact = new Map<string, (typeof opportunities)[number]>();
   const opportunities = opportunitiesResult.data ?? [];
+  const opportunityByContact = new Map<string, (typeof opportunities)[number]>();
   for (const opportunity of opportunities) {
     const current = opportunityByContact.get(opportunity.contact_id);
     const value = Number(opportunity.estimated_value ?? 0);
