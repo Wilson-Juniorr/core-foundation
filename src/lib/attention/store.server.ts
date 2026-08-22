@@ -176,6 +176,18 @@ export async function syncAttention(
     const { error } = await db.from("attention_items").update(patch).eq("id", current.id);
     if (error) console.error("attention_update_failed", error.message);
     else updated += 1;
+
+    // Handoff continua valendo enquanto o item está aberto: automações iniciadas
+    // depois da detecção também devem ser pausadas.
+    if (blocks && current.status === "open" && current.contact_id) {
+      pausedRuns += await pauseConflictingAutomation(
+        db,
+        userId,
+        current.contact_id,
+        current.id,
+        candidate.title,
+      );
+    }
   }
 
   // O que não foi detectado agora deixou de existir: fecha automaticamente.
