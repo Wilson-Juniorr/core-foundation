@@ -91,7 +91,7 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
   if (!detail) {
     return (
       <div className="text-muted-foreground flex h-full items-center justify-center p-8 text-sm">
-        {isLoading ? <LoadingState label="Carregando conversa" /> : "Selecione uma conversa."}
+        {isLoading ? <LoadingState /> : "Selecione uma conversa."}
       </div>
     );
   }
