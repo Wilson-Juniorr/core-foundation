@@ -98,6 +98,37 @@ function inMinutes(now: Date, minutes: number): string {
   return new Date(now.getTime() + minutes * 60_000).toISOString();
 }
 
+function digitsOnly(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+/**
+ * Modo teste com lista de liberação: números marcados como teste recebem de
+ * verdade (para validar ponta a ponta), qualquer outro número é apenas simulado.
+ */
+async function isTestAllowlisted(
+  db: Admin,
+  settings: AutomationPolicySettings,
+  conversationId: string,
+): Promise<boolean> {
+  const allowlist = [
+    ...(settings.test_mode_allowlist ?? []),
+    ...(settings.test_mode_phone ? [settings.test_mode_phone] : []),
+  ]
+    .map(digitsOnly)
+    .filter((value) => value.length >= 8);
+  if (allowlist.length === 0) return false;
+
+  const { data } = await db
+    .from("conversations")
+    .select("phone_number")
+    .eq("id", conversationId)
+    .maybeSingle();
+  const target = digitsOnly(data?.phone_number);
+  if (target.length < 8) return false;
+  return allowlist.some((entry) => entry.endsWith(target) || target.endsWith(entry));
+}
+
 /**
  * Orquestrador: decide se uma automação pode sair agora. Cada regra é
  * registrada, independentemente do resultado, para que a decisão seja
