@@ -55,6 +55,20 @@ export const saveAutomationPolicy = createServerFn({ method: "POST" })
       .from("user_settings")
       .upsert({ user_id: context.userId, ...data }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
+
+    const { writeAudit } = await import("./audit/log.server");
+    await writeAudit(context.supabase, context.userId, {
+      action: "automation_policy_updated",
+      summary: "Políticas de automação atualizadas.",
+      entityType: "user_settings",
+      entityId: context.userId,
+      severity: "warning",
+      metadata: {
+        test_mode: data.test_mode,
+        require_approval_all: data.require_approval_all,
+        max_automations_per_day: data.max_automations_per_day,
+      },
+    });
     return { ok: true };
   });
 
@@ -71,6 +85,17 @@ export const setEmergencyStop = createServerFn({ method: "POST" })
       { onConflict: "user_id" },
     );
     if (error) throw new Error(error.message);
+
+    const { writeAudit } = await import("./audit/log.server");
+    await writeAudit(context.supabase, context.userId, {
+      action: data.paused ? "emergency_stop_enabled" : "emergency_stop_disabled",
+      summary: data.paused
+        ? "Parada de emergência ativada: nenhuma automação sai."
+        : "Parada de emergência desativada: automações retomadas.",
+      entityType: "user_settings",
+      entityId: context.userId,
+      severity: "critical",
+    });
     return { paused: data.paused };
   });
 
@@ -113,6 +138,17 @@ export const saveContactPreferences = createServerFn({ method: "POST" })
       { onConflict: "contact_id" },
     );
     if (error) throw new Error(error.message);
+
+    const { writeAudit } = await import("./audit/log.server");
+    await writeAudit(context.supabase, context.userId, {
+      action: data.do_not_contact ? "opt_out_applied" : "contact_preferences_updated",
+      summary: data.do_not_contact
+        ? "Cliente marcado como não contatar."
+        : "Preferências de contato atualizadas.",
+      entityType: "contact",
+      entityId: data.contact_id,
+      severity: data.do_not_contact ? "warning" : "info",
+    });
     return { ok: true };
   });
 

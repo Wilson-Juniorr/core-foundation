@@ -207,6 +207,20 @@ export const saveUserSettings = createServerFn({ method: "POST" })
       .from("user_settings")
       .upsert({ user_id: context.userId, ...data }, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
+
+    const { writeAudit } = await import("./audit/log.server");
+    await writeAudit(context.supabase, context.userId, {
+      action: "settings_updated",
+      summary: `Operação: fuso ${data.timezone}, janela ${data.send_window_start}–${data.send_window_end}.`,
+      entityType: "user_settings",
+      entityId: context.userId,
+      metadata: {
+        timezone: data.timezone,
+        send_window_start: data.send_window_start,
+        send_window_end: data.send_window_end,
+        pause_automation_on_handoff: data.pause_automation_on_handoff,
+      },
+    });
     return data;
   });
 
