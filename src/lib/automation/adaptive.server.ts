@@ -51,7 +51,7 @@ async function contextConfidence(db: Admin, userId: string, contactId: string | 
  * inalteradas; etapas adaptativas usam a Biblioteca Estratégica (Módulo 05) e
  * respeitam os limiares de confiança configurados.
  */
-export async function resolveAdaptiveContent(
+async function resolveContentMode(
   db: Admin,
   action: ActionRow,
   settings: AutomationPolicySettings,
@@ -215,4 +215,27 @@ export async function resolveAdaptiveContent(
     }
     throw error;
   }
+}
+
+/**
+ * Camada final do Módulo 09: no modo "aprovação obrigatória" nenhuma mensagem
+ * sai sem revisão humana, mesmo quando a política e a confiança permitiriam.
+ */
+export async function resolveAdaptiveContent(
+  db: Admin,
+  action: ActionRow,
+  settings: AutomationPolicySettings,
+  fixedText: string | null,
+): Promise<AdaptiveOutcome> {
+  const outcome = await resolveContentMode(db, action, settings, fixedText);
+  if (outcome.kind === "send" && settings.require_approval_all) {
+    return {
+      kind: "approval_required",
+      reason: "Modo de aprovação obrigatória ativo: revise antes do envio.",
+      draftId: outcome.draftId,
+      confidence: outcome.confidence,
+      strategyName: outcome.strategyName,
+    };
+  }
+  return outcome;
 }

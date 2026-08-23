@@ -46,6 +46,13 @@ export const deleteContentAsset = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { deleteAsset } = await import("@/lib/library/assets.server");
     await deleteAsset(context.supabase, data.assetId);
+    const { writeAudit } = await import("@/lib/audit/log.server");
+    await writeAudit(context.supabase, context.userId, {
+      action: "asset_archived",
+      summary: "Material arquivado (histórico preservado).",
+      entityType: "content_asset",
+      entityId: data.assetId,
+    });
     return { ok: true };
   });
 
@@ -85,6 +92,13 @@ export const deleteMessageStrategy = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { deleteStrategy } = await import("@/lib/library/strategies.server");
     await deleteStrategy(context.supabase, data.strategyId);
+    const { writeAudit } = await import("@/lib/audit/log.server");
+    await writeAudit(context.supabase, context.userId, {
+      action: "strategy_archived",
+      summary: "Estratégia arquivada (histórico preservado).",
+      entityType: "message_strategy",
+      entityId: data.strategyId,
+    });
     return { ok: true };
   });
 

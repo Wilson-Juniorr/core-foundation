@@ -9,9 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { LoadingState } from "@/components/states";
 import { formatPhone } from "@/lib/domain/phone";
 import { MAX_MEDIA_BYTES } from "@/lib/whatsapp.schemas";
-import { sendWhatsAppMedia, sendWhatsAppText } from "@/lib/whatsapp.functions";
+import { listOlderMessages, sendWhatsAppMedia, sendWhatsAppText } from "@/lib/whatsapp.functions";
 import { whatsappKeys } from "@/lib/whatsapp.queries";
-import type { ConversationDetail } from "@/lib/whatsapp/types";
+import type { ConversationDetail, ConversationMessage } from "@/lib/whatsapp/types";
 import { ContactLinkDialog } from "./contact-link-dialog";
 import { conversationTitle } from "./conversation-list";
 import { IntelligenceStrip } from "@/components/intelligence/intelligence-strip";
@@ -47,6 +47,27 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
 
   const conversationId = detail?.conversation.id ?? null;
+  const [older, setOlder] = useState<ConversationMessage[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+
+  // Cada conversa começa pelas mensagens recentes; o passado vem sob demanda.
+  useEffect(() => {
+    setOlder([]);
+    setHasMore(detail?.hasMore ?? false);
+  }, [conversationId, detail?.hasMore]);
+
+  const olderMutation = useMutation({
+    mutationFn: () => {
+      const oldest = older[0] ?? detail?.messages[0];
+      if (!conversationId || !oldest) throw new Error("Nada mais para carregar.");
+      return listOlderMessages({ data: { conversationId, before: oldest.sent_at } });
+    },
+    onSuccess: (result) => {
+      setOlder((previous) => [...result.messages, ...previous]);
+      setHasMore(result.hasMore);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
@@ -99,7 +120,8 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
     );
   }
 
-  const { conversation, messages } = detail;
+  const { conversation } = detail;
+  const messages = [...older, ...detail.messages];
   const sending = textMutation.isPending || mediaMutation.isPending;
 
   return (
@@ -149,6 +171,18 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
         </p>
       ) : (
         <ul className="flex-1 space-y-2 overflow-y-auto p-4">
+          {hasMore ? (
+            <li className="flex justify-center pb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={olderMutation.isPending}
+                onClick={() => olderMutation.mutate()}
+              >
+                {olderMutation.isPending ? "Carregando…" : "Carregar mensagens anteriores"}
+              </Button>
+            </li>
+          ) : null}
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}

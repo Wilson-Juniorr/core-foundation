@@ -248,6 +248,45 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json
+          severity: string
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          severity?: string
+          summary: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          severity?: string
+          summary?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       automation_decisions: {
         Row: {
           blocked_by: string | null
@@ -1592,10 +1631,15 @@ export type Database = {
           manual_message_cooldown_minutes: number
           max_automations_per_day: number
           max_flow_automations_per_day: number
+          notify_approvals: boolean
+          notify_attention: boolean
+          notify_failures: boolean
           pause_automation_on_handoff: boolean
+          require_approval_all: boolean
           send_window_end: string
           send_window_start: string
           test_mode: boolean
+          test_mode_allowlist: string[]
           test_mode_phone: string | null
           timezone: string
           updated_at: string
@@ -1612,10 +1656,15 @@ export type Database = {
           manual_message_cooldown_minutes?: number
           max_automations_per_day?: number
           max_flow_automations_per_day?: number
+          notify_approvals?: boolean
+          notify_attention?: boolean
+          notify_failures?: boolean
           pause_automation_on_handoff?: boolean
+          require_approval_all?: boolean
           send_window_end?: string
           send_window_start?: string
           test_mode?: boolean
+          test_mode_allowlist?: string[]
           test_mode_phone?: string | null
           timezone?: string
           updated_at?: string
@@ -1632,10 +1681,15 @@ export type Database = {
           manual_message_cooldown_minutes?: number
           max_automations_per_day?: number
           max_flow_automations_per_day?: number
+          notify_approvals?: boolean
+          notify_attention?: boolean
+          notify_failures?: boolean
           pause_automation_on_handoff?: boolean
+          require_approval_all?: boolean
           send_window_end?: string
           send_window_start?: string
           test_mode?: boolean
+          test_mode_allowlist?: string[]
           test_mode_phone?: string | null
           timezone?: string
           updated_at?: string

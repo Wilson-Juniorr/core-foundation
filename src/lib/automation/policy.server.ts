@@ -24,7 +24,7 @@ export async function loadPolicySettings(
   const { data } = await db
     .from("user_settings")
     .select(
-      "automation_paused, automation_paused_at, test_mode, test_mode_phone, conversation_cooldown_minutes, manual_message_cooldown_minutes, active_conversation_minutes, max_automations_per_day, max_flow_automations_per_day, confidence_auto_min, confidence_approval_min",
+      "automation_paused, automation_paused_at, test_mode, test_mode_phone, test_mode_allowlist, require_approval_all, conversation_cooldown_minutes, manual_message_cooldown_minutes, active_conversation_minutes, max_automations_per_day, max_flow_automations_per_day, confidence_auto_min, confidence_approval_min",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -36,6 +36,8 @@ export async function loadPolicySettings(
     automation_paused_at: data.automation_paused_at ?? null,
     test_mode: data.test_mode ?? DEFAULT_POLICY.test_mode,
     test_mode_phone: data.test_mode_phone ?? null,
+    test_mode_allowlist: data.test_mode_allowlist ?? [],
+    require_approval_all: data.require_approval_all ?? false,
     conversation_cooldown_minutes:
       data.conversation_cooldown_minutes ?? DEFAULT_POLICY.conversation_cooldown_minutes,
     manual_message_cooldown_minutes:
@@ -96,6 +98,37 @@ function minutesAgo(now: Date, minutes: number): string {
 
 function inMinutes(now: Date, minutes: number): string {
   return new Date(now.getTime() + minutes * 60_000).toISOString();
+}
+
+function digitsOnly(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+/**
+ * Modo teste com lista de liberação: números marcados como teste recebem de
+ * verdade (para validar ponta a ponta), qualquer outro número é apenas simulado.
+ */
+async function isTestAllowlisted(
+  db: Admin,
+  settings: AutomationPolicySettings,
+  conversationId: string,
+): Promise<boolean> {
+  const allowlist = [
+    ...(settings.test_mode_allowlist ?? []),
+    ...(settings.test_mode_phone ? [settings.test_mode_phone] : []),
+  ]
+    .map(digitsOnly)
+    .filter((value) => value.length >= 8);
+  if (allowlist.length === 0) return false;
+
+  const { data } = await db
+    .from("conversations")
+    .select("phone_number")
+    .eq("id", conversationId)
+    .maybeSingle();
+  const target = digitsOnly(data?.phone_number);
+  if (target.length < 8) return false;
+  return allowlist.some((entry) => entry.endsWith(target) || target.endsWith(entry));
 }
 
 /**
@@ -321,18 +354,23 @@ export async function evaluatePolicy(
     rules.push(pass("daily_flow_cap"));
   }
 
-  // 8. Modo teste: tudo é avaliado, nada sai para o cliente.
+  // 8. Modo teste: nada sai para o cliente, exceto números da lista de teste.
   if (settings.test_mode) {
-    rules.push(fail("test_mode", "Modo teste ativo: a mensagem foi registrada, não enviada."));
-    return {
-      decision: "simulated",
-      blockedBy: "test_mode",
-      reason: "Modo teste ativo: a mensagem foi registrada, não enviada.",
-      rules,
-      deferUntil: null,
-    };
+    const allowed = await isTestAllowlisted(db, settings, request.conversationId);
+    if (!allowed) {
+      rules.push(fail("test_mode", "Modo teste ativo: a mensagem foi registrada, não enviada."));
+      return {
+        decision: "simulated",
+        blockedBy: "test_mode",
+        reason: "Modo teste ativo: a mensagem foi registrada, não enviada.",
+        rules,
+        deferUntil: null,
+      };
+    }
+    rules.push(pass("test_mode", "Número liberado na lista de teste."));
+  } else {
+    rules.push(pass("test_mode"));
   }
-  rules.push(pass("test_mode"));
 
   return {
     decision: "allowed",

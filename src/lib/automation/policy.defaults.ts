@@ -5,6 +5,8 @@ export const DEFAULT_POLICY: AutomationPolicySettings = {
   automation_paused_at: null,
   test_mode: false,
   test_mode_phone: null,
+  test_mode_allowlist: [],
+  require_approval_all: false,
   conversation_cooldown_minutes: 180,
   manual_message_cooldown_minutes: 120,
   active_conversation_minutes: 30,

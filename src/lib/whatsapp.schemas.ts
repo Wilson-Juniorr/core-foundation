@@ -57,3 +57,8 @@ export const syncSchema = z.object({
 });
 
 export const contactIdSchema = z.object({ contactId: z.string().uuid() });
+
+export const olderMessagesSchema = z.object({
+  conversationId: z.string().uuid(),
+  before: z.string().min(10),
+});
