@@ -13,15 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { getAutomationPolicy, saveAutomationPolicy } from "@/lib/automation.functions";
 import { getUserSettings, saveUserSettings } from "@/lib/followup.functions";
-import {
-  saveNotificationSettings,
-  saveWorkspaceProfile,
-} from "@/lib/system.functions";
-import {
-  notificationSettingsQuery,
-  systemKeys,
-  workspaceProfileQuery,
-} from "@/lib/system.queries";
+import { saveNotificationSettings, saveWorkspaceProfile } from "@/lib/system.functions";
+import { notificationSettingsQuery, systemKeys, workspaceProfileQuery } from "@/lib/system.queries";
 
 export const Route = createFileRoute("/_authenticated/configuracoes/")({
   head: () => ({
@@ -35,7 +28,8 @@ export const Route = createFileRoute("/_authenticated/configuracoes/")({
       { property: "og:title", content: "Configurações da operação" },
       {
         property: "og:description",
-        content: "Ajuste como o sistema trabalha por você: horários, avisos e trilhos de segurança.",
+        content:
+          "Ajuste como o sistema trabalha por você: horários, avisos e trilhos de segurança.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -102,7 +96,10 @@ function ProfileCard() {
           <Input id="profile-email" value={profile.data?.email ?? ""} readOnly disabled />
         </div>
       </div>
-      <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || name.trim().length < 2}>
+      <Button
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending || name.trim().length < 2}
+      >
         Salvar perfil
       </Button>
     </SectionCard>
@@ -347,7 +344,10 @@ function NotificationsCard() {
       description="Escolha o que deve aparecer em destaque na sua fila de trabalho."
     >
       {rows.map((row) => (
-        <div key={row.key} className="flex items-center justify-between gap-4 rounded-lg border p-4">
+        <div
+          key={row.key}
+          className="flex items-center justify-between gap-4 rounded-lg border p-4"
+        >
           <div>
             <p className="text-sm font-medium">{row.label}</p>
             <p className="text-muted-foreground text-xs">{row.description}</p>

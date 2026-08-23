@@ -143,11 +143,12 @@ export async function loadSystemStatus(client: Client, userId: string): Promise<
   ]);
 
   const connectionRows = connections.data ?? [];
-  const webhookLastEvent = connectionRows
-    .map((row) => row.last_event_at)
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .at(-1) ?? null;
+  const webhookLastEvent =
+    connectionRows
+      .map((row) => row.last_event_at)
+      .filter((value): value is string => Boolean(value))
+      .sort()
+      .at(-1) ?? null;
 
   const failedMessages: FailedMessageItem[] = (failedMessagesRows.data ?? []).map((row) => ({
     id: row.id,

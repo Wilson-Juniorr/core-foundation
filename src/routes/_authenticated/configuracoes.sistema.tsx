@@ -252,7 +252,9 @@ function SystemPage() {
                         ] ?? connection.status}
                       </Badge>
                       <span className="text-sm font-medium">
-                        {connection.display_name ?? formatPhone(connection.phone_number) ?? "Instância"}
+                        {connection.display_name ??
+                          formatPhone(connection.phone_number) ??
+                          "Instância"}
                       </span>
                       <span className="text-muted-foreground text-xs">
                         Último evento:{" "}

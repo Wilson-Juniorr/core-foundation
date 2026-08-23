@@ -20,11 +20,7 @@ export interface AuditInput {
  * Registra uma ação crítica. A auditoria nunca derruba a operação principal:
  * uma falha ao gravar é logada, não propagada.
  */
-export async function writeAudit(
-  db: Client,
-  userId: string,
-  input: AuditInput,
-): Promise<void> {
+export async function writeAudit(db: Client, userId: string, input: AuditInput): Promise<void> {
   const { error } = await db.from("audit_logs").insert({
     user_id: userId,
     action: input.action,

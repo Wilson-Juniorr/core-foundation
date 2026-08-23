@@ -23,9 +23,12 @@ export async function retryFailedMessage(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!message) throw new Error("Mensagem não encontrada.");
-  if (message.status !== "failed") throw new Error("Só é possível reenviar mensagens que falharam.");
+  if (message.status !== "failed")
+    throw new Error("Só é possível reenviar mensagens que falharam.");
   if (message.message_type !== "text" || !message.text_content) {
-    throw new Error("Só é possível reenviar mensagens de texto. Envie o arquivo novamente na conversa.");
+    throw new Error(
+      "Só é possível reenviar mensagens de texto. Envie o arquivo novamente na conversa.",
+    );
   }
 
   const { sendText } = await import("@/lib/whatsapp/service.server");

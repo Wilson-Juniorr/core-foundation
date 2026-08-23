@@ -31,33 +31,37 @@ export const getSystemStatus = createServerFn({ method: "GET" })
 export const listAuditLogs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => auditListSchema.parse(input))
-  .handler(async ({ data, context }): Promise<{ items: AuditLogEntry[]; nextCursor: string | null }> => {
-    const { AUDIT_FILTER_ACTIONS } = await import("./audit/types");
-    let query = context.supabase
-      .from("audit_logs")
-      .select("id, created_at, action, severity, entity_type, entity_id, summary, actor, metadata")
-      .eq("user_id", context.userId)
-      .order("created_at", { ascending: false })
-      .limit(data.limit);
+  .handler(
+    async ({ data, context }): Promise<{ items: AuditLogEntry[]; nextCursor: string | null }> => {
+      const { AUDIT_FILTER_ACTIONS } = await import("./audit/types");
+      let query = context.supabase
+        .from("audit_logs")
+        .select(
+          "id, created_at, action, severity, entity_type, entity_id, summary, actor, metadata",
+        )
+        .eq("user_id", context.userId)
+        .order("created_at", { ascending: false })
+        .limit(data.limit);
 
-    if (data.filter !== "all") {
-      query = query.in("action", AUDIT_FILTER_ACTIONS[data.filter]);
-    }
-    if (data.cursor) query = query.lt("created_at", data.cursor);
+      if (data.filter !== "all") {
+        query = query.in("action", AUDIT_FILTER_ACTIONS[data.filter]);
+      }
+      if (data.cursor) query = query.lt("created_at", data.cursor);
 
-    const { data: rows, error } = await query;
-    if (error) throw new Error(error.message);
+      const { data: rows, error } = await query;
+      if (error) throw new Error(error.message);
 
-    const items = (rows ?? []).map((row) => ({
-      ...row,
-      severity: row.severity as AuditLogEntry["severity"],
-      metadata: (row.metadata ?? {}) as AuditLogEntry["metadata"],
-    }));
-    return {
-      items,
-      nextCursor: items.length === data.limit ? (items.at(-1)?.created_at ?? null) : null,
-    };
-  });
+      const items = (rows ?? []).map((row) => ({
+        ...row,
+        severity: row.severity as AuditLogEntry["severity"],
+        metadata: (row.metadata ?? {}) as AuditLogEntry["metadata"],
+      }));
+      return {
+        items,
+        nextCursor: items.length === data.limit ? (items.at(-1)?.created_at ?? null) : null,
+      };
+    },
+  );
 
 export const retryFailedMessageAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
