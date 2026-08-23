@@ -6,7 +6,7 @@ export const whatsappSettingsSchema = z.object({
   base_url: z
     .string()
     .trim()
-    .url("Informe a URL base completa da UZAPI")
+    .url("Informe a URL base completa da UAZAPI")
     .max(300)
     .refine((value) => value.startsWith("https://"), "A URL base deve usar https"),
   token: z.string().trim().min(8, "Token inválido").max(500),

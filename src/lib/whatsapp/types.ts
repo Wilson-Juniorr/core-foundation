@@ -1,7 +1,7 @@
 /**
  * Modelo interno de WhatsApp.
  *
- * Nenhum componente da interface deve conhecer a estrutura bruta da UZAPI:
+ * Nenhum componente da interface deve conhecer a estrutura bruta da UAZAPI:
  * o provider converte o payload do fornecedor para estes tipos.
  */
 

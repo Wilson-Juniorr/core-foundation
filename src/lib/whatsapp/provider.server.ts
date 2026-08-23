@@ -28,7 +28,7 @@ export type SendResult = {
 
 /**
  * Contrato do provedor de WhatsApp. A aplicação conversa somente com esta
- * interface — trocar a UZAPI por outro fornecedor significa apenas escrever
+ * interface — trocar a UAZAPI por outro fornecedor significa apenas escrever
  * outra implementação.
  */
 export type WhatsAppProvider = {

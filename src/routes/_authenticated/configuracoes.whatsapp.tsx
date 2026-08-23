@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/configuracoes/whatsapp")({
       {
         name: "description",
         content:
-          "Configure a integração com a UZAPI, conecte o WhatsApp por QR Code e importe o histórico recente.",
+          "Configure a integração com a UAZAPI, conecte o WhatsApp por QR Code e importe o histórico recente.",
       },
       { property: "og:title", content: "Conexão do WhatsApp | Próximo Passo" },
       {
@@ -261,7 +261,7 @@ function WhatsAppSettingsPage() {
           <CardContent className="space-y-4">
             {!configured ? (
               <p className="text-muted-foreground text-sm">
-                Salve as credenciais da UZAPI para liberar a conexão.
+                Salve as credenciais da UAZAPI para liberar a conexão.
               </p>
             ) : (
               <>
@@ -357,7 +357,7 @@ function WhatsAppSettingsPage() {
                 {data?.webhook_url ?? "Disponível após salvar as credenciais"}
               </code>
               <p className="text-muted-foreground text-xs">
-                Configurado automaticamente na UZAPI ao salvar. Contém um segredo — não compartilhe.
+                Configurado automaticamente na UAZAPI ao salvar. Contém um segredo — não compartilhe.
               </p>
             </div>
           </CardContent>
