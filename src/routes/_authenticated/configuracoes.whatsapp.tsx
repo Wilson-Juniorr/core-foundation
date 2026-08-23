@@ -51,9 +51,21 @@ function WhatsAppSettingsPage() {
   const [baseUrl, setBaseUrl] = useState("https://");
   const [token, setToken] = useState("");
   const [instance, setInstance] = useState("");
+  const [newInstanceName, setNewInstanceName] = useState("");
   const [qrCode, setQrCode] = useState<string | null>(null);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: whatsappKeys.connection });
+
+  const provisionMutation = useMutation({
+    mutationFn: () => provisionWhatsAppInstance({ data: { instance_name: newInstanceName.trim() } }),
+    onSuccess: async () => {
+      setNewInstanceName("");
+      await invalidate();
+      toast.success("Instância criada. Gere o QR Code para conectar.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   const saveMutation = useMutation({
     mutationFn: () =>
