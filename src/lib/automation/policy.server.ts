@@ -321,18 +321,23 @@ export async function evaluatePolicy(
     rules.push(pass("daily_flow_cap"));
   }
 
-  // 8. Modo teste: tudo é avaliado, nada sai para o cliente.
+  // 8. Modo teste: nada sai para o cliente, exceto números da lista de teste.
   if (settings.test_mode) {
-    rules.push(fail("test_mode", "Modo teste ativo: a mensagem foi registrada, não enviada."));
-    return {
-      decision: "simulated",
-      blockedBy: "test_mode",
-      reason: "Modo teste ativo: a mensagem foi registrada, não enviada.",
-      rules,
-      deferUntil: null,
-    };
+    const allowed = await isTestAllowlisted(db, settings, request.conversationId);
+    if (!allowed) {
+      rules.push(fail("test_mode", "Modo teste ativo: a mensagem foi registrada, não enviada."));
+      return {
+        decision: "simulated",
+        blockedBy: "test_mode",
+        reason: "Modo teste ativo: a mensagem foi registrada, não enviada.",
+        rules,
+        deferUntil: null,
+      };
+    }
+    rules.push(pass("test_mode", "Número liberado na lista de teste."));
+  } else {
+    rules.push(pass("test_mode"));
   }
-  rules.push(pass("test_mode"));
 
   return {
     decision: "allowed",
