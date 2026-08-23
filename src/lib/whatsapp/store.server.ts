@@ -37,11 +37,20 @@ export async function loadCredentials(
     .eq("connection_id", connection.id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) return null;
+
+  const { readUazapiEnv } = await import("./env.server");
+  const env = readUazapiEnv();
+
+  // O banco manda; o ambiente serve de padrão (servidor de teste/temporário).
+  const baseUrl = data?.base_url ?? env.baseUrl;
+  const token = data?.token ?? env.instanceToken;
+  if (!baseUrl || !token) return null;
+
   return {
-    baseUrl: data.base_url,
-    token: data.token,
+    baseUrl,
+    token,
     instanceIdentifier: connection.instance_identifier,
+    adminToken: env.adminToken,
   };
 }
 
