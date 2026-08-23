@@ -9,6 +9,12 @@ export const automationPolicySchema = z.object({
     .optional()
     .nullable()
     .transform((value) => (value && value !== "" ? value : null)),
+  test_mode_allowlist: z
+    .array(z.string().trim().min(8).max(30))
+    .max(20)
+    .optional()
+    .default([]),
+  require_approval_all: z.boolean().optional().default(false),
   conversation_cooldown_minutes: z.number().int().min(0).max(20_160),
   manual_message_cooldown_minutes: z.number().int().min(0).max(20_160),
   active_conversation_minutes: z.number().int().min(0).max(1440),

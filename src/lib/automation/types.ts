@@ -76,6 +76,7 @@ export const POLICY_RULE_LABELS: Record<string, string> = {
   human_handoff: "Item aguardando você",
   low_confidence: "Confiança da IA abaixo do limite",
   test_mode: "Modo teste",
+  require_approval: "Aprovação obrigatória",
 };
 
 export const DECISION_LABELS: Record<AutomationDecisionKind, string> = {
