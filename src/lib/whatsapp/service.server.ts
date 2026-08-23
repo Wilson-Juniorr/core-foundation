@@ -93,7 +93,7 @@ async function requireConnection(userId: string) {
   if (!data) throw new Error("WhatsApp ainda não configurado.");
 
   const creds = await loadCredentials(db, data);
-  if (!creds) throw new Error("Credenciais da UZAPI não configuradas.");
+  if (!creds) throw new Error("Credenciais da UAZAPI não configuradas.");
 
   return { db, connection: data, creds } as {
     db: Client;
