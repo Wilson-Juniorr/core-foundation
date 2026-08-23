@@ -15,6 +15,7 @@ import { formatDateTime } from "@/lib/domain/datetime";
 import { formatPhone } from "@/lib/domain/phone";
 import {
   disconnectWhatsApp,
+  provisionWhatsAppInstance,
   refreshWhatsAppStatus,
   saveWhatsAppSettings,
   startWhatsAppSession,
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/configuracoes/whatsapp")({
       {
         name: "description",
         content:
-          "Configure a integração com a UZAPI, conecte o WhatsApp por QR Code e importe o histórico recente.",
+          "Configure a integração com a UAZAPI, conecte o WhatsApp por QR Code e importe o histórico recente.",
       },
       { property: "og:title", content: "Conexão do WhatsApp | Próximo Passo" },
       {
@@ -50,9 +51,21 @@ function WhatsAppSettingsPage() {
   const [baseUrl, setBaseUrl] = useState("https://");
   const [token, setToken] = useState("");
   const [instance, setInstance] = useState("");
+  const [newInstanceName, setNewInstanceName] = useState("");
   const [qrCode, setQrCode] = useState<string | null>(null);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: whatsappKeys.connection });
+
+  const provisionMutation = useMutation({
+    mutationFn: () => provisionWhatsAppInstance({ data: { instance_name: newInstanceName.trim() } }),
+    onSuccess: async () => {
+      setNewInstanceName("");
+      await invalidate();
+      toast.success("Instância criada. Gere o QR Code para conectar.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -139,13 +152,50 @@ function WhatsAppSettingsPage() {
   const configured = Boolean(data?.has_credentials);
 
   return (
-    <AppShell title="WhatsApp" description="Conexão via UZAPI e importação de histórico">
+    <AppShell title="WhatsApp" description="Conexão via UAZAPI e importação de histórico">
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Criar instância automaticamente</CardTitle>
+            <CardDescription>
+              Usa o servidor UAZAPI já configurado no ambiente. O token da instância é gerado e
+              guardado no servidor — você não precisa digitá-lo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                provisionMutation.mutate();
+              }}
+            >
+              <div className="min-w-56 flex-1 space-y-2">
+                <Label htmlFor="instance_name">Nome da instância</Label>
+                <Input
+                  id="instance_name"
+                  value={newInstanceName}
+                  onChange={(event) => setNewInstanceName(event.target.value)}
+                  placeholder="proximo-passo-teste"
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={provisionMutation.isPending}>
+                {provisionMutation.isPending && (
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                )}
+                Criar instância
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Credenciais da UZAPI</CardTitle>
+            <CardTitle>Credenciais manuais da UAZAPI</CardTitle>
             <CardDescription>
-              O token é guardado somente no servidor e nunca é exibido novamente.
+              Opcional: use apenas se quiser apontar para outro servidor. O token fica somente no
+              servidor e nunca é exibido novamente.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -211,7 +261,7 @@ function WhatsAppSettingsPage() {
           <CardContent className="space-y-4">
             {!configured ? (
               <p className="text-muted-foreground text-sm">
-                Salve as credenciais da UZAPI para liberar a conexão.
+                Salve as credenciais da UAZAPI para liberar a conexão.
               </p>
             ) : (
               <>
@@ -307,7 +357,7 @@ function WhatsAppSettingsPage() {
                 {data?.webhook_url ?? "Disponível após salvar as credenciais"}
               </code>
               <p className="text-muted-foreground text-xs">
-                Configurado automaticamente na UZAPI ao salvar. Contém um segredo — não compartilhe.
+                Configurado automaticamente na UAZAPI ao salvar. Contém um segredo — não compartilhe.
               </p>
             </div>
           </CardContent>

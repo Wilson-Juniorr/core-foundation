@@ -7,8 +7,11 @@ import type {
 
 export type ProviderCredentials = {
   baseUrl: string;
+  /** Token da instância (usado em todas as chamadas de operação). */
   token: string;
   instanceIdentifier: string | null;
+  /** Token administrativo do servidor — só para criar/gerenciar instâncias. */
+  adminToken?: string | null;
 };
 
 export type OutboundMedia = {
@@ -25,11 +28,17 @@ export type SendResult = {
 
 /**
  * Contrato do provedor de WhatsApp. A aplicação conversa somente com esta
- * interface — trocar a UZAPI por outro fornecedor significa apenas escrever
+ * interface — trocar a UAZAPI por outro fornecedor significa apenas escrever
  * outra implementação.
  */
 export type WhatsAppProvider = {
   readonly name: string;
+
+  /** Cria uma instância no servidor usando credenciais administrativas. */
+  provisionInstance?(
+    creds: ProviderCredentials,
+    name: string,
+  ): Promise<{ token: string; instanceIdentifier: string | null }>;
 
   startSession(creds: ProviderCredentials): Promise<{ qrCode: string | null }>;
   getSessionStatus(creds: ProviderCredentials): Promise<NormalizedConnectionUpdate>;
@@ -61,10 +70,12 @@ export type WhatsAppProvider = {
 
 export async function getWhatsAppProvider(provider: string): Promise<WhatsAppProvider> {
   switch (provider) {
+    // "uzapi" é mantido apenas para conexões antigas já gravadas no banco.
     case "uzapi":
+    case "uazapi":
     default: {
-      const { uzapiProvider } = await import("./uzapi.server");
-      return uzapiProvider;
+      const { uazapiProvider } = await import("./uazapi.server");
+      return uazapiProvider;
     }
   }
 }

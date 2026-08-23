@@ -93,7 +93,7 @@ async function requireConnection(userId: string) {
   if (!data) throw new Error("WhatsApp ainda não configurado.");
 
   const creds = await loadCredentials(db, data);
-  if (!creds) throw new Error("Credenciais da UZAPI não configuradas.");
+  if (!creds) throw new Error("Credenciais da UAZAPI não configuradas.");
 
   return { db, connection: data, creds } as {
     db: Client;
@@ -143,7 +143,7 @@ export async function saveSettings(
       .from("whatsapp_connections")
       .insert({
         user_id: userId,
-        provider: "uzapi",
+        provider: "uazapi",
         instance_identifier: input.instance_identifier,
         status: "disconnected",
       })
@@ -165,28 +165,126 @@ export async function saveSettings(
   );
   if (credError) throw new Error(credError.message);
 
-  waLog.info("settings_saved", { connection_id: connection.id, provider: "uzapi" });
+  waLog.info("settings_saved", { connection_id: connection.id, provider: connection.provider });
 
-  // Registrar o webhook no provider é melhor-esforço: a página segue usável
-  // mesmo que a UZAPI esteja indisponível neste momento.
+  await registerWebhook(db, connection, {
+    baseUrl: input.base_url,
+    token: input.token,
+    instanceIdentifier: input.instance_identifier,
+  });
+
+  return presentConnection(connection);
+}
+
+/** Registrar o webhook é melhor-esforço: a página segue usável se o provedor cair. */
+async function registerWebhook(db: Client, connection: ConnectionRow, creds: ProviderCredentials) {
   try {
     const provider = await getWhatsAppProvider(connection.provider);
-    await provider.configureWebhook(
-      {
-        baseUrl: input.base_url,
-        token: input.token,
-        instanceIdentifier: input.instance_identifier,
-      },
-      webhookUrl(connection),
-    );
+    await provider.configureWebhook(creds, webhookUrl(connection));
+    waLog.info("webhook_registered", { connection_id: connection.id });
   } catch (error) {
     waLog.warn("webhook_registration_failed", {
       connection_id: connection.id,
       reason: error instanceof Error ? error.name : "unknown",
     });
   }
+  void db;
+}
 
-  return presentConnection(connection);
+/**
+ * Cria (ou reaproveita) uma instância no servidor UAZAPI configurado por
+ * ambiente. O admin token só existe no servidor e nunca é devolvido.
+ */
+export async function provisionInstance(
+  userId: string,
+  instanceName: string,
+): Promise<WhatsAppConnection> {
+  const db = await admin();
+  const { readUazapiEnv } = await import("./env.server");
+  const env = readUazapiEnv();
+
+  if (!env.baseUrl || !env.adminToken) {
+    throw new Error(
+      "Servidor UAZAPI não configurado no ambiente (URL base e admin token são obrigatórios).",
+    );
+  }
+
+  const { data: existing } = await db
+    .from("whatsapp_connections")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  let connection = existing;
+  if (!connection) {
+    const { data, error } = await db
+      .from("whatsapp_connections")
+      .insert({
+        user_id: userId,
+        provider: "uazapi",
+        instance_identifier: instanceName,
+        status: "disconnected",
+      })
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    connection = data;
+  }
+
+  const provider = await getWhatsAppProvider(connection.provider);
+  if (!provider.provisionInstance) {
+    throw new Error("O provedor configurado não permite criar instâncias.");
+  }
+
+  let created: { token: string; instanceIdentifier: string | null };
+  try {
+    created = await provider.provisionInstance(
+      {
+        baseUrl: env.baseUrl,
+        token: env.instanceToken ?? "",
+        instanceIdentifier: instanceName,
+        adminToken: env.adminToken,
+      },
+      instanceName,
+    );
+  } catch (error) {
+    const message = userFacingProviderError(error);
+    await recordError(db, connection.id, message);
+    throw new Error(message);
+  }
+
+  const { error: credError } = await db.from("whatsapp_credentials").upsert(
+    {
+      connection_id: connection.id,
+      user_id: userId,
+      base_url: env.baseUrl,
+      token: created.token,
+    },
+    { onConflict: "connection_id" },
+  );
+  if (credError) throw new Error(credError.message);
+
+  const { data: updated } = await db
+    .from("whatsapp_connections")
+    .update({
+      instance_identifier: created.instanceIdentifier ?? instanceName,
+      status: "disconnected",
+      last_error: null,
+    })
+    .eq("id", connection.id)
+    .select("*")
+    .single();
+
+  const finalConnection = updated ?? connection;
+  await registerWebhook(db, finalConnection, {
+    baseUrl: env.baseUrl,
+    token: created.token,
+    instanceIdentifier: finalConnection.instance_identifier,
+    adminToken: env.adminToken,
+  });
+
+  waLog.info("instance_provisioned", { connection_id: finalConnection.id });
+  return presentConnection(finalConnection);
 }
 
 export async function startSession(userId: string) {

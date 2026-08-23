@@ -6,7 +6,7 @@ export const whatsappSettingsSchema = z.object({
   base_url: z
     .string()
     .trim()
-    .url("Informe a URL base completa da UZAPI")
+    .url("Informe a URL base completa da UAZAPI")
     .max(300)
     .refine((value) => value.startsWith("https://"), "A URL base deve usar https"),
   token: z.string().trim().min(8, "Token inválido").max(500),
@@ -16,6 +16,15 @@ export const whatsappSettingsSchema = z.object({
     .max(200)
     .optional()
     .transform((value) => (value && value !== "" ? value : null)),
+});
+
+export const provisionInstanceSchema = z.object({
+  instance_name: z
+    .string()
+    .trim()
+    .min(3, "Nome muito curto")
+    .max(60)
+    .regex(/^[a-zA-Z0-9-_ ]+$/, "Use apenas letras, números, espaço, hífen ou underline"),
 });
 
 export const listConversationsSchema = z.object({

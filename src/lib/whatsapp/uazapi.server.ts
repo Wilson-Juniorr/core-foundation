@@ -17,20 +17,23 @@ import type {
 } from "./types";
 
 /**
- * Implementação UZAPI do WhatsAppProvider.
+ * Implementação UAZAPI do WhatsAppProvider.
  *
- * Todos os endpoints e nomes de campos específicos da UZAPI ficam confinados
+ * Todos os endpoints e nomes de campos específicos da UAZAPI ficam confinados
  * neste arquivo. Se a rota real do seu painel divergir, basta ajustar ENDPOINTS.
  */
 const ENDPOINTS = {
-  sessionStart: "/instance/init",
+  /** Criação de instância (exige admintoken). */
+  instanceInit: "/instance/init",
+  /** Inicia pareamento e devolve o QR Code. */
+  sessionStart: "/instance/connect",
   sessionStatus: "/instance/status",
   sessionDisconnect: "/instance/disconnect",
-  webhook: "/instance/webhook",
+  webhook: "/webhook",
   sendText: "/send/text",
   sendMedia: "/send/media",
-  chats: "/chat/list",
-  chatHistory: "/chat/messages",
+  chats: "/chat/find",
+  chatHistory: "/message/find",
 } as const;
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -42,7 +45,7 @@ function joinUrl(baseUrl: string, path: string): string {
 async function request<T>(
   creds: ProviderCredentials,
   path: string,
-  init: { method: "GET" | "POST"; body?: unknown },
+  init: { method: "GET" | "POST"; body?: unknown; admin?: boolean },
 ): Promise<T> {
   const url = joinUrl(creds.baseUrl, path);
   const controller = new AbortController();
@@ -53,9 +56,13 @@ async function request<T>(
       method: init.method,
       headers: {
         "content-type": "application/json",
-        // A UZAPI autentica por header de token da instância.
-        token: creds.token,
-        ...(creds.instanceIdentifier ? { instance: creds.instanceIdentifier } : {}),
+        // Endpoints de administração usam admintoken; o resto usa o token da instância.
+        ...(init.admin
+          ? { admintoken: creds.adminToken ?? "" }
+          : {
+              token: creds.token,
+              ...(creds.instanceIdentifier ? { instance: creds.instanceIdentifier } : {}),
+            }),
       },
       body: init.body === undefined ? null : JSON.stringify(init.body),
       signal: controller.signal,
@@ -67,9 +74,9 @@ async function request<T>(
     if (!response.ok) {
       waLog.error("provider_request_failed", { path, status: response.status });
       throw new ProviderError(
-        `UZAPI ${path} respondeu ${response.status}`,
+        `UAZAPI ${path} respondeu ${response.status}`,
         response.status === 401 || response.status === 403
-          ? "Credenciais da UZAPI recusadas. Revise a URL base e o token."
+          ? "Credenciais da UAZAPI recusadas. Revise a URL base e o token."
           : "O provedor de WhatsApp respondeu com erro. Tente novamente em instantes.",
         response.status,
       );
@@ -81,7 +88,7 @@ async function request<T>(
     const aborted = error instanceof Error && error.name === "AbortError";
     waLog.error("provider_unreachable", { path, aborted });
     throw new ProviderError(
-      `Falha de rede ao chamar UZAPI ${path}`,
+      `Falha de rede ao chamar UAZAPI ${path}`,
       aborted
         ? "O provedor de WhatsApp não respondeu no tempo esperado."
         : "Provedor de WhatsApp indisponível no momento.",
@@ -142,7 +149,7 @@ function toIsoTimestamp(value: unknown): string {
   return new Date().toISOString();
 }
 
-/** Mapeia o tipo bruto da UZAPI para o domínio interno. */
+/** Mapeia o tipo bruto da UAZAPI para o domínio interno. */
 export function mapMessageType(raw: string | null): MessageType {
   const value = (raw ?? "").toLowerCase();
   if (value.includes("audio") || value.includes("ptt") || value.includes("voice")) return "audio";
@@ -155,7 +162,7 @@ export function mapMessageType(raw: string | null): MessageType {
   return "unsupported";
 }
 
-/** Mapeia o status bruto da UZAPI para o domínio interno. */
+/** Mapeia o status bruto da UAZAPI para o domínio interno. */
 export function mapMessageStatus(raw: string | null, fallback: MessageStatus): MessageStatus {
   const value = (raw ?? "").toLowerCase();
   if (value.includes("read") || value.includes("viewed")) return "read";
@@ -248,14 +255,51 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
 
 /* ------------------------- provider ------------------------- */
 
-export const uzapiProvider: WhatsAppProvider = {
-  name: "uzapi",
+export const uazapiProvider: WhatsAppProvider = {
+  name: "uazapi",
+
+  /**
+   * Cria uma instância nova usando o admintoken do servidor. O token da
+   * instância nasce aqui e é devolvido apenas para o servidor guardar.
+   */
+  async provisionInstance(creds, name) {
+    if (!creds.adminToken) {
+      throw new ProviderError(
+        "Admin token ausente",
+        "Configure o admin token do servidor UAZAPI para criar instâncias.",
+      );
+    }
+
+    const response = asRecord(
+      await request<unknown>(creds, ENDPOINTS.instanceInit, {
+        method: "POST",
+        body: { name },
+        admin: true,
+      }),
+    );
+    const instance = asRecord(response["instance"] ?? response);
+
+    const token =
+      pickString(response, ["token"]) ?? pickString(instance, ["token", "apikey", "instanceToken"]);
+    if (!token) {
+      throw new ProviderError(
+        "Resposta sem token",
+        "O servidor UAZAPI não devolveu o token da instância.",
+      );
+    }
+
+    return {
+      token,
+      instanceIdentifier:
+        pickString(instance, ["id", "name", "instance"]) ?? pickString(response, ["id", "name"]),
+    };
+  },
 
   async startSession(creds) {
     const response = asRecord(
       await request<unknown>(creds, ENDPOINTS.sessionStart, {
         method: "POST",
-        body: { instance: creds.instanceIdentifier },
+        body: {},
       }),
     );
 
@@ -298,7 +342,9 @@ export const uzapiProvider: WhatsAppProvider = {
       body: {
         url: webhookUrl,
         enabled: true,
-        events: ["messages", "message_status", "connection"],
+        events: ["messages", "messages_update", "connection"],
+        excludeMessages: [],
+        addUrlEvents: false,
       },
     });
   },

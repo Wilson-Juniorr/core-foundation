@@ -7,6 +7,7 @@ import {
   linkContactSchema,
   listConversationsSchema,
   olderMessagesSchema,
+  provisionInstanceSchema,
   sendMediaSchema,
   sendTextSchema,
   syncSchema,
@@ -39,6 +40,14 @@ export const saveWhatsAppSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<WhatsAppConnection> => {
     const { saveSettings } = await import("./whatsapp/service.server");
     return saveSettings(context.userId, data);
+  });
+
+export const provisionWhatsAppInstance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => provisionInstanceSchema.parse(input ?? {}))
+  .handler(async ({ data, context }): Promise<WhatsAppConnection> => {
+    const { provisionInstance } = await import("./whatsapp/service.server");
+    return provisionInstance(context.userId, data.instance_name);
   });
 
 export const startWhatsAppSession = createServerFn({ method: "POST" })
