@@ -6,6 +6,7 @@ import {
   conversationIdSchema,
   linkContactSchema,
   listConversationsSchema,
+  olderMessagesSchema,
   sendMediaSchema,
   sendTextSchema,
   syncSchema,
