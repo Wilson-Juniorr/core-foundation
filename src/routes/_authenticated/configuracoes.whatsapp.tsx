@@ -15,6 +15,7 @@ import { formatDateTime } from "@/lib/domain/datetime";
 import { formatPhone } from "@/lib/domain/phone";
 import {
   disconnectWhatsApp,
+  provisionWhatsAppInstance,
   refreshWhatsAppStatus,
   saveWhatsAppSettings,
   startWhatsAppSession,
