@@ -325,6 +325,10 @@ export async function syncHistory(
 
 /* ------------------------- conversas ------------------------- */
 
+const MESSAGE_PAGE_SIZE = 60;
+const MESSAGE_COLUMNS =
+  "id, external_message_id, direction, message_type, text_content, media_url, media_mime_type, media_filename, media_duration, status, sent_at, delivered_at, read_at";
+
 export async function loadConversationDetail(
   supabase: Client,
   conversationId: string,
@@ -337,21 +341,22 @@ export async function loadConversationDetail(
       .maybeSingle(),
     supabase
       .from("messages")
-      .select(
-        "id, external_message_id, direction, message_type, text_content, media_url, media_mime_type, media_filename, media_duration, status, sent_at, delivered_at, read_at",
-      )
+      .select(MESSAGE_COLUMNS)
       .eq("conversation_id", conversationId)
-      .order("sent_at", { ascending: true })
-      .limit(300),
+      .order("sent_at", { ascending: false })
+      .limit(MESSAGE_PAGE_SIZE + 1),
   ]);
 
   if (conversationResult.error) throw new Error(conversationResult.error.message);
   if (!conversationResult.data) throw new Error("Conversa não encontrada");
   if (messagesResult.error) throw new Error(messagesResult.error.message);
 
+  const hasMore = messagesResult.data.length > MESSAGE_PAGE_SIZE;
+  const page = messagesResult.data.slice(0, MESSAGE_PAGE_SIZE).reverse();
+
   const db = await admin();
   const messages = await Promise.all(
-    messagesResult.data.map(async (message) => ({
+    page.map(async (message) => ({
       ...message,
       media_url: await signMediaUrl(db, message.media_url),
     })),
@@ -360,7 +365,38 @@ export async function loadConversationDetail(
   return {
     conversation: mapConversation(conversationResult.data as ConversationRow),
     messages,
+    hasMore,
   };
+}
+
+/**
+ * Paginação do histórico: a conversa abre com as mensagens recentes e o
+ * operador carrega o passado sob demanda, mantendo a tela leve.
+ */
+export async function loadOlderMessages(
+  supabase: Client,
+  conversationId: string,
+  before: string,
+): Promise<{ messages: ConversationMessage[]; hasMore: boolean }> {
+  const { data, error } = await supabase
+    .from("messages")
+    .select(MESSAGE_COLUMNS)
+    .eq("conversation_id", conversationId)
+    .lt("sent_at", before)
+    .order("sent_at", { ascending: false })
+    .limit(MESSAGE_PAGE_SIZE + 1);
+  if (error) throw new Error(error.message);
+
+  const hasMore = (data ?? []).length > MESSAGE_PAGE_SIZE;
+  const page = (data ?? []).slice(0, MESSAGE_PAGE_SIZE).reverse();
+  const db = await admin();
+  const messages = await Promise.all(
+    page.map(async (message) => ({
+      ...message,
+      media_url: await signMediaUrl(db, message.media_url),
+    })),
+  );
+  return { messages, hasMore };
 }
 
 async function conversationForSend(userId: string, conversationId: string) {

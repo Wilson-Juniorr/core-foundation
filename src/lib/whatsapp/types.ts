@@ -133,6 +133,8 @@ export type ConversationMessage = {
 export type ConversationDetail = {
   conversation: ConversationListItem;
   messages: ConversationMessage[];
+  /** Há mensagens mais antigas para carregar sob demanda. */
+  hasMore: boolean;
 };
 
 export type SyncResult = {
