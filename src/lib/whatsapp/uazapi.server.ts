@@ -72,7 +72,14 @@ async function request<T>(
     const parsed: unknown = text === "" ? {} : safeJson(text);
 
     if (!response.ok) {
-      waLog.error("provider_request_failed", { path, status: response.status });
+      waLog.error("provider_request_failed", {
+        path,
+        status: response.status,
+        base: creds.baseUrl,
+        token_len: creds.token?.length ?? 0,
+        instance: creds.instanceIdentifier ?? null,
+        body: text.slice(0, 200),
+      });
       throw new ProviderError(
         `UAZAPI ${path} respondeu ${response.status}`,
         response.status === 401 || response.status === 403
@@ -417,13 +424,32 @@ export const uazapiProvider: WhatsAppProvider = {
     return list
       .map((entry) => {
         const chat = asRecord(entry);
-        const externalChatId = pickString(chat, ["chatid", "chatId", "id", "jid", "remoteJid"]);
+        // A UAZAPI expõe o JID real em wa_chatid; "id" é apenas o registro interno.
+        const externalChatId = pickString(chat, [
+          "wa_chatid",
+          "chatid",
+          "chatId",
+          "jid",
+          "remoteJid",
+          "id",
+        ]);
         if (!externalChatId) return null;
         return {
           externalChatId,
           phoneNumber: phoneFromChatId(externalChatId),
-          displayName: pickString(chat, ["name", "pushName", "contactName", "subject"]),
-          lastMessageAt: chat["lastMessageTime"] ? toIsoTimestamp(chat["lastMessageTime"]) : null,
+          displayName: pickString(chat, [
+            "wa_name",
+            "wa_contactName",
+            "lead_name",
+            "name",
+            "pushName",
+            "contactName",
+            "subject",
+          ]),
+          lastMessageAt:
+            chat["wa_lastMsgTimestamp"] || chat["lastMessageTime"]
+              ? toIsoTimestamp(chat["wa_lastMsgTimestamp"] ?? chat["lastMessageTime"])
+              : null,
         } satisfies NormalizedChatSummary;
       })
       .filter((chat): chat is NormalizedChatSummary => chat !== null);
