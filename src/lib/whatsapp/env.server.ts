@@ -9,6 +9,7 @@ export type UazapiEnv = {
   baseUrl: string | null;
   adminToken: string | null;
   instanceToken: string | null;
+  instanceName: string | null;
 };
 
 function clean(value: string | undefined): string | null {
@@ -22,6 +23,7 @@ export function readUazapiEnv(): UazapiEnv {
     baseUrl: baseUrl ? baseUrl.replace(/\/+$/, "") : null,
     adminToken: clean(process.env["UAZAPI_ADMIN_TOKEN"]),
     instanceToken: clean(process.env["UAZAPI_INSTANCE_TOKEN"]),
+    instanceName: clean(process.env["UAZAPI_INSTANCE_NAME"]),
   };
 }
 

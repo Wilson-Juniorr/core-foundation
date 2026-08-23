@@ -23,15 +23,12 @@ import type {
 export const getWhatsAppConnection = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<WhatsAppConnection | null> => {
-    const { presentConnection } = await import("./whatsapp/service.server");
-    const { data, error } = await context.supabase
-      .from("whatsapp_connections")
-      .select("*")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) return null;
-    return presentConnection(data);
+    const { ensureConnection, presentConnection } = await import("./whatsapp/service.server");
+    // Se o servidor já tem URL base e token no ambiente, a conexão é criada
+    // na primeira visita — sem formulário.
+    const connection = await ensureConnection(context.userId);
+    if (!connection) return null;
+    return presentConnection(connection);
   });
 
 export const saveWhatsAppSettings = createServerFn({ method: "POST" })
