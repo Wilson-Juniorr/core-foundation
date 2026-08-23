@@ -95,8 +95,12 @@ export async function saveStrategy(
   return { strategyId: data.id, version: data.version };
 }
 
+/** Estratégias também são arquivadas: rascunhos antigos continuam explicáveis. */
 export async function deleteStrategy(client: Client, strategyId: string): Promise<void> {
-  const { error } = await client.from("message_strategies").delete().eq("id", strategyId);
+  const { error } = await client
+    .from("message_strategies")
+    .update({ is_active: false })
+    .eq("id", strategyId);
   if (error) throw new Error(error.message);
 }
 

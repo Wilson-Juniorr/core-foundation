@@ -83,8 +83,15 @@ export async function saveAsset(
   return { assetId: data.id };
 }
 
+/**
+ * Módulo 09: nada de exclusão física. Materiais são arquivados para preservar
+ * o histórico de mensagens que já usaram aquele conteúdo.
+ */
 export async function deleteAsset(client: Client, assetId: string): Promise<void> {
-  const { error } = await client.from("content_assets").delete().eq("id", assetId);
+  const { error } = await client
+    .from("content_assets")
+    .update({ is_active: false })
+    .eq("id", assetId);
   if (error) throw new Error(error.message);
 }
 
