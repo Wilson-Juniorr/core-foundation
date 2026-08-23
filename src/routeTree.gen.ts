@@ -22,6 +22,7 @@ import { Route as AuthenticatedFollowupsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticated/pipeline'
 import { Route as AuthenticatedClientesIndexRouteImport } from './routes/_authenticated/clientes.index'
 import { Route as AuthenticatedClientesContactIdRouteImport } from './routes/_authenticated/clientes.$contactId'
+import { Route as AuthenticatedConfiguracoesIndexRouteImport } from './routes/_authenticated/configuracoes.index'
 import { Route as AuthenticatedConfiguracoesWhatsappRouteImport } from './routes/_authenticated/configuracoes.whatsapp'
 import { Route as ApiPublicHooksAiTickRouteImport } from './routes/api.public.hooks.ai-tick'
 import { Route as ApiPublicHooksAttentionTickRouteImport } from './routes/api.public.hooks.attention-tick'
@@ -94,6 +95,12 @@ const AuthenticatedClientesContactIdRoute =
     path: '/clientes/$contactId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedConfiguracoesIndexRoute =
+  AuthenticatedConfiguracoesIndexRouteImport.update({
+    id: '/configuracoes/',
+    path: '/configuracoes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedConfiguracoesWhatsappRoute =
   AuthenticatedConfiguracoesWhatsappRouteImport.update({
     id: '/configuracoes/whatsapp',
@@ -138,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/configuracoes/': typeof AuthenticatedConfiguracoesIndexRoute
   '/api/public/hooks/ai-tick': typeof ApiPublicHooksAiTickRoute
   '/api/public/hooks/attention-tick': typeof ApiPublicHooksAttentionTickRoute
   '/api/public/hooks/followup-tick': typeof ApiPublicHooksFollowupTickRoute
@@ -157,6 +165,7 @@ export interface FileRoutesByTo {
   '/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/clientes': typeof AuthenticatedClientesIndexRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesIndexRoute
   '/api/public/hooks/ai-tick': typeof ApiPublicHooksAiTickRoute
   '/api/public/hooks/attention-tick': typeof ApiPublicHooksAttentionTickRoute
   '/api/public/hooks/followup-tick': typeof ApiPublicHooksFollowupTickRoute
@@ -178,6 +187,7 @@ export interface FileRoutesById {
   '/_authenticated/clientes/$contactId': typeof AuthenticatedClientesContactIdRoute
   '/_authenticated/configuracoes/whatsapp': typeof AuthenticatedConfiguracoesWhatsappRoute
   '/_authenticated/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/_authenticated/configuracoes/': typeof AuthenticatedConfiguracoesIndexRoute
   '/api/public/hooks/ai-tick': typeof ApiPublicHooksAiTickRoute
   '/api/public/hooks/attention-tick': typeof ApiPublicHooksAttentionTickRoute
   '/api/public/hooks/followup-tick': typeof ApiPublicHooksFollowupTickRoute
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/clientes/$contactId'
     | '/configuracoes/whatsapp'
     | '/clientes/'
+    | '/configuracoes/'
     | '/api/public/hooks/ai-tick'
     | '/api/public/hooks/attention-tick'
     | '/api/public/hooks/followup-tick'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/clientes/$contactId'
     | '/configuracoes/whatsapp'
     | '/clientes'
+    | '/configuracoes'
     | '/api/public/hooks/ai-tick'
     | '/api/public/hooks/attention-tick'
     | '/api/public/hooks/followup-tick'
@@ -238,6 +250,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clientes/$contactId'
     | '/_authenticated/configuracoes/whatsapp'
     | '/_authenticated/clientes/'
+    | '/_authenticated/configuracoes/'
     | '/api/public/hooks/ai-tick'
     | '/api/public/hooks/attention-tick'
     | '/api/public/hooks/followup-tick'
@@ -347,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesContactIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/configuracoes/': {
+      id: '/_authenticated/configuracoes/'
+      path: '/configuracoes'
+      fullPath: '/configuracoes/'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/configuracoes/whatsapp': {
       id: '/_authenticated/configuracoes/whatsapp'
       path: '/configuracoes/whatsapp'
@@ -397,6 +417,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientesContactIdRoute: typeof AuthenticatedClientesContactIdRoute
   AuthenticatedConfiguracoesWhatsappRoute: typeof AuthenticatedConfiguracoesWhatsappRoute
   AuthenticatedClientesIndexRoute: typeof AuthenticatedClientesIndexRoute
+  AuthenticatedConfiguracoesIndexRoute: typeof AuthenticatedConfiguracoesIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -412,6 +433,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracoesWhatsappRoute:
     AuthenticatedConfiguracoesWhatsappRoute,
   AuthenticatedClientesIndexRoute: AuthenticatedClientesIndexRoute,
+  AuthenticatedConfiguracoesIndexRoute: AuthenticatedConfiguracoesIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
