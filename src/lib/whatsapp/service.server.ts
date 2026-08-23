@@ -18,6 +18,7 @@ import {
 import type {
   ConversationDetail,
   ConversationListItem,
+  ConversationMessage,
   SyncResult,
   WhatsAppConnection,
 } from "./types";

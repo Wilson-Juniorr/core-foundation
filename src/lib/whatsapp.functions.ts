@@ -102,6 +102,14 @@ export const getConversation = createServerFn({ method: "GET" })
     return loadConversationDetail(context.supabase, data.conversationId);
   });
 
+export const listOlderMessages = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => olderMessagesSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { loadOlderMessages } = await import("./whatsapp/service.server");
+    return loadOlderMessages(context.supabase, data.conversationId, data.before);
+  });
+
 export const markConversationRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => conversationIdSchema.parse(input))
