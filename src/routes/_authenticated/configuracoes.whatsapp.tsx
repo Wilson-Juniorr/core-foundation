@@ -152,13 +152,50 @@ function WhatsAppSettingsPage() {
   const configured = Boolean(data?.has_credentials);
 
   return (
-    <AppShell title="WhatsApp" description="Conexão via UZAPI e importação de histórico">
+    <AppShell title="WhatsApp" description="Conexão via UAZAPI e importação de histórico">
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Criar instância automaticamente</CardTitle>
+            <CardDescription>
+              Usa o servidor UAZAPI já configurado no ambiente. O token da instância é gerado e
+              guardado no servidor — você não precisa digitá-lo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                provisionMutation.mutate();
+              }}
+            >
+              <div className="min-w-56 flex-1 space-y-2">
+                <Label htmlFor="instance_name">Nome da instância</Label>
+                <Input
+                  id="instance_name"
+                  value={newInstanceName}
+                  onChange={(event) => setNewInstanceName(event.target.value)}
+                  placeholder="proximo-passo-teste"
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={provisionMutation.isPending}>
+                {provisionMutation.isPending && (
+                  <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                )}
+                Criar instância
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Credenciais da UZAPI</CardTitle>
+            <CardTitle>Credenciais manuais da UAZAPI</CardTitle>
             <CardDescription>
-              O token é guardado somente no servidor e nunca é exibido novamente.
+              Opcional: use apenas se quiser apontar para outro servidor. O token fica somente no
+              servidor e nunca é exibido novamente.
             </CardDescription>
           </CardHeader>
           <CardContent>
