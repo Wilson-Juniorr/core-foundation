@@ -1067,6 +1067,16 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
       },
     });
 
+    const { writeAudit } = await import("@/lib/audit/log.server");
+    await writeAudit(db, action.user_id, {
+      action: "automatic_message_sent",
+      summary: "Mensagem automática enviada pelo motor de follow-up.",
+      entityType: "scheduled_action",
+      entityId: action.id,
+      actor: "system",
+      metadata: { conversation_id: action.conversation_id, action_type: action.action_type },
+    });
+
     if (run && flow) await advanceRun(db, run, flow, settings);
     return "sent";
   } catch (error) {

@@ -76,6 +76,16 @@ export async function applyCustomerOptOut(db: Admin, input: OptOutInput): Promis
     .eq("conversation_id", input.conversationId)
     .in("status", ["active", "paused"]);
 
+  const { writeAudit } = await import("@/lib/audit/log.server");
+  await writeAudit(db, input.userId, {
+    action: "opt_out_applied",
+    summary: "Cliente pediu para não receber mensagens: automações interrompidas.",
+    entityType: "contact",
+    entityId: input.contactId,
+    actor: "system",
+    severity: "warning",
+  });
+
   await logEvent(db as never, input.userId, {
     event_type: "customer_opt_out",
     contact_id: input.contactId,
