@@ -247,7 +247,9 @@ function SystemPage() {
                       <Badge
                         variant={connection.status === "connected" ? "secondary" : "destructive"}
                       >
-                        {CONNECTION_STATUS_LABELS[connection.status] ?? connection.status}
+                        {CONNECTION_STATUS_LABELS[
+                          connection.status as keyof typeof CONNECTION_STATUS_LABELS
+                        ] ?? connection.status}
                       </Badge>
                       <span className="text-sm font-medium">
                         {connection.display_name ?? formatPhone(connection.phone_number) ?? "Instância"}
