@@ -7,8 +7,11 @@ import type {
 
 export type ProviderCredentials = {
   baseUrl: string;
+  /** Token da instância (usado em todas as chamadas de operação). */
   token: string;
   instanceIdentifier: string | null;
+  /** Token administrativo do servidor — só para criar/gerenciar instâncias. */
+  adminToken?: string | null;
 };
 
 export type OutboundMedia = {
