@@ -70,10 +70,12 @@ export type WhatsAppProvider = {
 
 export async function getWhatsAppProvider(provider: string): Promise<WhatsAppProvider> {
   switch (provider) {
+    // "uzapi" é mantido apenas para conexões antigas já gravadas no banco.
     case "uzapi":
+    case "uazapi":
     default: {
-      const { uzapiProvider } = await import("./uzapi.server");
-      return uzapiProvider;
+      const { uazapiProvider } = await import("./uazapi.server");
+      return uazapiProvider;
     }
   }
 }
