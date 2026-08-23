@@ -82,7 +82,12 @@ export function mapConversation(row: ConversationRow): ConversationListItem {
   };
 }
 
-async function requireConnection(userId: string) {
+/**
+ * Garante que exista uma conexão para o usuário. Quando o servidor já traz
+ * URL base e token de instância no ambiente, a conexão nasce pronta — o
+ * usuário não precisa digitar credencial alguma.
+ */
+export async function ensureConnection(userId: string): Promise<ConnectionRow | null> {
   const db = await admin();
   const { data, error } = await db
     .from("whatsapp_connections")
@@ -90,6 +95,38 @@ async function requireConnection(userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
+  if (data) return data;
+
+  const { readUazapiEnv } = await import("./env.server");
+  const env = readUazapiEnv();
+  if (!env.baseUrl || !env.instanceToken) return null;
+
+  const { data: created, error: insertError } = await db
+    .from("whatsapp_connections")
+    .insert({
+      user_id: userId,
+      provider: "uazapi",
+      instance_identifier: env.instanceName,
+      status: "disconnected",
+    })
+    .select("*")
+    .single();
+  if (insertError) throw new Error(insertError.message);
+
+  await registerWebhook(db, created, {
+    baseUrl: env.baseUrl,
+    token: env.instanceToken,
+    instanceIdentifier: created.instance_identifier,
+    adminToken: env.adminToken,
+  });
+
+  waLog.info("connection_bootstrapped", { connection_id: created.id });
+  return created;
+}
+
+async function requireConnection(userId: string) {
+  const db = await admin();
+  const data = await ensureConnection(userId);
   if (!data) throw new Error("WhatsApp ainda não configurado.");
 
   const creds = await loadCredentials(db, data);
