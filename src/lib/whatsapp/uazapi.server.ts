@@ -254,11 +254,48 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
 export const uazapiProvider: WhatsAppProvider = {
   name: "uazapi",
 
+  /**
+   * Cria uma instância nova usando o admintoken do servidor. O token da
+   * instância nasce aqui e é devolvido apenas para o servidor guardar.
+   */
+  async provisionInstance(creds, name) {
+    if (!creds.adminToken) {
+      throw new ProviderError(
+        "Admin token ausente",
+        "Configure o admin token do servidor UAZAPI para criar instâncias.",
+      );
+    }
+
+    const response = asRecord(
+      await request<unknown>(creds, ENDPOINTS.instanceInit, {
+        method: "POST",
+        body: { name },
+        admin: true,
+      }),
+    );
+    const instance = asRecord(response["instance"] ?? response);
+
+    const token =
+      pickString(response, ["token"]) ?? pickString(instance, ["token", "apikey", "instanceToken"]);
+    if (!token) {
+      throw new ProviderError(
+        "Resposta sem token",
+        "O servidor UAZAPI não devolveu o token da instância.",
+      );
+    }
+
+    return {
+      token,
+      instanceIdentifier:
+        pickString(instance, ["id", "name", "instance"]) ?? pickString(response, ["id", "name"]),
+    };
+  },
+
   async startSession(creds) {
     const response = asRecord(
       await request<unknown>(creds, ENDPOINTS.sessionStart, {
         method: "POST",
-        body: { instance: creds.instanceIdentifier },
+        body: {},
       }),
     );
 
@@ -301,7 +338,9 @@ export const uazapiProvider: WhatsAppProvider = {
       body: {
         url: webhookUrl,
         enabled: true,
-        events: ["messages", "message_status", "connection"],
+        events: ["messages", "messages_update", "connection"],
+        excludeMessages: [],
+        addUrlEvents: false,
       },
     });
   },
