@@ -72,7 +72,14 @@ async function request<T>(
     const parsed: unknown = text === "" ? {} : safeJson(text);
 
     if (!response.ok) {
-      waLog.error("provider_request_failed", { path, status: response.status });
+      waLog.error("provider_request_failed", {
+        path,
+        status: response.status,
+        base: creds.baseUrl,
+        token_len: creds.token?.length ?? 0,
+        instance: creds.instanceIdentifier ?? null,
+        body: text.slice(0, 200),
+      });
       throw new ProviderError(
         `UAZAPI ${path} respondeu ${response.status}`,
         response.status === 401 || response.status === 403
