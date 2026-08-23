@@ -34,6 +34,12 @@ export type SendResult = {
 export type WhatsAppProvider = {
   readonly name: string;
 
+  /** Cria uma instância no servidor usando credenciais administrativas. */
+  provisionInstance?(
+    creds: ProviderCredentials,
+    name: string,
+  ): Promise<{ token: string; instanceIdentifier: string | null }>;
+
   startSession(creds: ProviderCredentials): Promise<{ qrCode: string | null }>;
   getSessionStatus(creds: ProviderCredentials): Promise<NormalizedConnectionUpdate>;
   disconnectSession(creds: ProviderCredentials): Promise<void>;
