@@ -15,7 +15,7 @@ import type {
 } from "./automation/types";
 
 const POLICY_COLUMNS =
-  "automation_paused, automation_paused_at, test_mode, test_mode_phone, conversation_cooldown_minutes, manual_message_cooldown_minutes, active_conversation_minutes, max_automations_per_day, max_flow_automations_per_day, confidence_auto_min, confidence_approval_min";
+  "automation_paused, automation_paused_at, test_mode, test_mode_phone, test_mode_allowlist, require_approval_all, conversation_cooldown_minutes, manual_message_cooldown_minutes, active_conversation_minutes, max_automations_per_day, max_flow_automations_per_day, confidence_auto_min, confidence_approval_min";
 
 export const getAutomationPolicy = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -32,6 +32,8 @@ export const getAutomationPolicy = createServerFn({ method: "GET" })
       automation_paused_at: data.automation_paused_at,
       test_mode: data.test_mode,
       test_mode_phone: data.test_mode_phone,
+      test_mode_allowlist: data.test_mode_allowlist ?? [],
+      require_approval_all: data.require_approval_all ?? false,
       conversation_cooldown_minutes: data.conversation_cooldown_minutes,
       manual_message_cooldown_minutes: data.manual_message_cooldown_minutes,
       active_conversation_minutes: data.active_conversation_minutes,
