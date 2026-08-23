@@ -172,9 +172,24 @@ export function FlowBuilderDialog({
     onError: (error) => toast.error(error instanceof Error ? error.message : "Falha no upload."),
   });
 
+  function validateSteps(): string | null {
+    if (!name.trim()) return "Dê um nome ao fluxo.";
+    for (const [index, step] of steps.entries()) {
+      const label = `Etapa ${index + 1}`;
+      if (step.content_mode === "ai_generated" && !step.strategy_id)
+        return `${label}: escolha a estratégia usada pela IA.`;
+      if (step.content_mode === "asset_selection" && !step.asset_id)
+        return `${label}: escolha o material da biblioteca.`;
+      if (step.content_mode === "fixed_content" && !step.content.trim() && !step.media_reference)
+        return `${label}: escreva a mensagem ou anexe um arquivo.`;
+    }
+    return null;
+  }
+
   const saveMutation = useMutation({
     mutationFn: () =>
       saveFollowupFlow({
+
         data: {
           ...(flowId ? { id: flowId } : {}),
           name,
