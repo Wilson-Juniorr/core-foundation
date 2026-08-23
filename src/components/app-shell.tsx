@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import {
   BellRing,
@@ -20,9 +20,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
+import { getAutomationPolicy } from "@/lib/automation.functions";
 import { cn } from "@/lib/utils";
 
 const PRODUCT_NAME = "Próximo Passo";
+
+/**
+ * Barra de estado: quando a operação está em modo teste, pausada ou exigindo
+ * aprovação, isso precisa ficar visível em toda tela — não escondido em uma aba.
+ */
+function OperationBanner() {
+  const policy = useQuery({
+    queryKey: ["automation", "policy"],
+    queryFn: () => getAutomationPolicy(),
+    staleTime: 60_000,
+  });
+
+  const notices: string[] = [];
+  if (policy.data?.automation_paused) notices.push("Automações pausadas (parada de emergência)");
+  if (policy.data?.test_mode) notices.push("Modo teste: mensagens automáticas são simuladas");
+  if (policy.data?.require_approval_all) notices.push("Aprovação obrigatória para todo envio");
+  if (notices.length === 0) return null;
+
+  return (
+    <div className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-900 sm:px-8 dark:bg-amber-950/40 dark:text-amber-200">
+      {notices.join(" · ")}{" "}
+      <Link to="/configuracoes" className="underline">
+        Ajustar
+      </Link>
+    </div>
+  );
+}
 
 const ACTIVE_ITEMS = [
   { to: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
@@ -34,7 +62,7 @@ const ACTIVE_ITEMS = [
   { to: "/biblioteca", label: "Biblioteca", icon: BookOpen },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/automacao", label: "Orquestrador", icon: ShieldCheck },
-  { to: "/configuracoes/whatsapp", label: "Configurações", icon: Settings },
+  { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
 const UPCOMING_ITEMS = [{ label: "Agenda", icon: CalendarDays }] as const;
@@ -152,6 +180,8 @@ export function AppShell({
             </Button>
           </div>
         </header>
+
+        <OperationBanner />
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>
