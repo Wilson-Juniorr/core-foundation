@@ -569,7 +569,17 @@ export function FlowBuilderDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <Button
+            onClick={() => {
+              const problem = validateSteps();
+              if (problem) {
+                toast.error(problem);
+                return;
+              }
+              saveMutation.mutate();
+            }}
+            disabled={saveMutation.isPending}
+          >
             {saveMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Salvar fluxo
           </Button>
