@@ -6,6 +6,10 @@ export interface AutomationPolicySettings {
   automation_paused_at: string | null;
   test_mode: boolean;
   test_mode_phone: string | null;
+  /** Módulo 09: números que continuam recebendo de verdade em modo teste. */
+  test_mode_allowlist: string[];
+  /** Módulo 09: nada é enviado sem aprovação humana quando ligado. */
+  require_approval_all: boolean;
   conversation_cooldown_minutes: number;
   manual_message_cooldown_minutes: number;
   active_conversation_minutes: number;
