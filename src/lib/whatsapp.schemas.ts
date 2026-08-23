@@ -18,6 +18,15 @@ export const whatsappSettingsSchema = z.object({
     .transform((value) => (value && value !== "" ? value : null)),
 });
 
+export const provisionInstanceSchema = z.object({
+  instance_name: z
+    .string()
+    .trim()
+    .min(3, "Nome muito curto")
+    .max(60)
+    .regex(/^[a-zA-Z0-9-_ ]+$/, "Use apenas letras, números, espaço, hífen ou underline"),
+});
+
 export const listConversationsSchema = z.object({
   search: z.string().trim().max(200).optional(),
 });
