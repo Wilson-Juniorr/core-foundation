@@ -172,9 +172,24 @@ export function FlowBuilderDialog({
     onError: (error) => toast.error(error instanceof Error ? error.message : "Falha no upload."),
   });
 
+  function validateSteps(): string | null {
+    if (!name.trim()) return "Dê um nome ao fluxo.";
+    for (const [index, step] of steps.entries()) {
+      const label = `Etapa ${index + 1}`;
+      if (step.content_mode === "ai_generated" && !step.strategy_id)
+        return `${label}: escolha a estratégia usada pela IA.`;
+      if (step.content_mode === "asset_selection" && !step.asset_id)
+        return `${label}: escolha o material da biblioteca.`;
+      if (step.content_mode === "fixed_content" && !step.content.trim() && !step.media_reference)
+        return `${label}: escreva a mensagem ou anexe um arquivo.`;
+    }
+    return null;
+  }
+
   const saveMutation = useMutation({
     mutationFn: () =>
       saveFollowupFlow({
+
         data: {
           ...(flowId ? { id: flowId } : {}),
           name,
@@ -554,7 +569,17 @@ export function FlowBuilderDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          <Button
+            onClick={() => {
+              const problem = validateSteps();
+              if (problem) {
+                toast.error(problem);
+                return;
+              }
+              saveMutation.mutate();
+            }}
+            disabled={saveMutation.isPending}
+          >
             {saveMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Salvar fluxo
           </Button>
