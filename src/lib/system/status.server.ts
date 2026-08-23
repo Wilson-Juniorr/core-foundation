@@ -18,21 +18,11 @@ function minutesAgo(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();
 }
 
-async function count(
-  client: Client,
-  build: (query: ReturnType<Client["from"]>) => unknown,
-): Promise<number> {
-  void build;
-  void client;
-  return 0;
-}
-
 /**
  * Diagnóstico técnico: mostra fila, falhas e conexões em números pequenos e
  * acionáveis, para que o operador saiba se o sistema está trabalhando por ele.
  */
 export async function loadSystemStatus(client: Client, userId: string): Promise<SystemStatus> {
-  void count;
   const stuckBefore = minutesAgo(STUCK_MINUTES);
   const overdueBefore = minutesAgo(OVERDUE_MINUTES);
   const dayAgo = minutesAgo(24 * 60);
