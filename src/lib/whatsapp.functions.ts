@@ -7,6 +7,7 @@ import {
   linkContactSchema,
   listConversationsSchema,
   olderMessagesSchema,
+  provisionInstanceSchema,
   sendMediaSchema,
   sendTextSchema,
   syncSchema,
