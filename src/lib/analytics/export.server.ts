@@ -40,7 +40,15 @@ export async function exportDataset(
     if (error) throw new Error(error.message);
     return {
       filename: `clientes-${stamp}.csv`,
-      csv: toCsv(data ?? [], ["id", "name", "phone", "email", "source", "is_archived", "created_at"]),
+      csv: toCsv(data ?? [], [
+        "id",
+        "name",
+        "phone",
+        "email",
+        "source",
+        "is_archived",
+        "created_at",
+      ]),
       rows: data?.length ?? 0,
     };
   }
@@ -115,7 +123,9 @@ export async function exportDataset(
   if (dataset === "mensagens") {
     const { data, error } = await supabase
       .from("messages")
-      .select("id, direction, message_type, status, sent_at, delivered_at, read_at, conversation_id")
+      .select(
+        "id, direction, message_type, status, sent_at, delivered_at, read_at, conversation_id",
+      )
       .gte("sent_at", period.from)
       .lt("sent_at", period.to)
       .order("sent_at", { ascending: false })

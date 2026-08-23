@@ -65,7 +65,10 @@ function buildAlerts(
     });
   }
 
-  if (health.messages_failed_24h >= 3 && health.messages_failed_24h > health.messages_failed_prev_24h) {
+  if (
+    health.messages_failed_24h >= 3 &&
+    health.messages_failed_24h > health.messages_failed_prev_24h
+  ) {
     alerts.push({
       id: "failure_rate_up",
       level: "warning",

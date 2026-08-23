@@ -1,13 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  Download,
-  Activity,
-  Info,
-  RefreshCcw,
-  TrendingUp,
-} from "lucide-react";
+import { AlertTriangle, Download, Activity, Info, RefreshCcw, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -64,15 +57,7 @@ function formatPercent(value: number | null): string {
   return value === null ? "—" : `${value}%`;
 }
 
-function Metric({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-}) {
+function Metric({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
     <div className="rounded-lg border bg-card px-4 py-3">
       <p className="text-xs text-muted-foreground">{label}</p>
@@ -235,7 +220,10 @@ function AnalyticsPage() {
                 <Metric label="Novos clientes" value={data.overview.new_contacts} />
                 <Metric label="Novas oportunidades" value={data.overview.new_opportunities} />
                 <Metric label="Follow-ups iniciados" value={data.overview.followups_started} />
-                <Metric label="Mensagens de follow-up enviadas" value={data.overview.followups_sent} />
+                <Metric
+                  label="Mensagens de follow-up enviadas"
+                  value={data.overview.followups_sent}
+                />
                 <Metric
                   label="Taxa de resposta"
                   value={formatPercent(data.overview.reply_rate)}
@@ -383,7 +371,9 @@ function AnalyticsPage() {
                             <td className="py-2 pr-4">{flow.replied}</td>
                             <td className="py-2 pr-4">{formatPercent(flow.reply_rate)}</td>
                             <td className="py-2 pr-4">
-                              {flow.last_reply_step_position ? `#${flow.last_reply_step_position}` : "—"}
+                              {flow.last_reply_step_position
+                                ? `#${flow.last_reply_step_position}`
+                                : "—"}
                             </td>
                             <td className="py-2 pr-4">{flow.completed}</td>
                             <td className="py-2 pr-4">{flow.interrupted}</td>
@@ -466,7 +456,10 @@ function AnalyticsPage() {
                   <Metric label="Ações pendentes" value={data.health.actions_pending} />
                   <Metric label="Fila atrasada" value={data.health.actions_overdue} />
                   <Metric label="Falhas de envio (24h)" value={data.health.actions_failed_24h} />
-                  <Metric label="Bloqueadas/puladas (24h)" value={data.health.actions_blocked_24h} />
+                  <Metric
+                    label="Bloqueadas/puladas (24h)"
+                    value={data.health.actions_blocked_24h}
+                  />
                   <Metric label="Análises de IA na fila" value={data.health.ai_jobs_pending} />
                   <Metric
                     label="Falhas de IA (24h)"
@@ -487,7 +480,9 @@ function AnalyticsPage() {
                       key={connection.id}
                       className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
                     >
-                      <Badge variant={connection.status === "connected" ? "default" : "destructive"}>
+                      <Badge
+                        variant={connection.status === "connected" ? "default" : "destructive"}
+                      >
                         {connection.status}
                       </Badge>
                       <span>{connection.display_name ?? connection.phone_number ?? "Conexão"}</span>
@@ -525,8 +520,8 @@ function AnalyticsPage() {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Exporta apenas os seus dados e somente campos de negócio — sem credenciais,
-                  tokens ou conteúdo técnico de integração. Limite de 5.000 linhas por arquivo.
+                  Exporta apenas os seus dados e somente campos de negócio — sem credenciais, tokens
+                  ou conteúdo técnico de integração. Limite de 5.000 linhas por arquivo.
                 </p>
               </CardContent>
             </Card>

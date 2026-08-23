@@ -25,9 +25,7 @@ export const getOperationalHealth = createServerFn({ method: "POST" })
 
 export const exportAnalyticsCsv = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: { dataset: AnalyticsExportDataset; from: string; to: string }) => input,
-  )
+  .inputValidator((input: { dataset: AnalyticsExportDataset; from: string; to: string }) => input)
   .handler(async ({ data, context }): Promise<{ filename: string; csv: string; rows: number }> => {
     const { exportDataset } = await import("@/lib/analytics/export.server");
     return exportDataset(context.supabase, data.dataset, { from: data.from, to: data.to });

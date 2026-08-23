@@ -125,11 +125,7 @@ export interface AnalyticsReport {
 }
 
 export type AnalyticsExportDataset =
-  | "contatos"
-  | "oportunidades"
-  | "followup_runs"
-  | "mensagens"
-  | "estrategias";
+  "contatos" | "oportunidades" | "followup_runs" | "mensagens" | "estrategias";
 
 export const EXPORT_LABELS: Record<AnalyticsExportDataset, string> = {
   contatos: "Clientes",
