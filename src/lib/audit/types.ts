@@ -44,7 +44,7 @@ export interface AuditLogEntry {
   entity_id: string | null;
   summary: string;
   actor: string;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string | number | boolean | null>;
 }
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {

@@ -51,7 +51,7 @@ export const listAuditLogs = createServerFn({ method: "GET" })
     const items = (rows ?? []).map((row) => ({
       ...row,
       severity: row.severity as AuditLogEntry["severity"],
-      metadata: (row.metadata ?? {}) as Record<string, unknown>,
+      metadata: (row.metadata ?? {}) as AuditLogEntry["metadata"],
     }));
     return {
       items,
