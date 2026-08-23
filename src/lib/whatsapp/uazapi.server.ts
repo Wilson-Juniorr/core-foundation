@@ -45,7 +45,7 @@ function joinUrl(baseUrl: string, path: string): string {
 async function request<T>(
   creds: ProviderCredentials,
   path: string,
-  init: { method: "GET" | "POST"; body?: unknown },
+  init: { method: "GET" | "POST"; body?: unknown; admin?: boolean },
 ): Promise<T> {
   const url = joinUrl(creds.baseUrl, path);
   const controller = new AbortController();
@@ -56,9 +56,13 @@ async function request<T>(
       method: init.method,
       headers: {
         "content-type": "application/json",
-        // A UAZAPI autentica por header de token da instância.
-        token: creds.token,
-        ...(creds.instanceIdentifier ? { instance: creds.instanceIdentifier } : {}),
+        // Endpoints de administração usam admintoken; o resto usa o token da instância.
+        ...(init.admin
+          ? { admintoken: creds.adminToken ?? "" }
+          : {
+              token: creds.token,
+              ...(creds.instanceIdentifier ? { instance: creds.instanceIdentifier } : {}),
+            }),
       },
       body: init.body === undefined ? null : JSON.stringify(init.body),
       signal: controller.signal,
