@@ -186,7 +186,10 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
           Nenhuma mensagem nesta conversa ainda.
         </p>
       ) : (
-        <ul className="flex-1 space-y-2 overflow-y-auto p-4">
+        <ul
+          ref={listRef}
+          className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-4"
+        >
           {hasMore ? (
             <li className="flex justify-center pb-2">
               <Button
@@ -202,12 +205,11 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
-          <div ref={endRef} />
         </ul>
       )}
 
       <form
-        className="flex items-end gap-2 border-t p-3"
+        className="flex shrink-0 items-end gap-2 border-t p-3"
         onSubmit={(event) => {
           event.preventDefault();
           const value = text.trim();
