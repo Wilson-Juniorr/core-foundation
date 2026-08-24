@@ -67,6 +67,7 @@ export function ContactFormDialog({
   const create = useServerFn(createContact);
   const update = useServerFn(updateContact);
   const [form, setForm] = useState<FormState>(toFormState(contact));
+  const [reading, setReading] = useState(false);
 
   useEffect(() => {
     if (open) setForm(toFormState(contact));
@@ -81,7 +82,15 @@ export function ContactFormDialog({
         source: values.source,
         notes: values.notes,
       };
-      return contact ? update({ data: { id: contact.id, ...payload } }) : create({ data: payload });
+      if (contact) return update({ data: { id: contact.id, ...payload } });
+
+      return create({
+        data: {
+          ...payload,
+          create_opportunity: values.create_opportunity,
+          opportunity_title: values.opportunity_title,
+        },
+      });
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
