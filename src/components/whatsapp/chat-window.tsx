@@ -130,15 +130,26 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   const sending = textMutation.isPending || mediaMutation.isPending;
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center gap-3 border-b p-4">
-        <div className="min-w-0">
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b p-3 sm:p-4">
+        {onBack ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Voltar para a lista de conversas"
+            onClick={onBack}
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+          </Button>
+        ) : null}
+        <div className="min-w-0 flex-1">
           <h2 className="truncate font-medium">{conversationTitle(conversation)}</h2>
           <p className="text-muted-foreground text-xs">
             {formatPhone(conversation.phone_number) || "Número indisponível"}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {conversation.contact_id ? (
             <Button variant="outline" size="sm" onClick={() => setGenerateOpen(true)}>
               <Sparkles className="mr-2 size-4" />
