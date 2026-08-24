@@ -174,6 +174,8 @@ export function FlowBuilderDialog({
 
   function validateSteps(): string | null {
     if (!name.trim()) return "Dê um nome ao fluxo.";
+    if (windowStart && windowEnd && windowEnd <= windowStart)
+      return "Janela do fluxo: o fim deve ser depois do início.";
     for (const [index, step] of steps.entries()) {
       const label = `Etapa ${index + 1}`;
       if (step.content_mode === "ai_generated" && !step.strategy_id)
@@ -182,9 +184,16 @@ export function FlowBuilderDialog({
         return `${label}: escolha o material da biblioteca.`;
       if (step.content_mode === "fixed_content" && !step.content.trim() && !step.media_reference)
         return `${label}: escreva a mensagem ou anexe um arquivo.`;
+      const start = step.preferred_time_start;
+      const end = step.preferred_time_end;
+      if ((start && !end) || (!start && end))
+        return `${label}: preencha início e fim do horário preferido, ou deixe os dois vazios.`;
+      if (start && end && end <= start)
+        return `${label}: o fim do horário preferido deve ser depois do início.`;
     }
     return null;
   }
+
 
   const saveMutation = useMutation({
     mutationFn: () =>
