@@ -111,9 +111,23 @@ export function ContactFormDialog({
         <DialogHeader>
           <DialogTitle>{contact ? "Editar cliente" : "Novo cliente"}</DialogTitle>
           <DialogDescription>
-            Nome e telefone são as informações mais importantes; o restante é opcional.
+            {contact
+              ? "Atualize as informações do cliente."
+              : "Nome e telefone são as informações mais importantes; o restante é opcional."}
           </DialogDescription>
+          {!contact && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 w-full"
+              onClick={() => setReading(true)}
+            >
+              <Camera className="size-4" />
+              Cadastrar por print
+            </Button>
+          )}
         </DialogHeader>
+
 
         <form
           className="space-y-4"
