@@ -49,11 +49,34 @@ export function makeWindow(
   const startMinutes = parseTimeOfDay(start);
   const endMinutes = parseTimeOfDay(end);
   if (startMinutes === null || endMinutes === null) return null;
-  if (endMinutes <= startMinutes) return null;
-  return { startMinutes, endMinutes };
+  // Início igual ao fim significa "sem restrição" (dia inteiro).
+  if (endMinutes === startMinutes) return null;
+  // Fim menor que o início: a janela cruza a meia-noite (20:45 → 00:50).
+  return {
+    startMinutes,
+    endMinutes: endMinutes > startMinutes ? endMinutes : endMinutes + DAY_MINUTES,
+  };
 }
 
-/** Interseção das janelas informadas; a mais restritiva vence. */
+function overlap(a: SendWindow, b: SendWindow): SendWindow | null {
+  // Compara a janela `b` deslocada em ±1 dia para tratar janelas que cruzam
+  // a meia-noite sem depender de qual delas "começa antes".
+  for (const shift of [-DAY_MINUTES, 0, DAY_MINUTES]) {
+    const start = Math.max(a.startMinutes, b.startMinutes + shift);
+    const end = Math.min(a.endMinutes, b.endMinutes + shift);
+    if (end > start) return { startMinutes: start, endMinutes: end };
+  }
+  return null;
+}
+
+/**
+ * Interseção das janelas informadas, da mais genérica para a mais específica
+ * (global → fluxo → etapa); a mais restritiva vence.
+ *
+ * Quando as configurações não têm nenhuma hora em comum, a janela mais
+ * específica prevalece em vez de colapsar em um instante único — colapsar
+ * gerava saltos de quase 24 horas no agendamento.
+ */
 export function mergeWindows(...windows: Array<SendWindow | null>): SendWindow | null {
   let result: SendWindow | null = null;
   for (const window of windows) {
@@ -62,14 +85,7 @@ export function mergeWindows(...windows: Array<SendWindow | null>): SendWindow |
       result = { ...window };
       continue;
     }
-    result = {
-      startMinutes: Math.max(result.startMinutes, window.startMinutes),
-      endMinutes: Math.min(result.endMinutes, window.endMinutes),
-    };
-  }
-  if (result && result.endMinutes <= result.startMinutes) {
-    // Configuração conflitante: colapsa em um instante único no início.
-    return { startMinutes: result.startMinutes, endMinutes: result.startMinutes + 1 };
+    result = overlap(result, window) ?? { ...window };
   }
   return result;
 }
