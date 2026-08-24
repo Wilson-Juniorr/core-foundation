@@ -188,24 +188,54 @@ export function ReadContactDialog({
             </div>
           ) : null}
 
-          <Button
-            type="button"
-            className="w-full"
-            disabled={images.length === 0 || mutation.isPending}
-            onClick={() => mutation.mutate()}
-          >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Lendo print…
-              </>
-            ) : (
-              <>
-                <ImagePlus className="size-4" />
-                Ler print e preencher cadastro
-              </>
-            )}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              className="w-full"
+              disabled={images.length === 0 || localBusy || mutation.isPending}
+              onClick={() => void readLocally()}
+            >
+              {localBusy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Lendo no seu aparelho…
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="size-4" />
+                  Ler print (grátis, sem créditos)
+                </>
+              )}
+            </Button>
+
+            {needsAi ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={images.length === 0 || mutation.isPending}
+                onClick={() => mutation.mutate()}
+              >
+                {mutation.isPending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Lendo com IA…
+                  </>
+                ) : (
+                  <>
+                    <ScanText className="size-4" />
+                    Tentar leitura com IA (usa créditos)
+                  </>
+                )}
+              </Button>
+            ) : null}
+
+            <p className="text-center text-xs text-muted-foreground">
+              A leitura roda no seu aparelho e não gasta créditos. A IA fica como reserva quando o
+              print estiver difícil de ler.
+            </p>
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>
