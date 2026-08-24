@@ -11,6 +11,11 @@
 
 export type DelayUnit = "minutes" | "hours" | "days";
 
+/**
+ * Janela permitida em minutos desde a meia-noite local.
+ * `endMinutes` pode passar de 1440 quando a janela cruza a meia-noite
+ * (ex.: 20:45 → 00:50 vira 1245 → 1490).
+ */
 export type SendWindow = { startMinutes: number; endMinutes: number };
 
 export const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -44,11 +49,34 @@ export function makeWindow(
   const startMinutes = parseTimeOfDay(start);
   const endMinutes = parseTimeOfDay(end);
   if (startMinutes === null || endMinutes === null) return null;
-  if (endMinutes <= startMinutes) return null;
-  return { startMinutes, endMinutes };
+  // Início igual ao fim significa "sem restrição" (dia inteiro).
+  if (endMinutes === startMinutes) return null;
+  // Fim menor que o início: a janela cruza a meia-noite (20:45 → 00:50).
+  return {
+    startMinutes,
+    endMinutes: endMinutes > startMinutes ? endMinutes : endMinutes + DAY_MINUTES,
+  };
 }
 
-/** Interseção das janelas informadas; a mais restritiva vence. */
+function overlap(a: SendWindow, b: SendWindow): SendWindow | null {
+  // Compara a janela `b` deslocada em ±1 dia para tratar janelas que cruzam
+  // a meia-noite sem depender de qual delas "começa antes".
+  for (const shift of [-DAY_MINUTES, 0, DAY_MINUTES]) {
+    const start = Math.max(a.startMinutes, b.startMinutes + shift);
+    const end = Math.min(a.endMinutes, b.endMinutes + shift);
+    if (end > start) return { startMinutes: start, endMinutes: end };
+  }
+  return null;
+}
+
+/**
+ * Interseção das janelas informadas, da mais genérica para a mais específica
+ * (global → fluxo → etapa); a mais restritiva vence.
+ *
+ * Quando as configurações não têm nenhuma hora em comum, a janela mais
+ * específica prevalece em vez de colapsar em um instante único — colapsar
+ * gerava saltos de quase 24 horas no agendamento.
+ */
 export function mergeWindows(...windows: Array<SendWindow | null>): SendWindow | null {
   let result: SendWindow | null = null;
   for (const window of windows) {
@@ -57,14 +85,7 @@ export function mergeWindows(...windows: Array<SendWindow | null>): SendWindow |
       result = { ...window };
       continue;
     }
-    result = {
-      startMinutes: Math.max(result.startMinutes, window.startMinutes),
-      endMinutes: Math.min(result.endMinutes, window.endMinutes),
-    };
-  }
-  if (result && result.endMinutes <= result.startMinutes) {
-    // Configuração conflitante: colapsa em um instante único no início.
-    return { startMinutes: result.startMinutes, endMinutes: result.startMinutes + 1 };
+    result = overlap(result, window) ?? { ...window };
   }
   return result;
 }
@@ -123,6 +144,15 @@ export function zonedMinutesOfDay(date: Date, timezone: string): number {
   return parts.hour * 60 + parts.minute;
 }
 
+/** Minutos do dia estão dentro da janela (considerando a virada do dia). */
+function minutesInside(minutes: number, window: SendWindow): boolean {
+  for (const shift of [0, DAY_MINUTES, -DAY_MINUTES]) {
+    const value = minutes + shift;
+    if (value >= window.startMinutes && value < window.endMinutes) return true;
+  }
+  return false;
+}
+
 /**
  * Move o instante para o próximo horário permitido pela janela, no fuso do
  * usuário. Se já estiver dentro da janela, devolve o próprio instante.
@@ -132,28 +162,21 @@ export function nextAllowedInstant(date: Date, window: SendWindow | null, timezo
   const zone = safeTimezone(timezone);
 
   let current = date;
-  // Duas passagens bastam: a primeira alinha o horário, a segunda corrige
-  // eventual mudança de offset (horário de verão) causada pelo salto.
+  // Três passagens: a primeira alinha o horário, as demais corrigem eventual
+  // mudança de offset (horário de verão) causada pelo salto.
   for (let pass = 0; pass < 3; pass += 1) {
     const minutes = zonedMinutesOfDay(current, zone);
-    if (minutes < window.startMinutes) {
-      current = new Date(current.getTime() + (window.startMinutes - minutes) * MINUTE_MS);
-      continue;
-    }
-    if (minutes >= window.endMinutes) {
-      const delta = DAY_MINUTES - minutes + window.startMinutes;
-      current = new Date(current.getTime() + delta * MINUTE_MS);
-      continue;
-    }
-    return current;
+    if (minutesInside(minutes, window)) return current;
+    // Menor avanço (em minutos) até o próximo início de janela.
+    const delta = (((window.startMinutes - minutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+    current = new Date(current.getTime() + (delta === 0 ? DAY_MINUTES : delta) * MINUTE_MS);
   }
   return current;
 }
 
 export function isWithinWindow(date: Date, window: SendWindow | null, timezone: string): boolean {
   if (!window) return true;
-  const minutes = zonedMinutesOfDay(date, safeTimezone(timezone));
-  return minutes >= window.startMinutes && minutes < window.endMinutes;
+  return minutesInside(zonedMinutesOfDay(date, safeTimezone(timezone)), window);
 }
 
 export function delayToMinutes(value: number, unit: DelayUnit): number {

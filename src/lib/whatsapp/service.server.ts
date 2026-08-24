@@ -556,15 +556,39 @@ async function conversationForSend(userId: string, conversationId: string) {
   return { db, connection, creds, conversation };
 }
 
+/** Origem do envio: distingue conversa do vendedor de mensagem automática. */
+export type SendSource = "manual" | "automation";
+
+/**
+ * Credencial recusada pelo provedor: a conexão é marcada como `error` para que
+ * o motor de follow-up reagende as ações em vez de queimar tentativas.
+ */
+async function noteSendFailure(
+  db: Client,
+  connectionId: string,
+  error: unknown,
+): Promise<void> {
+  const status = error instanceof ProviderError ? error.statusCode : null;
+  if (status !== 401 && status !== 403) return;
+  await db
+    .from("whatsapp_connections")
+    .update({
+      status: "error",
+      last_error: "Credenciais da UAZAPI recusadas (401). Atualize o token da instância.",
+    })
+    .eq("id", connectionId);
+}
+
 export async function sendText(
   userId: string,
-  input: { conversationId: string; text: string },
+  input: { conversationId: string; text: string; source?: SendSource | undefined },
 ): Promise<{ messageId: string }> {
   const { db, connection, creds, conversation } = await conversationForSend(
     userId,
     input.conversationId,
   );
   const provider = await getWhatsAppProvider(connection.provider);
+  const source: SendSource = input.source ?? "manual";
 
   const { data: pending, error: insertError } = await db
     .from("messages")
@@ -577,6 +601,7 @@ export async function sendText(
       message_type: "text",
       text_content: input.text,
       status: "pending",
+      metadata: { source },
     })
     .select("id")
     .single();
@@ -599,11 +624,12 @@ export async function sendText(
       incrementUnread: false,
     });
 
-    waLog.info("message_sent", { connection_id: connection.id, type: "text" });
+    waLog.info("message_sent", { connection_id: connection.id, type: "text", source });
     return { messageId: pending.id };
   } catch (error) {
     await db.from("messages").update({ status: "failed" }).eq("id", pending.id);
-    waLog.error("message_send_failed", { connection_id: connection.id, type: "text" });
+    waLog.error("message_send_failed", { connection_id: connection.id, type: "text", source });
+    await noteSendFailure(db, connection.id, error);
     throw new Error(userFacingProviderError(error));
   }
 }
@@ -617,6 +643,7 @@ export async function sendMedia(
     mimeType: string;
     filename: string;
     caption: string | null;
+    source?: SendSource | undefined;
   },
 ): Promise<{ messageId: string }> {
   const { db, connection, creds, conversation } = await conversationForSend(
@@ -624,6 +651,7 @@ export async function sendMedia(
     input.conversationId,
   );
   const provider = await getWhatsAppProvider(connection.provider);
+  const source: SendSource = input.source ?? "manual";
 
   const bytes = Uint8Array.from(atob(input.base64), (char) => char.charCodeAt(0));
   const path = `${userId}/${conversation.id}/${crypto.randomUUID()}-${input.filename}`;
@@ -650,6 +678,7 @@ export async function sendMedia(
       media_mime_type: input.mimeType,
       media_filename: input.filename,
       status: "pending",
+      metadata: { source },
     })
     .select("id")
     .single();
@@ -678,11 +707,16 @@ export async function sendMedia(
       incrementUnread: false,
     });
 
-    waLog.info("message_sent", { connection_id: connection.id, type: input.type });
+    waLog.info("message_sent", { connection_id: connection.id, type: input.type, source });
     return { messageId: pending.id };
   } catch (error) {
     await db.from("messages").update({ status: "failed" }).eq("id", pending.id);
-    waLog.error("message_send_failed", { connection_id: connection.id, type: input.type });
+    waLog.error("message_send_failed", {
+      connection_id: connection.id,
+      type: input.type,
+      source,
+    });
+    await noteSendFailure(db, connection.id, error);
     throw new Error(userFacingProviderError(error));
   }
 }

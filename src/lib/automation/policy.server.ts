@@ -100,6 +100,24 @@ function inMinutes(now: Date, minutes: number): string {
   return new Date(now.getTime() + minutes * 60_000).toISOString();
 }
 
+/**
+ * Adiamento ancorado no evento que causou o bloqueio (última mensagem, último
+ * envio automático), e não em `now`. Sem essa âncora, cada passagem do executor
+ * empurrava a ação por um novo período inteiro, adiando-a indefinidamente.
+ */
+function untilAfter(
+  now: Date,
+  anchorIso: string | null | undefined,
+  minutes: number,
+): string {
+  const anchor = anchorIso ? new Date(anchorIso).getTime() : Number.NaN;
+  const target = Number.isNaN(anchor)
+    ? now.getTime() + minutes * 60_000
+    : anchor + minutes * 60_000;
+  // Nunca no passado: o executor precisa de um instante futuro para reagendar.
+  return new Date(Math.max(target, now.getTime() + 60_000)).toISOString();
+}
+
 function digitsOnly(value: string | null | undefined): string {
   return (value ?? "").replace(/\D/g, "");
 }
@@ -263,7 +281,9 @@ export async function evaluatePolicy(
       "active_conversation",
       "O cliente está conversando agora; a automação não interrompe.",
       "deferred",
-      inMinutes(now, settings.active_conversation_minutes),
+      // Ancorado na última mensagem do cliente: o adiamento não cresce a cada
+      // verificação do executor.
+      untilAfter(now, liveInbound.sent_at, settings.active_conversation_minutes),
     );
   }
   rules.push(pass("active_conversation"));
@@ -272,22 +292,25 @@ export async function evaluatePolicy(
   const manualSince = minutesAgo(now, settings.manual_message_cooldown_minutes);
   const { data: manual } = await db
     .from("messages")
-    .select("id, sent_at, metadata")
+    .select("id, sent_at, status, metadata")
     .eq("conversation_id", request.conversationId)
     .eq("direction", "outbound")
     .gte("sent_at", manualSince)
     .order("sent_at", { ascending: false })
-    .limit(10);
+    .limit(20);
   const manualHuman = (manual ?? []).find((row) => {
     const meta = (row.metadata ?? {}) as Record<string, unknown>;
-    return meta["source"] !== "automation";
+    // Mensagens da própria automação não são "conversa do vendedor", e uma
+    // mensagem que falhou nunca chegou ao cliente.
+    if (meta["source"] === "automation") return false;
+    return row.status !== "failed";
   });
   if (manualHuman) {
     return block(
       "manual_reply_cooldown",
       "Você já falou com este cliente há pouco tempo.",
       "deferred",
-      inMinutes(now, settings.manual_message_cooldown_minutes),
+      untilAfter(now, manualHuman.sent_at, settings.manual_message_cooldown_minutes),
     );
   }
   rules.push(pass("manual_reply_cooldown"));
@@ -308,7 +331,7 @@ export async function evaluatePolicy(
       "conversation_cooldown",
       "Uma automação já foi enviada nesta conversa há pouco tempo.",
       "deferred",
-      inMinutes(now, settings.conversation_cooldown_minutes),
+      untilAfter(now, recentAutomation.executed_at, settings.conversation_cooldown_minutes),
     );
   }
   rules.push(pass("conversation_cooldown"));
