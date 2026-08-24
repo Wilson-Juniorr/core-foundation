@@ -58,10 +58,12 @@ export function ContactFormDialog({
   open,
   onOpenChange,
   contact = null,
+  initialForm = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contact?: Contact | null;
+  initialForm?: Partial<FormState> | null;
 }) {
   const queryClient = useQueryClient();
   const create = useServerFn(createContact);
@@ -70,8 +72,9 @@ export function ContactFormDialog({
   const [reading, setReading] = useState(false);
 
   useEffect(() => {
-    if (open) setForm(toFormState(contact));
-  }, [open, contact]);
+    if (!open) return;
+    setForm({ ...toFormState(contact), ...(initialForm ?? {}) });
+  }, [open, contact, initialForm]);
 
   const mutation = useMutation({
     mutationFn: async (values: FormState) => {
