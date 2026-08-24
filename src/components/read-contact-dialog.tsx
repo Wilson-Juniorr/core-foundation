@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { extractContactFromImages } from "@/lib/crm.functions";
+import { extractionIsWeak, parseContactFromText } from "@/lib/crm/ocr-parse";
 
 export type ReadResult = {
   name: string;
