@@ -6,11 +6,13 @@ import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ContactFormDialog } from "@/components/contact-form-dialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { ReadContactDialog } from "@/components/read-contact-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Camera, Plus, Search } from "lucide-react";
 import { contactsQuery } from "@/lib/crm.queries";
 import { formatPhone } from "@/lib/domain/phone";
 
