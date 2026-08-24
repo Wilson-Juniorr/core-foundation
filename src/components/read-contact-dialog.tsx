@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { extractContactFromImages } from "@/lib/crm.functions";
+import { extractionIsWeak, parseContactFromText } from "@/lib/crm/ocr-parse";
 
 export type ReadResult = {
   name: string;
@@ -45,6 +46,8 @@ export function ReadContactDialog({
   const read = useServerFn(extractContactFromImages);
   const inputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>([]);
+  const [localBusy, setLocalBusy] = useState(false);
+  const [needsAi, setNeedsAi] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () => read({ data: { images } }),
@@ -66,6 +69,51 @@ export function ReadContactDialog({
     },
   });
 
+  async function readLocally() {
+    setLocalBusy(true);
+    setNeedsAi(false);
+    try {
+      const { default: Tesseract } = await import("tesseract.js");
+      let text = "";
+      for (const image of images) {
+        const { data } = await Tesseract.recognize(image, "por");
+        text += `\n${data.text}`;
+      }
+      const parsed = parseContactFromText(text);
+      if (extractionIsWeak(parsed)) {
+        setNeedsAi(true);
+        toast.warning(
+          "A leitura gratuita não encontrou telefone nem e-mail. Você pode revisar manualmente ou usar a IA.",
+        );
+        onExtracted({
+          name: parsed.name,
+          phone: parsed.phone,
+          email: parsed.email,
+          source: "Print",
+          notes: parsed.notes,
+          opportunity_title: "",
+          confidence: 0.3,
+        });
+        return;
+      }
+      onExtracted({
+        name: parsed.name,
+        phone: parsed.phone,
+        email: parsed.email,
+        source: "Print",
+        notes: parsed.notes,
+        opportunity_title: "",
+        confidence: 0.8,
+      });
+      onOpenChange(false);
+    } catch {
+      setNeedsAi(true);
+      toast.error("Falha na leitura local. Tente novamente ou use a leitura com IA.");
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
   async function addFiles(list: FileList | null) {
     if (!list) return;
     const files = Array.from(list).filter((file) => file.type.startsWith("image/"));
@@ -75,7 +123,9 @@ export function ReadContactDialog({
     }
     const urls = await Promise.all(files.slice(0, 3).map(fileToDataUrl));
     setImages((prev) => [...prev, ...urls].slice(0, 3));
+    setNeedsAi(false);
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,24 +188,54 @@ export function ReadContactDialog({
             </div>
           ) : null}
 
-          <Button
-            type="button"
-            className="w-full"
-            disabled={images.length === 0 || mutation.isPending}
-            onClick={() => mutation.mutate()}
-          >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Lendo print…
-              </>
-            ) : (
-              <>
-                <ImagePlus className="size-4" />
-                Ler print e preencher cadastro
-              </>
-            )}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              className="w-full"
+              disabled={images.length === 0 || localBusy || mutation.isPending}
+              onClick={() => void readLocally()}
+            >
+              {localBusy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Lendo no seu aparelho…
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="size-4" />
+                  Ler print (grátis, sem créditos)
+                </>
+              )}
+            </Button>
+
+            {needsAi ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={images.length === 0 || mutation.isPending}
+                onClick={() => mutation.mutate()}
+              >
+                {mutation.isPending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Lendo com IA…
+                  </>
+                ) : (
+                  <>
+                    <ScanText className="size-4" />
+                    Tentar leitura com IA (usa créditos)
+                  </>
+                )}
+              </Button>
+            ) : null}
+
+            <p className="text-center text-xs text-muted-foreground">
+              A leitura roda no seu aparelho e não gasta créditos. A IA fica como reserva quando o
+              print estiver difícil de ler.
+            </p>
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>
