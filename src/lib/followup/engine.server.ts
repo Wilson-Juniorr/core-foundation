@@ -356,7 +356,8 @@ export async function startFlow(
       user_id: userId,
       flow_id: flow.id,
       contact_id: input.contactId,
-      conversation_id: input.conversationId,
+      conversation_id: conversationId,
+
       opportunity_id: input.opportunityId ?? null,
       status: "active",
       started_at: now.toISOString(),
@@ -388,7 +389,8 @@ export async function startFlow(
       flow_run_id: run.id,
       flow_id: flow.id,
       flow_name: flow.name,
-      conversation_id: input.conversationId,
+      conversation_id: conversationId,
+
       first_action_at: action?.scheduled_for ?? null,
       step_count: steps.length,
     },
