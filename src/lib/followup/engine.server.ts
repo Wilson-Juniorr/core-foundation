@@ -291,12 +291,35 @@ export async function findLiveRun(db: Admin, conversationId: string) {
   return data;
 }
 
+/**
+ * Bloqueios reais antes de iniciar: preferências do cliente. As demais regras
+ * (janela, cooldown, modo teste, limites) seguem no Policy Engine no envio.
+ */
+async function assertContactAllowsAutomation(db: Admin, contactId: string): Promise<void> {
+  const { data } = await db
+    .from("contact_preferences")
+    .select("automation_allowed, whatsapp_allowed, do_not_contact")
+    .eq("contact_id", contactId)
+    .maybeSingle();
+  if (!data) return;
+  if (data.do_not_contact) {
+    throw new FollowupError("Este cliente pediu para não ser contatado.", "blocked");
+  }
+  if (!data.automation_allowed) {
+    throw new FollowupError("Automação desativada para este cliente.", "blocked");
+  }
+  if (!data.whatsapp_allowed) {
+    throw new FollowupError("Envio por WhatsApp desativado para este cliente.", "blocked");
+  }
+}
+
 export async function startFlow(
   userId: string,
   input: {
     flowId: string;
     contactId: string;
-    conversationId: string;
+    /** Opcional: quando ausente, a conversa é localizada/criada pelo telefone. */
+    conversationId?: string | null | undefined;
     opportunityId?: string | null | undefined;
     replaceExisting?: boolean | undefined;
   },
@@ -305,13 +328,24 @@ export async function startFlow(
   const { flow, steps } = await loadFlowWithSteps(db, userId, input.flowId);
   if (!flow.is_active) throw new FollowupError("Este fluxo está desativado.", "flow_inactive");
 
-  const existing = await findLiveRun(db, input.conversationId);
+  await assertContactAllowsAutomation(db, input.contactId);
+
+  // Cliente cadastrado manualmente: localiza, importa ou cria a conversa.
+  let conversationId = input.conversationId ?? null;
+  if (!conversationId) {
+    const { ensureConversationForContact } = await import("@/lib/whatsapp/link.server");
+    const resolution = await ensureConversationForContact(userId, input.contactId);
+    conversationId = resolution.conversationId;
+  }
+
+  const existing = await findLiveRun(db, conversationId);
   if (existing) {
     if (!input.replaceExisting) {
       throw new FollowupError("Este cliente já possui um acompanhamento ativo.", "run_exists");
     }
     await cancelRun(userId, existing.id, "replaced");
   }
+
 
   const settings = await loadUserSettings(db, userId);
   const now = new Date();
