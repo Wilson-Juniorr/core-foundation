@@ -144,6 +144,15 @@ export function zonedMinutesOfDay(date: Date, timezone: string): number {
   return parts.hour * 60 + parts.minute;
 }
 
+/** Minutos do dia estão dentro da janela (considerando a virada do dia). */
+function minutesInside(minutes: number, window: SendWindow): boolean {
+  for (const shift of [0, DAY_MINUTES, -DAY_MINUTES]) {
+    const value = minutes + shift;
+    if (value >= window.startMinutes && value < window.endMinutes) return true;
+  }
+  return false;
+}
+
 /**
  * Move o instante para o próximo horário permitido pela janela, no fuso do
  * usuário. Se já estiver dentro da janela, devolve o próprio instante.
@@ -153,28 +162,21 @@ export function nextAllowedInstant(date: Date, window: SendWindow | null, timezo
   const zone = safeTimezone(timezone);
 
   let current = date;
-  // Duas passagens bastam: a primeira alinha o horário, a segunda corrige
-  // eventual mudança de offset (horário de verão) causada pelo salto.
+  // Três passagens: a primeira alinha o horário, as demais corrigem eventual
+  // mudança de offset (horário de verão) causada pelo salto.
   for (let pass = 0; pass < 3; pass += 1) {
     const minutes = zonedMinutesOfDay(current, zone);
-    if (minutes < window.startMinutes) {
-      current = new Date(current.getTime() + (window.startMinutes - minutes) * MINUTE_MS);
-      continue;
-    }
-    if (minutes >= window.endMinutes) {
-      const delta = DAY_MINUTES - minutes + window.startMinutes;
-      current = new Date(current.getTime() + delta * MINUTE_MS);
-      continue;
-    }
-    return current;
+    if (minutesInside(minutes, window)) return current;
+    // Menor avanço (em minutos) até o próximo início de janela.
+    const delta = (((window.startMinutes - minutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
+    current = new Date(current.getTime() + (delta === 0 ? DAY_MINUTES : delta) * MINUTE_MS);
   }
   return current;
 }
 
 export function isWithinWindow(date: Date, window: SendWindow | null, timezone: string): boolean {
   if (!window) return true;
-  const minutes = zonedMinutesOfDay(date, safeTimezone(timezone));
-  return minutes >= window.startMinutes && minutes < window.endMinutes;
+  return minutesInside(zonedMinutesOfDay(date, safeTimezone(timezone)), window);
 }
 
 export function delayToMinutes(value: number, unit: DelayUnit): number {
