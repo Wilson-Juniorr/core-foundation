@@ -11,6 +11,11 @@
 
 export type DelayUnit = "minutes" | "hours" | "days";
 
+/**
+ * Janela permitida em minutos desde a meia-noite local.
+ * `endMinutes` pode passar de 1440 quando a janela cruza a meia-noite
+ * (ex.: 20:45 → 00:50 vira 1245 → 1490).
+ */
 export type SendWindow = { startMinutes: number; endMinutes: number };
 
 export const DEFAULT_TIMEZONE = "America/Sao_Paulo";
