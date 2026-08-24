@@ -124,7 +124,32 @@ function ContactsPage() {
         )}
       </div>
 
-      <ContactFormDialog open={creating} onOpenChange={setCreating} />
+      <ReadContactDialog
+        open={reading}
+        onOpenChange={setReading}
+        onExtracted={(result) => {
+          setReading(false);
+          setPrintContact(result);
+          setCreating(true);
+        }}
+      />
+      <ContactFormDialog
+        open={creating}
+        onOpenChange={setCreating}
+        initialForm={
+          printContact
+            ? {
+                name: printContact.name,
+                phone: printContact.phone,
+                email: printContact.email,
+                source: printContact.source,
+                notes: printContact.notes,
+                opportunity_title: printContact.opportunity_title,
+                create_opportunity: true,
+              }
+            : null
+        }
+      />
     </AppShell>
   );
 }
