@@ -411,49 +411,44 @@ export const uazapiProvider: WhatsAppProvider = {
       method: "POST",
       body: { limit: input.limit },
     });
-
-    const record = asRecord(response);
-    const list = Array.isArray(response)
-      ? response
-      : Array.isArray(record["chats"])
-        ? (record["chats"] as unknown[])
-        : Array.isArray(record["data"])
-          ? (record["data"] as unknown[])
-          : [];
-
-    return list
-      .map((entry) => {
-        const chat = asRecord(entry);
-        // A UAZAPI expõe o JID real em wa_chatid; "id" é apenas o registro interno.
-        const externalChatId = pickString(chat, [
-          "wa_chatid",
-          "chatid",
-          "chatId",
-          "jid",
-          "remoteJid",
-          "id",
-        ]);
-        if (!externalChatId) return null;
-        return {
-          externalChatId,
-          phoneNumber: phoneFromChatId(externalChatId),
-          displayName: pickString(chat, [
-            "wa_name",
-            "wa_contactName",
-            "lead_name",
-            "name",
-            "pushName",
-            "contactName",
-            "subject",
-          ]),
-          lastMessageAt:
-            chat["wa_lastMsgTimestamp"] || chat["lastMessageTime"]
-              ? toIsoTimestamp(chat["wa_lastMsgTimestamp"] ?? chat["lastMessageTime"])
-              : null,
-        } satisfies NormalizedChatSummary;
-      })
-      .filter((chat): chat is NormalizedChatSummary => chat !== null);
+    return normalizeChatList(response);
   },
+
+  /**
+   * Procura no provedor uma conversa já existente para um telefone.
+   * Primeiro tenta o filtro direto por JID; se o painel não aceitar o filtro,
+   * cai para uma varredura das conversas recentes.
+   */
+  async findChatByPhone(creds, input): Promise<NormalizedChatSummary | null> {
+    const digits = toProviderNumber(input.phoneNumber);
+    if (!digits) return null;
+
+    try {
+      const response = await request<unknown>(creds, ENDPOINTS.chats, {
+        method: "POST",
+        body: { operator: "AND", wa_chatid: `${digits}@s.whatsapp.net`, limit: 1 },
+      });
+      const direct = normalizeChatList(response).find(
+        (chat) => toProviderNumber(chat.phoneNumber) === digits,
+      );
+      if (direct) return direct;
+    } catch (error) {
+      waLog.warn("chat_lookup_filter_failed", {
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+    }
+
+    try {
+      const recent = await uazapiProvider.fetchChats(creds, { limit: 200 });
+      return recent.find((chat) => toProviderNumber(chat.phoneNumber) === digits) ?? null;
+    } catch (error) {
+      waLog.warn("chat_lookup_scan_failed", {
+        reason: error instanceof Error ? error.name : "unknown",
+      });
+      return null;
+    }
+  },
+
 
   async fetchChatHistory(creds, input): Promise<NormalizedWhatsAppMessage[]> {
     const response = await request<unknown>(creds, ENDPOINTS.chatHistory, {
