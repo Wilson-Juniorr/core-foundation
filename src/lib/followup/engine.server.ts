@@ -34,12 +34,19 @@ export class FollowupError extends Error {
   constructor(
     message: string,
     public code:
-      "flow_inactive" | "flow_empty" | "run_exists" | "not_found" | "invalid_state" | "window",
+      | "flow_inactive"
+      | "flow_empty"
+      | "run_exists"
+      | "not_found"
+      | "invalid_state"
+      | "window"
+      | "blocked",
   ) {
     super(message);
     this.name = "FollowupError";
   }
 }
+
 
 export async function adminClient(): Promise<Admin> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
