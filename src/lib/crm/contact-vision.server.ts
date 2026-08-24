@@ -3,13 +3,8 @@
  * contatos) e devolve os campos do cliente já normalizados, sem gravar nada.
  * A decisão final é sempre humana — a UI mostra os campos para revisão.
  */
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-import type { Database } from "@/integrations/supabase/types";
 import { completeStructured, estimateCost } from "@/lib/ai/gateway.server";
 import { normalizePhone } from "@/lib/domain/phone";
-
-type Client = SupabaseClient<Database>;
 
 export const VISION_MODEL = "google/gemini-3.7-flash";
 export const VISION_PROMPT_VERSION = "contact-from-image@1";
@@ -62,7 +57,6 @@ function cleanText(value: unknown, max = 500): string | null {
 }
 
 export async function extractContactFromImages(
-  supabase: Client,
   userId: string,
   images: string[],
 ): Promise<ExtractedContact> {
@@ -89,7 +83,8 @@ export async function extractContactFromImages(
   };
 
   const total = result.usage.total;
-  const { error } = await supabase.from("ai_usage_events").insert({
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("ai_usage_events").insert({
     user_id: userId,
     purpose: "contact_from_image",
     model: result.model,
