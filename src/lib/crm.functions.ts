@@ -5,6 +5,7 @@ import {
   contactArchiveSchema,
   contactInputSchema,
   contactUpdateSchema,
+  contactVisionSchema,
   idSchema,
   listContactsSchema,
   opportunityInputSchema,
@@ -19,6 +20,8 @@ import type {
   PipelineStage,
   TimelineEvent,
 } from "./crm.types";
+import type { ExtractedContact } from "./crm/contact-vision.server";
+
 
 export const listContacts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
