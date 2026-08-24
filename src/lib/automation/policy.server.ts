@@ -263,7 +263,9 @@ export async function evaluatePolicy(
       "active_conversation",
       "O cliente está conversando agora; a automação não interrompe.",
       "deferred",
-      inMinutes(now, settings.active_conversation_minutes),
+      // Ancorado na última mensagem do cliente: o adiamento não cresce a cada
+      // verificação do executor.
+      untilAfter(now, liveInbound.sent_at, settings.active_conversation_minutes),
     );
   }
   rules.push(pass("active_conversation"));
@@ -272,22 +274,25 @@ export async function evaluatePolicy(
   const manualSince = minutesAgo(now, settings.manual_message_cooldown_minutes);
   const { data: manual } = await db
     .from("messages")
-    .select("id, sent_at, metadata")
+    .select("id, sent_at, status, metadata")
     .eq("conversation_id", request.conversationId)
     .eq("direction", "outbound")
     .gte("sent_at", manualSince)
     .order("sent_at", { ascending: false })
-    .limit(10);
+    .limit(20);
   const manualHuman = (manual ?? []).find((row) => {
     const meta = (row.metadata ?? {}) as Record<string, unknown>;
-    return meta["source"] !== "automation";
+    // Mensagens da própria automação não são "conversa do vendedor", e uma
+    // mensagem que falhou nunca chegou ao cliente.
+    if (meta["source"] === "automation") return false;
+    return row.status !== "failed";
   });
   if (manualHuman) {
     return block(
       "manual_reply_cooldown",
       "Você já falou com este cliente há pouco tempo.",
       "deferred",
-      inMinutes(now, settings.manual_message_cooldown_minutes),
+      untilAfter(now, manualHuman.sent_at, settings.manual_message_cooldown_minutes),
     );
   }
   rules.push(pass("manual_reply_cooldown"));
@@ -308,7 +313,7 @@ export async function evaluatePolicy(
       "conversation_cooldown",
       "Uma automação já foi enviada nesta conversa há pouco tempo.",
       "deferred",
-      inMinutes(now, settings.conversation_cooldown_minutes),
+      untilAfter(now, recentAutomation.executed_at, settings.conversation_cooldown_minutes),
     );
   }
   rules.push(pass("conversation_cooldown"));
