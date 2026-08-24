@@ -105,11 +105,7 @@ function inMinutes(now: Date, minutes: number): string {
  * envio automático), e não em `now`. Sem essa âncora, cada passagem do executor
  * empurrava a ação por um novo período inteiro, adiando-a indefinidamente.
  */
-function untilAfter(
-  now: Date,
-  anchorIso: string | null | undefined,
-  minutes: number,
-): string {
+function untilAfter(now: Date, anchorIso: string | null | undefined, minutes: number): string {
   const anchor = anchorIso ? new Date(anchorIso).getTime() : Number.NaN;
   const target = Number.isNaN(anchor)
     ? now.getTime() + minutes * 60_000

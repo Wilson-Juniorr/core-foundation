@@ -26,7 +26,6 @@ import { flowPreviewQuery, flowsQuery, followupKeys } from "@/lib/followup.queri
 import { ACTION_TYPE_LABELS } from "@/lib/followup/labels";
 import { isSendablePhone } from "@/lib/domain/phone";
 
-
 export function StartFollowupDialog({
   open,
   onOpenChange,
@@ -154,7 +153,6 @@ export function StartFollowupDialog({
             onClick={() => startMutation.mutate()}
             disabled={!flowId || !canStart || startMutation.isPending}
           >
-
             {startMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Iniciar
           </Button>

@@ -36,7 +36,6 @@ export function FollowupPanel({
   opportunityId?: string | null;
   compact?: boolean;
 }) {
-
   const queryClient = useQueryClient();
   const [starting, setStarting] = useState(false);
   const [scheduling, setScheduling] = useState(false);
