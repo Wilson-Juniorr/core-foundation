@@ -20,7 +20,7 @@ export function MediaPreview({ message }: { message: ConversationMessage }) {
           src={url}
           alt={message.media_filename ?? "Imagem recebida no WhatsApp"}
           loading="lazy"
-          className="max-h-64 w-full rounded-md object-cover"
+          className="max-h-64 w-full rounded-md object-contain"
         />
       </a>
     );
