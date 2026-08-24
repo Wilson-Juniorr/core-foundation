@@ -77,9 +77,7 @@ export function ConversationList({
                     {conversation.last_message_preview ?? "Sem mensagens"}
                   </span>
                   {conversation.last_message_at && (
-                    <span className="shrink-0">
-                      {formatRelative(conversation.last_message_at)}
-                    </span>
+                    <span className="shrink-0">{formatRelative(conversation.last_message_at)}</span>
                   )}
                 </span>
                 {!conversation.contact_id && (
