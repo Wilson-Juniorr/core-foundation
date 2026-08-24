@@ -188,6 +188,41 @@ export function ContactFormDialog({
             />
           </div>
 
+          {!contact && (
+            <div className="space-y-3 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label htmlFor="create-opportunity" className="text-sm font-medium">
+                    Criar no Pipeline
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cadastra e já cria a oportunidade na primeira etapa.
+                  </p>
+                </div>
+                <Switch
+                  id="create-opportunity"
+                  checked={form.create_opportunity}
+                  onCheckedChange={(value) =>
+                    setForm({ ...form, create_opportunity: value })
+                  }
+                />
+              </div>
+              {form.create_opportunity && (
+                <div className="space-y-2">
+                  <Label htmlFor="opportunity-title">Título da oportunidade</Label>
+                  <Input
+                    id="opportunity-title"
+                    placeholder={form.name ? `${form.name} — Novo negócio` : "Novo negócio"}
+                    value={form.opportunity_title}
+                    onChange={(event) =>
+                      setForm({ ...form, opportunity_title: event.target.value })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
