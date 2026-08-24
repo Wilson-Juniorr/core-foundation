@@ -49,6 +49,17 @@ export function toProviderNumber(value: string | null | undefined): string | nul
 }
 
 /**
+ * Um número só é utilizável no WhatsApp quando tem tamanho plausível de E.164
+ * (país + DDD + assinante). Evita tentar enviar para dígitos incompletos.
+ */
+export function isSendablePhone(value: string | null | undefined): boolean {
+  const digits = toProviderNumber(value);
+  if (!digits) return false;
+  return digits.length >= 10 && digits.length <= 15;
+}
+
+
+/**
  * Extrai o telefone de um identificador de chat do WhatsApp
  * (ex.: 5511999999999@s.whatsapp.net, 5511999999999@c.us).
  * Grupos e broadcasts não possuem telefone individual.

@@ -25,14 +25,18 @@ import { ACTION_TYPE_LABELS, RUN_STATUS_LABELS, stopReasonLabel } from "@/lib/fo
 export function FollowupPanel({
   contactId,
   conversationId,
+  contactPhone,
   opportunityId,
   compact = false,
 }: {
   contactId: string;
   conversationId: string | null;
+  /** Telefone do cliente: permite iniciar sem conversa existente. */
+  contactPhone?: string | null;
   opportunityId?: string | null;
   compact?: boolean;
 }) {
+
   const queryClient = useQueryClient();
   const [starting, setStarting] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -199,6 +203,8 @@ export function FollowupPanel({
         onOpenChange={setStarting}
         contactId={contactId}
         conversationId={conversationId}
+        contactPhone={contactPhone ?? null}
+
         opportunityId={opportunityId ?? null}
         hasActiveRun={Boolean(run)}
       />

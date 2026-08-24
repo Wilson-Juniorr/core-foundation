@@ -24,12 +24,15 @@ import { formatDateTime } from "@/lib/domain/datetime";
 import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowPreviewQuery, flowsQuery, followupKeys } from "@/lib/followup.queries";
 import { ACTION_TYPE_LABELS } from "@/lib/followup/labels";
+import { isSendablePhone } from "@/lib/domain/phone";
+
 
 export function StartFollowupDialog({
   open,
   onOpenChange,
   contactId,
   conversationId,
+  contactPhone,
   opportunityId,
   hasActiveRun,
 }: {
@@ -37,6 +40,8 @@ export function StartFollowupDialog({
   onOpenChange: (open: boolean) => void;
   contactId: string;
   conversationId: string | null;
+  /** Telefone do cliente: permite iniciar antes da primeira conversa. */
+  contactPhone?: string | null;
   opportunityId?: string | null;
   hasActiveRun: boolean;
 }) {
@@ -44,6 +49,10 @@ export function StartFollowupDialog({
   const flows = useQuery(flowsQuery());
   const [flowId, setFlowId] = useState<string | null>(null);
   const preview = useQuery({ ...flowPreviewQuery(flowId), enabled: open && Boolean(flowId) });
+
+  const phoneUsable = isSendablePhone(contactPhone);
+  const willCreateConversation = !conversationId && phoneUsable;
+  const canStart = Boolean(conversationId) || phoneUsable;
 
   useEffect(() => {
     if (!open) setFlowId(null);
@@ -55,7 +64,7 @@ export function StartFollowupDialog({
         data: {
           flowId: flowId!,
           contactId,
-          conversationId: conversationId!,
+          conversationId: conversationId ?? null,
           opportunityId: opportunityId ?? null,
           replaceExisting: hasActiveRun,
         },
@@ -77,13 +86,13 @@ export function StartFollowupDialog({
         <DialogHeader>
           <DialogTitle>Iniciar follow-up</DialogTitle>
           <DialogDescription>
-            {conversationId
+            {canStart
               ? "Escolha o fluxo. As mensagens são enviadas automaticamente e param quando o cliente responder."
-              : "Este cliente ainda não tem conversa de WhatsApp vinculada."}
+              : "Este cliente não tem telefone válido cadastrado. Adicione o número com DDD para iniciar pelo WhatsApp."}
           </DialogDescription>
         </DialogHeader>
 
-        {conversationId && (
+        {canStart && (
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Fluxo</Label>
@@ -105,6 +114,12 @@ export function StartFollowupDialog({
                 </p>
               )}
             </div>
+
+            {willCreateConversation && (
+              <p className="text-muted-foreground text-xs">
+                Uma nova conversa será iniciada com {contactPhone} no primeiro envio.
+              </p>
+            )}
 
             {preview.data && (
               <div className="bg-muted/50 space-y-1 rounded-md border p-3 text-sm">
@@ -137,8 +152,9 @@ export function StartFollowupDialog({
           </Button>
           <Button
             onClick={() => startMutation.mutate()}
-            disabled={!flowId || !conversationId || startMutation.isPending}
+            disabled={!flowId || !canStart || startMutation.isPending}
           >
+
             {startMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Iniciar
           </Button>

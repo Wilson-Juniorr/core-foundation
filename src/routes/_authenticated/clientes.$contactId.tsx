@@ -190,7 +190,12 @@ function ContactDetailPage() {
           conversationId={conversation.data?.id ?? null}
         />
 
-        <FollowupPanel contactId={contactId} conversationId={conversation.data?.id ?? null} />
+        <FollowupPanel
+          contactId={contactId}
+          conversationId={conversation.data?.id ?? null}
+          contactPhone={contact.phone}
+        />
+
 
         <section className="space-y-4">
           <h2 className="text-base font-semibold">Oportunidades</h2>

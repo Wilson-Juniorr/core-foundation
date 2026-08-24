@@ -150,7 +150,9 @@ export const flowIdSchema = z.object({ flowId: z.string().uuid() });
 export const startFlowSchema = z.object({
   flowId: z.string().uuid(),
   contactId: z.string().uuid(),
-  conversationId: z.string().uuid(),
+  // Opcional: sem conversa, o servidor resolve/cria pelo telefone do cliente.
+  conversationId: z.string().uuid().optional().nullable(),
+
   opportunityId: z.string().uuid().optional().nullable(),
   replaceExisting: z.boolean().optional().default(false),
 });
