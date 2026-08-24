@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Camera } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -14,7 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { ReadContactDialog } from "@/components/read-contact-dialog";
 import { createContact, updateContact } from "@/lib/crm.functions";
 import type { Contact } from "@/lib/crm.types";
 
@@ -24,9 +27,19 @@ type FormState = {
   email: string;
   source: string;
   notes: string;
+  create_opportunity: boolean;
+  opportunity_title: string;
 };
 
-const EMPTY_FORM: FormState = { name: "", phone: "", email: "", source: "", notes: "" };
+const EMPTY_FORM: FormState = {
+  name: "",
+  phone: "",
+  email: "",
+  source: "",
+  notes: "",
+  create_opportunity: true,
+  opportunity_title: "",
+};
 
 function toFormState(contact: Contact | null): FormState {
   if (!contact) return EMPTY_FORM;
@@ -36,6 +49,8 @@ function toFormState(contact: Contact | null): FormState {
     email: contact.email ?? "",
     source: contact.source ?? "",
     notes: contact.notes ?? "",
+    create_opportunity: false,
+    opportunity_title: "",
   };
 }
 
