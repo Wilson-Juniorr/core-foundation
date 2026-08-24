@@ -678,6 +678,7 @@ export async function sendMedia(
       media_mime_type: input.mimeType,
       media_filename: input.filename,
       status: "pending",
+      metadata: { source },
     })
     .select("id")
     .single();
