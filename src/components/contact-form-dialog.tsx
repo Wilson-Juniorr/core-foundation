@@ -233,6 +233,23 @@ export function ContactFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      <ReadContactDialog
+        open={reading}
+        onOpenChange={setReading}
+        onExtracted={(result) => {
+          setForm({
+            ...form,
+            name: result.name,
+            phone: result.phone,
+            email: result.email,
+            source: result.source,
+            notes: result.notes,
+            opportunity_title: result.opportunity_title,
+            create_opportunity: true,
+          });
+          toast.success("Print lido! Revise os dados antes de salvar.");
+        }}
+      />
     </Dialog>
   );
 }
