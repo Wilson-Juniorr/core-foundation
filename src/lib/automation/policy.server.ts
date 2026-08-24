@@ -100,6 +100,24 @@ function inMinutes(now: Date, minutes: number): string {
   return new Date(now.getTime() + minutes * 60_000).toISOString();
 }
 
+/**
+ * Adiamento ancorado no evento que causou o bloqueio (última mensagem, último
+ * envio automático), e não em `now`. Sem essa âncora, cada passagem do executor
+ * empurrava a ação por um novo período inteiro, adiando-a indefinidamente.
+ */
+function untilAfter(
+  now: Date,
+  anchorIso: string | null | undefined,
+  minutes: number,
+): string {
+  const anchor = anchorIso ? new Date(anchorIso).getTime() : Number.NaN;
+  const target = Number.isNaN(anchor)
+    ? now.getTime() + minutes * 60_000
+    : anchor + minutes * 60_000;
+  // Nunca no passado: o executor precisa de um instante futuro para reagendar.
+  return new Date(Math.max(target, now.getTime() + 60_000)).toISOString();
+}
+
 function digitsOnly(value: string | null | undefined): string {
   return (value ?? "").replace(/\D/g, "");
 }
