@@ -45,6 +45,8 @@ export function ReadContactDialog({
   const read = useServerFn(extractContactFromImages);
   const inputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<string[]>([]);
+  const [localBusy, setLocalBusy] = useState(false);
+  const [needsAi, setNeedsAi] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () => read({ data: { images } }),
@@ -66,6 +68,51 @@ export function ReadContactDialog({
     },
   });
 
+  async function readLocally() {
+    setLocalBusy(true);
+    setNeedsAi(false);
+    try {
+      const { default: Tesseract } = await import("tesseract.js");
+      let text = "";
+      for (const image of images) {
+        const { data } = await Tesseract.recognize(image, "por");
+        text += `\n${data.text}`;
+      }
+      const parsed = parseContactFromText(text);
+      if (extractionIsWeak(parsed)) {
+        setNeedsAi(true);
+        toast.warning(
+          "A leitura gratuita não encontrou telefone nem e-mail. Você pode revisar manualmente ou usar a IA.",
+        );
+        onExtracted({
+          name: parsed.name,
+          phone: parsed.phone,
+          email: parsed.email,
+          source: "Print",
+          notes: parsed.notes,
+          opportunity_title: "",
+          confidence: 0.3,
+        });
+        return;
+      }
+      onExtracted({
+        name: parsed.name,
+        phone: parsed.phone,
+        email: parsed.email,
+        source: "Print",
+        notes: parsed.notes,
+        opportunity_title: "",
+        confidence: 0.8,
+      });
+      onOpenChange(false);
+    } catch {
+      setNeedsAi(true);
+      toast.error("Falha na leitura local. Tente novamente ou use a leitura com IA.");
+    } finally {
+      setLocalBusy(false);
+    }
+  }
+
   async function addFiles(list: FileList | null) {
     if (!list) return;
     const files = Array.from(list).filter((file) => file.type.startsWith("image/"));
@@ -75,7 +122,9 @@ export function ReadContactDialog({
     }
     const urls = await Promise.all(files.slice(0, 3).map(fileToDataUrl));
     setImages((prev) => [...prev, ...urls].slice(0, 3));
+    setNeedsAi(false);
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
