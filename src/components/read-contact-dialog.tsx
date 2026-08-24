@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { extractContactFromImages } from "@/lib/crm.functions";
 
-type ReadResult = {
+export type ReadResult = {
   name: string;
   phone: string;
   email: string;
