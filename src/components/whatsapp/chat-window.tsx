@@ -36,6 +36,8 @@ type Props = {
   detail: ConversationDetail | undefined;
   isLoading: boolean;
   canSend: boolean;
+  /** Volta para a lista de conversas no layout mobile. */
+  onBack?: () => void;
 };
 
 export function ChatWindow({ detail, isLoading, canSend }: Props) {
