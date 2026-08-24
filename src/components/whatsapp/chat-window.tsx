@@ -47,6 +47,7 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   const [generateOpen, setGenerateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const conversationId = detail?.conversation.id ?? null;
   const [older, setOlder] = useState<ConversationMessage[]>([]);
@@ -72,7 +73,9 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   });
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    // Rola apenas a lista de mensagens — não o documento inteiro.
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
   }, [detail?.messages.length, conversationId]);
 
   const invalidate = async () => {
