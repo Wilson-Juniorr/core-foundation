@@ -203,6 +203,8 @@ export function FollowupPanel({
         onOpenChange={setStarting}
         contactId={contactId}
         conversationId={conversationId}
+        contactPhone={contactPhone ?? null}
+
         opportunityId={opportunityId ?? null}
         hasActiveRun={Boolean(run)}
       />
