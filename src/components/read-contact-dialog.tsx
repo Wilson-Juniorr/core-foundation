@@ -183,8 +183,10 @@ export function ReadContactDialog({
             className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-center transition-colors hover:bg-secondary/50"
           >
             <ScanText className="size-6 text-muted-foreground" aria-hidden />
-            <span className="text-sm font-medium">Escolher print ou foto</span>
-            <span className="text-xs text-muted-foreground">PNG, JPG ou WEBP · até 3 imagens</span>
+            <span className="text-sm font-medium">Escolher print ou colar (Ctrl+V)</span>
+            <span className="text-xs text-muted-foreground">
+              PNG, JPG ou WEBP · até 3 imagens · cole direto da área de transferência
+            </span>
           </button>
 
           {images.length > 0 ? (
