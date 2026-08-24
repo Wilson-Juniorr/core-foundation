@@ -267,9 +267,12 @@ export function ReadContactDialog({
                 ) : (
                   <>
                     <ScanText className="size-4" />
-                    Tentar leitura com IA (usa créditos)
+                    {needsAi
+                      ? "Leitura com IA (usa créditos)"
+                      : "Melhorar leitura com IA (usa créditos)"}
                   </>
                 )}
+
               </Button>
             ) : null}
 
