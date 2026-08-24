@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ImagePlus, Loader2, ScanText, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,32 @@ export function ReadContactDialog({
     setImages((prev) => [...prev, ...urls].slice(0, 3));
     setNeedsAi(false);
   }
+
+  useEffect(() => {
+    if (!open) return;
+
+    async function onPaste(event: ClipboardEvent) {
+      const items = Array.from(event.clipboardData?.items ?? []);
+      const files = items
+        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => Boolean(file));
+
+      if (files.length === 0) return;
+      event.preventDefault();
+
+      const urls = await Promise.all(files.slice(0, 3).map(fileToDataUrl));
+      setImages((prev) => [...prev, ...urls].slice(0, 3));
+      setNeedsAi(false);
+      toast.success(files.length > 1 ? "Prints colados!" : "Print colado!");
+    }
+
+    const handler = (event: ClipboardEvent) => void onPaste(event);
+    window.addEventListener("paste", handler);
+    return () => window.removeEventListener("paste", handler);
+  }, [open]);
+
+
 
 
   return (
