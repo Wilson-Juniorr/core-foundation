@@ -24,6 +24,8 @@ import { formatDateTime } from "@/lib/domain/datetime";
 import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowPreviewQuery, flowsQuery, followupKeys } from "@/lib/followup.queries";
 import { ACTION_TYPE_LABELS } from "@/lib/followup/labels";
+import { isSendablePhone } from "@/lib/domain/phone";
+
 
 export function StartFollowupDialog({
   open,
