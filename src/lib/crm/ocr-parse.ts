@@ -28,8 +28,6 @@ const UI_NOISE =
 const NAME_LABEL = /^(nome|cliente|contato|raz[ãa]o social|respons[áa]vel)\s*[:-]\s*/i;
 const PHONE_LABEL = /(telefone|celular|whats\s?app|whats|fone|tel|contato)\s*[:-]?/i;
 
-
-
 /** Correções de confusões clássicas do OCR dentro de sequências numéricas. */
 function fixDigits(value: string): string {
   return value
