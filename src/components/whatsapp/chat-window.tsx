@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Paperclip, Send, Sparkles } from "lucide-react";
+import { ChevronLeft, Loader2, Paperclip, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -36,15 +36,17 @@ type Props = {
   detail: ConversationDetail | undefined;
   isLoading: boolean;
   canSend: boolean;
+  /** Volta para a lista de conversas no layout mobile. */
+  onBack?: () => void;
 };
 
-export function ChatWindow({ detail, isLoading, canSend }: Props) {
+export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const conversationId = detail?.conversation.id ?? null;
   const [older, setOlder] = useState<ConversationMessage[]>([]);
@@ -70,7 +72,9 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
   });
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
+    // Rola apenas a lista de mensagens — não o documento inteiro.
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
   }, [detail?.messages.length, conversationId]);
 
   const invalidate = async () => {
@@ -125,15 +129,26 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
   const sending = textMutation.isPending || mediaMutation.isPending;
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center gap-3 border-b p-4">
-        <div className="min-w-0">
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b p-3 sm:p-4">
+        {onBack ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Voltar para a lista de conversas"
+            onClick={onBack}
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+          </Button>
+        ) : null}
+        <div className="min-w-0 flex-1">
           <h2 className="truncate font-medium">{conversationTitle(conversation)}</h2>
           <p className="text-muted-foreground text-xs">
             {formatPhone(conversation.phone_number) || "Número indisponível"}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {conversation.contact_id ? (
             <Button variant="outline" size="sm" onClick={() => setGenerateOpen(true)}>
               <Sparkles className="mr-2 size-4" />
@@ -170,7 +185,10 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
           Nenhuma mensagem nesta conversa ainda.
         </p>
       ) : (
-        <ul className="flex-1 space-y-2 overflow-y-auto p-4">
+        <ul
+          ref={listRef}
+          className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-4"
+        >
           {hasMore ? (
             <li className="flex justify-center pb-2">
               <Button
@@ -186,12 +204,11 @@ export function ChatWindow({ detail, isLoading, canSend }: Props) {
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
-          <div ref={endRef} />
         </ul>
       )}
 
       <form
-        className="flex items-end gap-2 border-t p-3"
+        className="flex shrink-0 items-end gap-2 border-t p-3"
         onSubmit={(event) => {
           event.preventDefault();
           const value = text.trim();
