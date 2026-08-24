@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Search } from "lucide-react";
+import { Camera, Plus, Search } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { ContactFormDialog } from "@/components/contact-form-dialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { ReadContactDialog, type ReadResult } from "@/components/read-contact-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,8 @@ function ContactsPage() {
   const [search, setSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [printContact, setPrintContact] = useState<ReadResult | null>(null);
   const contacts = useQuery(contactsQuery(search, includeArchived));
 
   return (
@@ -43,10 +46,16 @@ function ContactsPage() {
       title="Clientes"
       description="Todo cliente cadastrado uma única vez, com histórico preservado."
       actions={
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="size-4" />
-          Novo cliente
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setReading(true)}>
+            <Camera className="size-4" />
+            Cadastrar por print
+          </Button>
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="size-4" />
+            Novo cliente
+          </Button>
+        </div>
       }
     >
       <div className="space-y-6">
@@ -115,7 +124,32 @@ function ContactsPage() {
         )}
       </div>
 
-      <ContactFormDialog open={creating} onOpenChange={setCreating} />
+      <ReadContactDialog
+        open={reading}
+        onOpenChange={setReading}
+        onExtracted={(result) => {
+          setReading(false);
+          setPrintContact(result);
+          setCreating(true);
+        }}
+      />
+      <ContactFormDialog
+        open={creating}
+        onOpenChange={setCreating}
+        initialForm={
+          printContact
+            ? {
+                name: printContact.name,
+                phone: printContact.phone,
+                email: printContact.email,
+                source: printContact.source,
+                notes: printContact.notes,
+                opportunity_title: printContact.opportunity_title,
+                create_opportunity: true,
+              }
+            : null
+        }
+      />
     </AppShell>
   );
 }

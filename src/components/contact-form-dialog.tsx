@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Camera } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -14,7 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { ReadContactDialog } from "@/components/read-contact-dialog";
 import { createContact, updateContact } from "@/lib/crm.functions";
 import type { Contact } from "@/lib/crm.types";
 
@@ -24,9 +27,19 @@ type FormState = {
   email: string;
   source: string;
   notes: string;
+  create_opportunity: boolean;
+  opportunity_title: string;
 };
 
-const EMPTY_FORM: FormState = { name: "", phone: "", email: "", source: "", notes: "" };
+const EMPTY_FORM: FormState = {
+  name: "",
+  phone: "",
+  email: "",
+  source: "",
+  notes: "",
+  create_opportunity: true,
+  opportunity_title: "",
+};
 
 function toFormState(contact: Contact | null): FormState {
   if (!contact) return EMPTY_FORM;
@@ -36,6 +49,8 @@ function toFormState(contact: Contact | null): FormState {
     email: contact.email ?? "",
     source: contact.source ?? "",
     notes: contact.notes ?? "",
+    create_opportunity: false,
+    opportunity_title: "",
   };
 }
 
@@ -43,19 +58,23 @@ export function ContactFormDialog({
   open,
   onOpenChange,
   contact = null,
+  initialForm = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contact?: Contact | null;
+  initialForm?: Partial<FormState> | null;
 }) {
   const queryClient = useQueryClient();
   const create = useServerFn(createContact);
   const update = useServerFn(updateContact);
   const [form, setForm] = useState<FormState>(toFormState(contact));
+  const [reading, setReading] = useState(false);
 
   useEffect(() => {
-    if (open) setForm(toFormState(contact));
-  }, [open, contact]);
+    if (!open) return;
+    setForm({ ...toFormState(contact), ...(initialForm ?? {}) });
+  }, [open, contact, initialForm]);
 
   const mutation = useMutation({
     mutationFn: async (values: FormState) => {
@@ -66,7 +85,15 @@ export function ContactFormDialog({
         source: values.source,
         notes: values.notes,
       };
-      return contact ? update({ data: { id: contact.id, ...payload } }) : create({ data: payload });
+      if (contact) return update({ data: { id: contact.id, ...payload } });
+
+      return create({
+        data: {
+          ...payload,
+          create_opportunity: values.create_opportunity,
+          opportunity_title: values.opportunity_title,
+        },
+      });
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
@@ -87,8 +114,21 @@ export function ContactFormDialog({
         <DialogHeader>
           <DialogTitle>{contact ? "Editar cliente" : "Novo cliente"}</DialogTitle>
           <DialogDescription>
-            Nome e telefone são as informações mais importantes; o restante é opcional.
+            {contact
+              ? "Atualize as informações do cliente."
+              : "Nome e telefone são as informações mais importantes; o restante é opcional."}
           </DialogDescription>
+          {!contact && (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-2 w-full"
+              onClick={() => setReading(true)}
+            >
+              <Camera className="size-4" />
+              Cadastrar por print
+            </Button>
+          )}
         </DialogHeader>
 
         <form
@@ -150,6 +190,39 @@ export function ContactFormDialog({
             />
           </div>
 
+          {!contact && (
+            <div className="space-y-3 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label htmlFor="create-opportunity" className="text-sm font-medium">
+                    Criar no Pipeline
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Cadastra e já cria a oportunidade na primeira etapa.
+                  </p>
+                </div>
+                <Switch
+                  id="create-opportunity"
+                  checked={form.create_opportunity}
+                  onCheckedChange={(value) => setForm({ ...form, create_opportunity: value })}
+                />
+              </div>
+              {form.create_opportunity && (
+                <div className="space-y-2">
+                  <Label htmlFor="opportunity-title">Título da oportunidade</Label>
+                  <Input
+                    id="opportunity-title"
+                    placeholder={form.name ? `${form.name} — Novo negócio` : "Novo negócio"}
+                    value={form.opportunity_title}
+                    onChange={(event) =>
+                      setForm({ ...form, opportunity_title: event.target.value })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
@@ -160,6 +233,23 @@ export function ContactFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      <ReadContactDialog
+        open={reading}
+        onOpenChange={setReading}
+        onExtracted={(result) => {
+          setForm({
+            ...form,
+            name: result.name,
+            phone: result.phone,
+            email: result.email,
+            source: result.source,
+            notes: result.notes,
+            opportunity_title: result.opportunity_title,
+            create_opportunity: true,
+          });
+          toast.success("Print lido! Revise os dados antes de salvar.");
+        }}
+      />
     </Dialog>
   );
 }

@@ -5,6 +5,7 @@ import {
   contactArchiveSchema,
   contactInputSchema,
   contactUpdateSchema,
+  contactVisionSchema,
   idSchema,
   listContactsSchema,
   opportunityInputSchema,
@@ -19,6 +20,7 @@ import type {
   PipelineStage,
   TimelineEvent,
 } from "./crm.types";
+import type { ExtractedContact } from "./crm/contact-vision.server";
 
 export const listContacts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -102,7 +104,53 @@ export const createContact = createServerFn({ method: "POST" })
       metadata: { name: row.name },
     });
 
+    // Cadastro por print: já cria a oportunidade na primeira etapa do pipeline.
+    if (data.create_opportunity) {
+      const { data: firstStage } = await context.supabase
+        .from("pipeline_stages")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("position", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (firstStage) {
+        const title = data.opportunity_title?.trim() || `${row.name} — Novo negócio`;
+        const { data: oppRow, error: oppError } = await context.supabase
+          .from("opportunities")
+          .insert({
+            user_id: context.userId,
+            contact_id: row.id,
+            pipeline_stage_id: firstStage.id,
+            title,
+            status: "open",
+          })
+          .select("id")
+          .single();
+
+        if (oppError) {
+          console.error("Falha ao criar oportunidade automática", oppError.message);
+        } else {
+          await logEvent(context.supabase, context.userId, {
+            event_type: "opportunity_created",
+            contact_id: row.id,
+            opportunity_id: oppRow.id,
+            metadata: { title, stage_name: firstStage.name },
+          });
+        }
+      }
+    }
+
     return row as Contact;
+  });
+
+/** Cadastro por print: lê as imagens e devolve os campos do cliente para revisão. */
+export const extractContactFromImages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => contactVisionSchema.parse(input))
+  .handler(async ({ data, context }): Promise<ExtractedContact> => {
+    const { extractContactFromImages } = await import("./crm/contact-vision.server");
+    return extractContactFromImages(context.userId, data.images);
   });
 
 export const updateContact = createServerFn({ method: "POST" })

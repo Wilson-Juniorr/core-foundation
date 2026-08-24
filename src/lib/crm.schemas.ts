@@ -15,6 +15,24 @@ export const contactInputSchema = z.object({
   email: optionalText,
   source: optionalText,
   notes: optionalText,
+  /** Cria automaticamente uma oportunidade na primeira etapa do pipeline. */
+  create_opportunity: z.boolean().optional(),
+  opportunity_title: z.string().trim().max(200).optional(),
+});
+
+/** Prints enviados para leitura automática do cadastro (data URLs de imagem). */
+export const contactVisionSchema = z.object({
+  images: z
+    .array(
+      z
+        .string()
+        .max(8_000_000, "Imagem muito grande. Envie um print menor.")
+        .refine((value) => /^data:image\/(png|jpeg|jpg|webp|gif);base64,/.test(value), {
+          message: "Formato de imagem não suportado.",
+        }),
+    )
+    .min(1, "Envie pelo menos um print.")
+    .max(3, "Envie no máximo 3 imagens."),
 });
 
 export const contactUpdateSchema = contactInputSchema.extend({

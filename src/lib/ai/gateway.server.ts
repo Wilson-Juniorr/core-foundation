@@ -27,9 +27,19 @@ export async function completeStructured<T>(input: {
   user: string;
   schemaName: string;
   schema: unknown;
+  /** Imagens (data URLs ou URLs públicas) enviadas junto do texto para modelos com visão. */
+  images?: string[];
 }): Promise<GatewayResult<T>> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new AiGatewayError("IA não configurada.", 401, false);
+
+  const userContent =
+    input.images && input.images.length > 0
+      ? [
+          { type: "text", text: input.user },
+          ...input.images.map((url) => ({ type: "image_url", image_url: { url } })),
+        ]
+      : input.user;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -42,8 +52,9 @@ export async function completeStructured<T>(input: {
       model: input.model,
       messages: [
         { role: "system", content: input.system },
-        { role: "user", content: input.user },
+        { role: "user", content: userContent },
       ],
+
       response_format: {
         type: "json_schema",
         json_schema: { name: input.schemaName, strict: true, schema: input.schema },
