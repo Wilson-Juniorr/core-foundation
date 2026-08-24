@@ -643,6 +643,7 @@ export async function sendMedia(
     mimeType: string;
     filename: string;
     caption: string | null;
+    source?: SendSource | undefined;
   },
 ): Promise<{ messageId: string }> {
   const { db, connection, creds, conversation } = await conversationForSend(
@@ -650,6 +651,7 @@ export async function sendMedia(
     input.conversationId,
   );
   const provider = await getWhatsAppProvider(connection.provider);
+  const source: SendSource = input.source ?? "manual";
 
   const bytes = Uint8Array.from(atob(input.base64), (char) => char.charCodeAt(0));
   const path = `${userId}/${conversation.id}/${crypto.randomUUID()}-${input.filename}`;
