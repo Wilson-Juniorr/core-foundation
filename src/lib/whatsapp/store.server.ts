@@ -54,7 +54,11 @@ export async function loadCredentials(
   };
 }
 
-/** Localiza um cliente do usuário pelo telefone normalizado. */
+/**
+ * Localiza um cliente do usuário pelo telefone normalizado.
+ * Só vincula automaticamente quando existe exatamente um candidato — havendo
+ * ambiguidade, a conversa fica sem vínculo para revisão humana.
+ */
 async function findContactByPhone(
   admin: Admin,
   userId: string,
@@ -66,13 +70,32 @@ async function findContactByPhone(
     .select("id")
     .eq("user_id", userId)
     .eq("phone", phone)
-    .limit(1)
-    .maybeSingle();
+    .limit(2);
   if (error) {
     waLog.warn("contact_lookup_failed", { reason: error.message });
     return null;
   }
-  return data?.id ?? null;
+  if ((data ?? []).length !== 1) {
+    if ((data ?? []).length > 1) waLog.info("contact_link_ambiguous", { user_id: userId });
+    return null;
+  }
+  return data![0]!.id;
+}
+
+/**
+ * Conversa já existente para o mesmo telefone nesta conexão — usada para
+ * reconciliar quando o provedor muda o identificador do chat (ex.: conversa
+ * criada localmente antes do primeiro webhook).
+ */
+async function findConversationByPhone(admin: Admin, connectionId: string, phone: string | null) {
+  if (!phone) return null;
+  const { data } = await admin
+    .from("conversations")
+    .select("*")
+    .eq("whatsapp_connection_id", connectionId)
+    .eq("phone_number", phone)
+    .maybeSingle();
+  return data;
 }
 
 export async function upsertConversation(
@@ -85,7 +108,9 @@ export async function upsertConversation(
     displayName: string | null;
   },
 ) {
-  const { data: existing, error: findError } = await admin
+  const phone = input.phoneNumber ?? phoneFromChatId(input.externalChatId);
+
+  const { data: byChat, error: findError } = await admin
     .from("conversations")
     .select("*")
     .eq("whatsapp_connection_id", input.connectionId)
@@ -93,23 +118,31 @@ export async function upsertConversation(
     .maybeSingle();
   if (findError) throw new Error(findError.message);
 
-  const phone = input.phoneNumber ?? phoneFromChatId(input.externalChatId);
+  // Reconciliação: mesma pessoa, identificador de chat diferente.
+  const existing = byChat ?? (await findConversationByPhone(admin, input.connectionId, phone));
 
   if (existing) {
+    const patch: Database["public"]["Tables"]["conversations"]["Update"] = {};
+    if (existing.external_chat_id !== input.externalChatId) {
+      patch.external_chat_id = input.externalChatId;
+    }
+    if (!existing.phone_number && phone) patch.phone_number = phone;
+    if (!existing.display_name && input.displayName) patch.display_name = input.displayName;
     // Vincula o cliente automaticamente apenas quando ainda não há vínculo.
     if (!existing.contact_id) {
       const contactId = await findContactByPhone(admin, input.userId, phone);
-      if (contactId) {
-        const { data: updated } = await admin
-          .from("conversations")
-          .update({ contact_id: contactId })
-          .eq("id", existing.id)
-          .select("*")
-          .single();
-        return updated ?? existing;
-      }
+      if (contactId) patch.contact_id = contactId;
     }
-    return existing;
+
+    if (Object.keys(patch).length === 0) return existing;
+
+    const { data: updated } = await admin
+      .from("conversations")
+      .update(patch)
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    return updated ?? existing;
   }
 
   const contactId = await findContactByPhone(admin, input.userId, phone);
@@ -128,7 +161,8 @@ export async function upsertConversation(
     .single();
 
   if (error) {
-    // Corrida entre webhook e sincronização: relê a conversa existente.
+    // Corrida entre webhook, envio e sincronização: relê a conversa existente
+    // (por chat ou pelo índice único de conexão + telefone).
     const { data: raced } = await admin
       .from("conversations")
       .select("*")
@@ -136,11 +170,14 @@ export async function upsertConversation(
       .eq("external_chat_id", input.externalChatId)
       .maybeSingle();
     if (raced) return raced;
+    const racedByPhone = await findConversationByPhone(admin, input.connectionId, phone);
+    if (racedByPhone) return racedByPhone;
     throw new Error(error.message);
   }
 
   return created;
 }
+
 
 export type IngestOutcome = "created" | "duplicate" | "ignored";
 
