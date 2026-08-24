@@ -40,7 +40,7 @@ type Props = {
   onBack?: () => void;
 };
 
-export function ChatWindow({ detail, isLoading, canSend }: Props) {
+export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
