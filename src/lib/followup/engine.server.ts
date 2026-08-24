@@ -1124,12 +1124,31 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
     return "sent";
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha desconhecida";
+
+    /* Credencial recusada não é culpa da etapa: a conexão já foi marcada como
+       `error` pela camada de WhatsApp. A ação volta para a fila sem consumir
+       tentativa, para não matar o fluxo por um token expirado. */
+    if (/credenciais/i.test(message)) {
+      const retryAt = nextAllowedInstant(
+        new Date(now.getTime() + DISCONNECTED_RETRY_MINUTES * 60_000),
+        window,
+        settings.timezone,
+      );
+      await releaseAction(db, action, {
+        status: "scheduled",
+        last_error: "whatsapp_credentials_rejected",
+        scheduled_for: retryAt.toISOString(),
+      });
+      return "rescheduled";
+    }
+
     const attempts = action.attempts + 1;
 
     if (attempts >= MAX_ATTEMPTS) {
       await failAction(db, action, run, message, true);
       return "failed";
     }
+
 
     // Backoff simples e limitado.
     const retryAt = nextAllowedInstant(
