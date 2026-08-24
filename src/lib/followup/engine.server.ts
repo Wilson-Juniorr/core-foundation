@@ -1184,7 +1184,11 @@ async function deliverAction(
 
   if (action.action_type === "text_message") {
     if (!text) throw new Error("Ação sem conteúdo de texto");
-    return sendText(action.user_id, { conversationId: action.conversation_id, text });
+    return sendText(action.user_id, {
+      conversationId: action.conversation_id,
+      text,
+      source: "automation",
+    });
   }
 
   if (!action.media_reference) throw new Error("Ação de mídia sem arquivo");
@@ -1201,6 +1205,7 @@ async function deliverAction(
   for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
 
   return sendMedia(action.user_id, {
+    source: "automation",
     conversationId: action.conversation_id,
     type:
       action.action_type === "audio"
