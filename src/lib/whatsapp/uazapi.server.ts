@@ -260,6 +260,51 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
   };
 }
 
+/** Normaliza a lista de conversas devolvida pela UAZAPI (formatos variados). */
+function normalizeChatList(response: unknown): NormalizedChatSummary[] {
+  const record = asRecord(response);
+  const list = Array.isArray(response)
+    ? response
+    : Array.isArray(record["chats"])
+      ? (record["chats"] as unknown[])
+      : Array.isArray(record["data"])
+        ? (record["data"] as unknown[])
+        : [];
+
+  return list
+    .map((entry) => {
+      const chat = asRecord(entry);
+      // A UAZAPI expõe o JID real em wa_chatid; "id" é apenas o registro interno.
+      const externalChatId = pickString(chat, [
+        "wa_chatid",
+        "chatid",
+        "chatId",
+        "jid",
+        "remoteJid",
+        "id",
+      ]);
+      if (!externalChatId) return null;
+      return {
+        externalChatId,
+        phoneNumber: phoneFromChatId(externalChatId),
+        displayName: pickString(chat, [
+          "wa_name",
+          "wa_contactName",
+          "lead_name",
+          "name",
+          "pushName",
+          "contactName",
+          "subject",
+        ]),
+        lastMessageAt:
+          chat["wa_lastMsgTimestamp"] || chat["lastMessageTime"]
+            ? toIsoTimestamp(chat["wa_lastMsgTimestamp"] ?? chat["lastMessageTime"])
+            : null,
+      } satisfies NormalizedChatSummary;
+    })
+    .filter((chat): chat is NormalizedChatSummary => chat !== null);
+}
+
 /* ------------------------- provider ------------------------- */
 
 export const uazapiProvider: WhatsAppProvider = {

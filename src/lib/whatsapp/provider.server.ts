@@ -60,6 +60,16 @@ export type WhatsAppProvider = {
     input: { limit: number },
   ): Promise<NormalizedChatSummary[]>;
 
+  /**
+   * Procura no provedor uma conversa existente para um telefone.
+   * Opcional: provedores que não suportam a consulta simplesmente não a expõem.
+   */
+  findChatByPhone?(
+    creds: ProviderCredentials,
+    input: { phoneNumber: string },
+  ): Promise<NormalizedChatSummary | null>;
+
+
   fetchChatHistory(
     creds: ProviderCredentials,
     input: { externalChatId: string; limit: number },
