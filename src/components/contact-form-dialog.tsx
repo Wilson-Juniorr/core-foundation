@@ -131,7 +131,6 @@ export function ContactFormDialog({
           )}
         </DialogHeader>
 
-
         <form
           className="space-y-4"
           onSubmit={(event) => {
@@ -205,9 +204,7 @@ export function ContactFormDialog({
                 <Switch
                   id="create-opportunity"
                   checked={form.create_opportunity}
-                  onCheckedChange={(value) =>
-                    setForm({ ...form, create_opportunity: value })
-                  }
+                  onCheckedChange={(value) => setForm({ ...form, create_opportunity: value })}
                 />
               </div>
               {form.create_opportunity && (

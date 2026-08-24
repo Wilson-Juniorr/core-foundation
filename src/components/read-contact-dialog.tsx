@@ -114,8 +114,15 @@ export function ReadContactDialog({
           {images.length > 0 ? (
             <div className="grid grid-cols-3 gap-2">
               {images.map((src, index) => (
-                <div key={index} className="relative aspect-square overflow-hidden rounded-md border">
-                  <img src={src} alt={`Print ${index + 1}`} className="h-full w-full object-contain" />
+                <div
+                  key={index}
+                  className="relative aspect-square overflow-hidden rounded-md border"
+                >
+                  <img
+                    src={src}
+                    alt={`Print ${index + 1}`}
+                    className="h-full w-full object-contain"
+                  />
                   <Button
                     type="button"
                     variant="destructive"

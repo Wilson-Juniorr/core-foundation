@@ -22,7 +22,6 @@ import type {
 } from "./crm.types";
 import type { ExtractedContact } from "./crm/contact-vision.server";
 
-
 export const listContacts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => listContactsSchema.parse(input ?? {}))
@@ -116,9 +115,7 @@ export const createContact = createServerFn({ method: "POST" })
         .maybeSingle();
 
       if (firstStage) {
-        const title =
-          data.opportunity_title?.trim() ||
-          `${row.name} — Novo negócio`;
+        const title = data.opportunity_title?.trim() || `${row.name} — Novo negócio`;
         const { data: oppRow, error: oppError } = await context.supabase
           .from("opportunities")
           .insert({
@@ -155,7 +152,6 @@ export const extractContactFromImages = createServerFn({ method: "POST" })
     const { extractContactFromImages } = await import("./crm/contact-vision.server");
     return extractContactFromImages(context.userId, data.images);
   });
-
 
 export const updateContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

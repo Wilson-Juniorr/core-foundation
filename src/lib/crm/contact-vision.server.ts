@@ -27,7 +27,10 @@ const SCHEMA = {
     name: { type: ["string", "null"], description: "Nome da pessoa ou empresa" },
     phone: { type: ["string", "null"], description: "Telefone com DDD, apenas dígitos ou +55..." },
     email: { type: ["string", "null"] },
-    source: { type: ["string", "null"], description: "Origem provável (WhatsApp, indicação, site)" },
+    source: {
+      type: ["string", "null"],
+      description: "Origem provável (WhatsApp, indicação, site)",
+    },
     notes: {
       type: ["string", "null"],
       description: "Resumo curto do que a imagem mostra e do interesse do cliente",
