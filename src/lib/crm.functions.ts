@@ -21,7 +21,6 @@ import type {
   TimelineEvent,
 } from "./crm.types";
 import type { ExtractedContact } from "./crm/contact-vision.server";
-import type { ExtractedContact } from "./crm/contact-vision.server";
 
 
 export const listContacts = createServerFn({ method: "GET" })
