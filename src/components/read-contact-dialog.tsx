@@ -251,7 +251,7 @@ export function ReadContactDialog({
               )}
             </Button>
 
-            {needsAi ? (
+            {images.length > 0 ? (
               <Button
                 type="button"
                 variant="outline"
