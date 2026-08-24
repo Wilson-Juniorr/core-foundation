@@ -32,25 +32,27 @@ export function ConversationList({
   onSelect,
 }: Props) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="relative border-b p-3">
-        <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-6 size-4 -translate-y-1/2"
-          aria-hidden
-        />
-        <Input
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Buscar conversa"
-          aria-label="Buscar conversa"
-          className="pl-9"
-        />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b p-3">
+        <div className="relative">
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            aria-hidden
+          />
+          <Input
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Buscar conversa"
+            aria-label="Buscar conversa"
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {conversations.length === 0 ? (
         <p className="text-muted-foreground p-4 text-sm">Nenhuma conversa encontrada.</p>
       ) : (
-        <ul className="flex-1 overflow-y-auto">
+        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {conversations.map((conversation) => (
             <li key={conversation.id}>
               <button
@@ -58,22 +60,24 @@ export function ConversationList({
                 onClick={() => onSelect(conversation)}
                 aria-current={conversation.id === selectedId ? "true" : undefined}
                 className={cn(
-                  "hover:bg-muted/60 flex w-full flex-col gap-1 border-b px-4 py-3 text-left transition-colors",
+                  "hover:bg-muted/60 flex w-full min-w-0 flex-col gap-1 border-b px-4 py-3 text-left transition-colors",
                   conversation.id === selectedId && "bg-muted",
                 )}
               >
-                <span className="flex items-center gap-2">
-                  <span className="truncate font-medium">{conversationTitle(conversation)}</span>
+                <span className="flex w-full min-w-0 items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {conversationTitle(conversation)}
+                  </span>
                   {conversation.unread_count > 0 && (
-                    <Badge className="ml-auto shrink-0">{conversation.unread_count}</Badge>
+                    <Badge className="shrink-0">{conversation.unread_count}</Badge>
                   )}
                 </span>
-                <span className="text-muted-foreground flex items-center gap-2 text-xs">
-                  <span className="truncate">
+                <span className="text-muted-foreground flex w-full min-w-0 items-center gap-2 text-xs">
+                  <span className="min-w-0 flex-1 truncate">
                     {conversation.last_message_preview ?? "Sem mensagens"}
                   </span>
                   {conversation.last_message_at && (
-                    <span className="ml-auto shrink-0">
+                    <span className="shrink-0">
                       {formatRelative(conversation.last_message_at)}
                     </span>
                   )}

@@ -73,20 +73,22 @@ function ConversasPage() {
       title="Conversas"
       description="Atendimento no WhatsApp com histórico ligado aos clientes."
     >
-      <div className="space-y-4">
+      <div className="flex h-[calc(100dvh-11rem)] min-h-[30rem] flex-col gap-4">
         {connection.data && connection.data.status !== "connected" && (
-          <p className="bg-muted text-muted-foreground rounded-md border px-4 py-3 text-sm">
+          <p className="bg-muted text-muted-foreground shrink-0 rounded-md border px-4 py-3 text-sm">
             WhatsApp não conectado. Você pode ler o histórico, mas o envio fica indisponível até
             reconectar em Configurações.
           </p>
         )}
 
         {selectedId && detail.data?.conversation.contact_id && (
-          <FollowupPanel
-            contactId={detail.data.conversation.contact_id}
-            conversationId={selectedId}
-            compact
-          />
+          <div className="shrink-0">
+            <FollowupPanel
+              contactId={detail.data.conversation.contact_id}
+              conversationId={selectedId}
+              compact
+            />
+          </div>
         )}
 
         {conversations.isLoading ? (
@@ -96,14 +98,14 @@ function ConversasPage() {
             title="Não foi possível carregar as conversas."
             onRetry={() => void conversations.refetch()}
           />
-        ) : (conversations.data?.length ?? 0) === 0 ? (
+        ) : (conversations.data?.length ?? 0) === 0 && search.trim() === "" ? (
           <EmptyState
             title="Nenhuma conversa ainda"
             description="Conecte o WhatsApp em Configurações e importe o histórico recente para começar."
           />
         ) : (
-          <div className="grid h-[calc(100vh-16rem)] min-h-[28rem] grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-[20rem_1fr]">
-            <div className={selectedId ? "hidden border-r md:block" : "border-r"}>
+          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-[20rem_1fr]">
+            <div className={selectedId ? "hidden min-h-0 border-r md:block" : "min-h-0 border-r"}>
               <ConversationList
                 conversations={conversations.data ?? []}
                 selectedId={selectedId}
@@ -114,11 +116,12 @@ function ConversasPage() {
                 }
               />
             </div>
-            <div className={selectedId ? "" : "hidden md:block"}>
+            <div className={selectedId ? "min-h-0" : "hidden min-h-0 md:block"}>
               <ChatWindow
                 detail={detail.data}
                 isLoading={detail.isLoading}
                 canSend={connection.data?.status === "connected"}
+                onBack={() => void navigate({ search: {} })}
               />
             </div>
           </div>
