@@ -73,12 +73,26 @@ export function ReadContactDialog({
     setLocalBusy(true);
     setNeedsAi(false);
     try {
-      const { default: Tesseract } = await import("tesseract.js");
+      const [{ default: Tesseract }, { preprocessForOcr }] = await Promise.all([
+        import("tesseract.js"),
+        import("@/lib/crm/ocr-image"),
+      ]);
+
       let text = "";
       for (const image of images) {
-        const { data } = await Tesseract.recognize(image, "por");
-        text += `\n${data.text}`;
+        const enhanced = await preprocessForOcr(image);
+        // Duas passadas: layout em blocos (prints de conversa) e coluna única
+        // (cartões/fichas). Juntar os textos aumenta muito o acerto.
+        for (const psm of ["6", "4"]) {
+          const { data } = await Tesseract.recognize(enhanced, "por+eng", {
+            // @ts-expect-error opções aceitas em runtime pelo tesseract.js
+            tessedit_pageseg_mode: psm,
+            preserve_interword_spaces: "1",
+          });
+          text += `\n${data.text}`;
+        }
       }
+
       const parsed = parseContactFromText(text);
       if (extractionIsWeak(parsed)) {
         setNeedsAi(true);
@@ -113,6 +127,7 @@ export function ReadContactDialog({
       setLocalBusy(false);
     }
   }
+
 
   async function addFiles(list: FileList | null) {
     if (!list) return;
