@@ -707,11 +707,16 @@ export async function sendMedia(
       incrementUnread: false,
     });
 
-    waLog.info("message_sent", { connection_id: connection.id, type: input.type });
+    waLog.info("message_sent", { connection_id: connection.id, type: input.type, source });
     return { messageId: pending.id };
   } catch (error) {
     await db.from("messages").update({ status: "failed" }).eq("id", pending.id);
-    waLog.error("message_send_failed", { connection_id: connection.id, type: input.type });
+    waLog.error("message_send_failed", {
+      connection_id: connection.id,
+      type: input.type,
+      source,
+    });
+    await noteSendFailure(db, connection.id, error);
     throw new Error(userFacingProviderError(error));
   }
 }
