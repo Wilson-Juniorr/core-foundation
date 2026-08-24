@@ -25,8 +25,9 @@ const UI_NOISE =
   /(online|digitando|visto por [uú]ltimo|hoje|ontem|whats|mensagem|status|arquivad|grupo|comunidade|conversas|atualiza[çc][õo]es|chamadas|ligar|v[íi]deo|[áa]udio|criptografad|toque aqui|clique|pesquisar|buscar|nova conversa|favoritos|silenciad|fixad|bloquear|denunciar|apagar|encaminh|selecionar|salvo|contato|perfil|https?|www\.|@|\+?\d)/i;
 
 /** Rótulos comuns em fichas/cartões que precedem o valor real. */
-const NAME_LABEL = /^(nome|cliente|contato|raz[ãa]o social|respons[áa]vel)\s*[:\-]\s*/i;
-const PHONE_LABEL = /(telefone|celular|whats\s?app|whats|fone|tel|contato)\s*[:\-]?/i;
+const NAME_LABEL = /^(nome|cliente|contato|raz[ãa]o social|respons[áa]vel)\s*[:-]\s*/i;
+const PHONE_LABEL = /(telefone|celular|whats\s?app|whats|fone|tel|contato)\s*[:-]?/i;
+
 
 
 /** Correções de confusões clássicas do OCR dentro de sequências numéricas. */
