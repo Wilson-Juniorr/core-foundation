@@ -15,9 +15,9 @@ const EMAIL_RE = /[\w.+-]+\s?@\s?[\w-]+\s?\.\s?[\w.-]{2,}/;
 
 /** DDDs válidos no Brasil (evita capturar horários, datas e números avulsos). */
 const VALID_DDD = new Set([
-  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35, 37, 38, 41, 42,
-  43, 44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64, 65, 66, 67, 68, 69, 71, 73, 74,
-  75, 77, 79, 81, 82, 83, 84, 85, 86, 87, 88, 89, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35, 37, 38, 41, 42, 43,
+  44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64, 65, 66, 67, 68, 69, 71, 73, 74, 75, 77,
+  79, 81, 82, 83, 84, 85, 86, 87, 88, 89, 91, 92, 93, 94, 95, 96, 97, 98, 99,
 ]);
 
 /** Palavras de interface que nunca são nome de cliente. */
@@ -45,9 +45,7 @@ function titleCase(value: string): string {
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-    .map((word) =>
-      small.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1),
-    )
+    .map((word) => (small.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)))
     .join(" ");
 }
 

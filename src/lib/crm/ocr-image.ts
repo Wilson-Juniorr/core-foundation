@@ -27,10 +27,7 @@ export async function preprocessForOcr(dataUrl: string): Promise<string> {
     const naturalHeight = image.naturalHeight || image.height;
     if (!naturalWidth || !naturalHeight) return dataUrl;
 
-    const scale = Math.min(
-      MAX_WIDTH / naturalWidth,
-      Math.max(1, TARGET_MIN_WIDTH / naturalWidth),
-    );
+    const scale = Math.min(MAX_WIDTH / naturalWidth, Math.max(1, TARGET_MIN_WIDTH / naturalWidth));
     const width = Math.round(naturalWidth * Math.max(scale, 1));
     const height = Math.round(naturalHeight * Math.max(scale, 1));
 
@@ -50,9 +47,7 @@ export async function preprocessForOcr(dataUrl: string): Promise<string> {
     // 1ª passada: escala de cinza + média de luminância.
     let sum = 0;
     for (let i = 0; i < pixels.length; i += 4) {
-      const gray = Math.round(
-        0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!,
-      );
+      const gray = Math.round(0.299 * pixels[i]! + 0.587 * pixels[i + 1]! + 0.114 * pixels[i + 2]!);
       pixels[i] = gray;
       pixels[i + 1] = gray;
       pixels[i + 2] = gray;

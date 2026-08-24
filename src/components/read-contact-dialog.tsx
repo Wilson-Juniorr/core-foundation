@@ -128,7 +128,6 @@ export function ReadContactDialog({
     }
   }
 
-
   async function addFiles(list: FileList | null) {
     if (!list) return;
     const files = Array.from(list).filter((file) => file.type.startsWith("image/"));
@@ -164,9 +163,6 @@ export function ReadContactDialog({
     window.addEventListener("paste", handler);
     return () => window.removeEventListener("paste", handler);
   }, [open]);
-
-
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -272,7 +268,6 @@ export function ReadContactDialog({
                       : "Melhorar leitura com IA (usa créditos)"}
                   </>
                 )}
-
               </Button>
             ) : null}
 
@@ -281,7 +276,6 @@ export function ReadContactDialog({
               print estiver difícil de ler.
             </p>
           </div>
-
         </div>
       </DialogContent>
     </Dialog>
