@@ -57,7 +57,8 @@ function WhatsAppSettingsPage() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: whatsappKeys.connection });
 
   const provisionMutation = useMutation({
-    mutationFn: () => provisionWhatsAppInstance({ data: { instance_name: newInstanceName.trim() } }),
+    mutationFn: () =>
+      provisionWhatsAppInstance({ data: { instance_name: newInstanceName.trim() } }),
     onSuccess: async () => {
       setNewInstanceName("");
       await invalidate();
@@ -65,7 +66,6 @@ function WhatsAppSettingsPage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
-
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -357,7 +357,8 @@ function WhatsAppSettingsPage() {
                 {data?.webhook_url ?? "Disponível após salvar as credenciais"}
               </code>
               <p className="text-muted-foreground text-xs">
-                Configurado automaticamente na UAZAPI ao salvar. Contém um segredo — não compartilhe.
+                Configurado automaticamente na UAZAPI ao salvar. Contém um segredo — não
+                compartilhe.
               </p>
             </div>
           </CardContent>

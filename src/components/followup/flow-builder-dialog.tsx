@@ -194,11 +194,9 @@ export function FlowBuilderDialog({
     return null;
   }
 
-
   const saveMutation = useMutation({
     mutationFn: () =>
       saveFollowupFlow({
-
         data: {
           ...(flowId ? { id: flowId } : {}),
           name,

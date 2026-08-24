@@ -563,11 +563,7 @@ export type SendSource = "manual" | "automation";
  * Credencial recusada pelo provedor: a conexão é marcada como `error` para que
  * o motor de follow-up reagende as ações em vez de queimar tentativas.
  */
-async function noteSendFailure(
-  db: Client,
-  connectionId: string,
-  error: unknown,
-): Promise<void> {
+async function noteSendFailure(db: Client, connectionId: string, error: unknown): Promise<void> {
   const status = error instanceof ProviderError ? error.statusCode : null;
   if (status !== 401 && status !== 403) return;
   await db

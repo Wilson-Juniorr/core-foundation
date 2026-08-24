@@ -58,7 +58,6 @@ export function isSendablePhone(value: string | null | undefined): boolean {
   return digits.length >= 10 && digits.length <= 15;
 }
 
-
 /**
  * Extrai o telefone de um identificador de chat do WhatsApp
  * (ex.: 5511999999999@s.whatsapp.net, 5511999999999@c.us).

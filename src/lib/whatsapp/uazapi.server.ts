@@ -494,7 +494,6 @@ export const uazapiProvider: WhatsAppProvider = {
     }
   },
 
-
   async fetchChatHistory(creds, input): Promise<NormalizedWhatsAppMessage[]> {
     const response = await request<unknown>(creds, ENDPOINTS.chatHistory, {
       method: "POST",

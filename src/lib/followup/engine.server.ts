@@ -47,7 +47,6 @@ export class FollowupError extends Error {
   }
 }
 
-
 export async function adminClient(): Promise<Admin> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin as unknown as Admin;
@@ -345,7 +344,6 @@ export async function startFlow(
     }
     await cancelRun(userId, existing.id, "replaced");
   }
-
 
   const settings = await loadUserSettings(db, userId);
   const now = new Date();
@@ -1148,7 +1146,6 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
       await failAction(db, action, run, message, true);
       return "failed";
     }
-
 
     // Backoff simples e limitado.
     const retryAt = nextAllowedInstant(
