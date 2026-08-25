@@ -287,6 +287,15 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
         onOpenChange={setLinkOpen}
         conversationId={conversation.id}
       />
+
+      <AudioRecorderDialog
+        open={recorderOpen}
+        onOpenChange={setRecorderOpen}
+        maxBytes={MAX_MEDIA_BYTES}
+        isSaving={mediaMutation.isPending}
+        onConfirm={(file) => mediaMutation.mutate(file)}
+      />
+
     </div>
   );
 }
