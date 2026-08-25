@@ -29,6 +29,7 @@ import { formatDateTime } from "@/lib/domain/datetime";
 import {
   cancelFollowupRun,
   cancelScheduledMessage,
+  deleteFollowupFlow,
   duplicateFollowupFlow,
   pauseFollowupRun,
   resumeFollowupRun,
