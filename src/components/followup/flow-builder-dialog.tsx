@@ -557,7 +557,18 @@ export function FlowBuilderDialog({
                       ) : (
                         <Upload className="text-muted-foreground size-4" />
                       )}
+                      {step.action_type === "audio" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRecorderStep(index)}
+                        >
+                          <Mic className="mr-2 size-4" aria-hidden /> Gravar
+                        </Button>
+                      ) : null}
                     </div>
+
                     {step.media_filename ? (
                       <p className="text-muted-foreground text-xs">
                         Anexado: {step.media_filename}
