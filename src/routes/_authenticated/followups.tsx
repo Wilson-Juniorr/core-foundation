@@ -1,12 +1,23 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Loader2, Pause, Pencil, Play, Plus, Square, X } from "lucide-react";
+import { Copy, Loader2, Pause, Pencil, Play, Plus, Square, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { FlowBuilderDialog } from "@/components/followup/flow-builder-dialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +29,7 @@ import { formatDateTime } from "@/lib/domain/datetime";
 import {
   cancelFollowupRun,
   cancelScheduledMessage,
+  deleteFollowupFlow,
   duplicateFollowupFlow,
   pauseFollowupRun,
   resumeFollowupRun,
@@ -271,6 +283,15 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
     onError: () => toast.error("Não foi possível duplicar."),
   });
 
+  const remove = useMutation({
+    mutationFn: (flowId: string) => deleteFollowupFlow({ data: { flowId } }),
+    onSuccess: async () => {
+      await invalidate();
+      toast.success("Fluxo excluído.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Não foi possível excluir o fluxo."),
+  });
+
   if (flows.isLoading) return <LoadingState />;
   if (flows.isError) return <ErrorState onRetry={() => flows.refetch()} />;
   if ((flows.data ?? []).length === 0) {
@@ -309,7 +330,7 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
               <p className="text-muted-foreground text-xs">{flow.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Switch
               checked={flow.is_active}
               aria-label="Ativar fluxo"
@@ -321,6 +342,36 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
             <Button size="sm" variant="ghost" onClick={() => duplicate.mutate(flow.id)}>
               <Copy className="mr-1 size-4" /> Duplicar
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  aria-label={`Excluir fluxo ${flow.name}`}
+                >
+                  <Trash2 className="mr-1 size-4" /> Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir “{flow.name}”?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    O fluxo e suas {flow.step_count} etapa(s) serão apagados. Fluxos que já foram
+                    executados não podem ser excluídos — nesse caso, desative-o.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(flow.id)}
+                  >
+                    Excluir fluxo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </li>
       ))}

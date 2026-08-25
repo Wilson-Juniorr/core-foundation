@@ -365,3 +365,23 @@ export async function loadFollowupSummary(
     scheduled: ((scheduled ?? []) as ActionRowWithContact[]).map(mapAction),
   };
 }
+
+/** Exclui um fluxo e suas etapas. Fluxos com histórico de execuções não podem ser apagados. */
+export async function deleteFlow(supabase: Client, flowId: string): Promise<{ ok: true }> {
+  const { count, error: countError } = await supabase
+    .from("followup_runs")
+    .select("id", { count: "exact", head: true })
+    .eq("flow_id", flowId);
+  if (countError) throw new Error(countError.message);
+
+  if ((count ?? 0) > 0) {
+    throw new FollowupError(
+      "Este fluxo já foi usado em execuções e não pode ser excluído. Desative-o para parar de usá-lo.",
+      "run_exists",
+    );
+  }
+
+  const { error } = await supabase.from("followup_flows").delete().eq("id", flowId);
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
