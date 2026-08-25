@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, Loader2, Paperclip, Send, Sparkles } from "lucide-react";
+import { ChevronLeft, Loader2, Mic, Paperclip, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { MAX_MEDIA_BYTES } from "@/lib/whatsapp.schemas";
 import { listOlderMessages, sendWhatsAppMedia, sendWhatsAppText } from "@/lib/whatsapp.functions";
 import { whatsappKeys } from "@/lib/whatsapp.queries";
 import type { ConversationDetail, ConversationMessage } from "@/lib/whatsapp/types";
+import { AudioRecorderDialog } from "@/components/audio/audio-recorder-dialog";
 import { ContactLinkDialog } from "./contact-link-dialog";
 import { conversationTitle } from "./conversation-list";
 import { IntelligenceStrip } from "@/components/intelligence/intelligence-strip";
@@ -45,7 +46,9 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   const [text, setText] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [recorderOpen, setRecorderOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const listRef = useRef<HTMLUListElement>(null);
 
   const conversationId = detail?.conversation.id ?? null;
@@ -111,8 +114,10 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
     },
     onSuccess: async () => {
       setText("");
+      setRecorderOpen(false);
       await invalidate();
     },
+
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -241,6 +246,18 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
         >
           <Paperclip className="size-4" aria-hidden />
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Gravar áudio"
+          title="Gravar áudio"
+          disabled={!canSend || sending}
+          onClick={() => setRecorderOpen(true)}
+        >
+          <Mic className="size-4" aria-hidden />
+        </Button>
+
         <Textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
@@ -268,6 +285,14 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
         open={linkOpen}
         onOpenChange={setLinkOpen}
         conversationId={conversation.id}
+      />
+
+      <AudioRecorderDialog
+        open={recorderOpen}
+        onOpenChange={setRecorderOpen}
+        maxBytes={MAX_MEDIA_BYTES}
+        isSaving={mediaMutation.isPending}
+        onConfirm={(file) => mediaMutation.mutate(file)}
       />
     </div>
   );

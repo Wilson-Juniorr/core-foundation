@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
+
+import { AudioRecorderDialog } from "@/components/audio/audio-recorder-dialog";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +61,7 @@ export function AssetFormDialog({
   const [tags, setTags] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [file, setFile] = useState<File | null>(null);
+  const [recorderOpen, setRecorderOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -176,13 +179,23 @@ export function AssetFormDialog({
           ) : (
             <div className="space-y-2">
               <Label htmlFor="asset-file">Arquivo</Label>
-              <Input
-                id="asset-file"
-                type="file"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-              {asset?.filename && !file ? (
-                <p className="text-xs text-muted-foreground">Atual: {asset.filename}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="asset-file"
+                  type="file"
+                  className="flex-1"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+                {type === "audio" ? (
+                  <Button type="button" variant="outline" onClick={() => setRecorderOpen(true)}>
+                    <Mic className="mr-2 size-4" aria-hidden /> Gravar áudio
+                  </Button>
+                ) : null}
+              </div>
+              {file ? (
+                <p className="text-muted-foreground text-xs">Selecionado: {file.name}</p>
+              ) : asset?.filename ? (
+                <p className="text-muted-foreground text-xs">Atual: {asset.filename}</p>
               ) : null}
             </div>
           )}
@@ -243,6 +256,16 @@ export function AssetFormDialog({
             {needsFile && !file && !asset ? "Selecione um arquivo" : "Salvar"}
           </Button>
         </DialogFooter>
+
+        <AudioRecorderDialog
+          open={recorderOpen}
+          onOpenChange={setRecorderOpen}
+          maxBytes={MAX_FILE_BYTES}
+          onConfirm={(recorded) => {
+            setFile(recorded);
+            setRecorderOpen(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
