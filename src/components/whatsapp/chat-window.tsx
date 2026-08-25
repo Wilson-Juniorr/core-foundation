@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, Loader2, Paperclip, Send, Sparkles } from "lucide-react";
+import { ChevronLeft, Loader2, Mic, Paperclip, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,13 @@ import { MAX_MEDIA_BYTES } from "@/lib/whatsapp.schemas";
 import { listOlderMessages, sendWhatsAppMedia, sendWhatsAppText } from "@/lib/whatsapp.functions";
 import { whatsappKeys } from "@/lib/whatsapp.queries";
 import type { ConversationDetail, ConversationMessage } from "@/lib/whatsapp/types";
+import { AudioRecorderDialog } from "@/components/audio/audio-recorder-dialog";
 import { ContactLinkDialog } from "./contact-link-dialog";
 import { conversationTitle } from "./conversation-list";
 import { IntelligenceStrip } from "@/components/intelligence/intelligence-strip";
 import { GenerateMessageDialog } from "@/components/library/generate-message-dialog";
 import { MessageBubble } from "./message-bubble";
+
 
 function mediaTypeFor(file: File): "audio" | "image" | "document" | "video" {
   if (file.type.startsWith("image/")) return "image";
