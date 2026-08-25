@@ -309,7 +309,7 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
               <p className="text-muted-foreground text-xs">{flow.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Switch
               checked={flow.is_active}
               aria-label="Ativar fluxo"
@@ -321,6 +321,36 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
             <Button size="sm" variant="ghost" onClick={() => duplicate.mutate(flow.id)}>
               <Copy className="mr-1 size-4" /> Duplicar
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  aria-label={`Excluir fluxo ${flow.name}`}
+                >
+                  <Trash2 className="mr-1 size-4" /> Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir “{flow.name}”?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    O fluxo e suas {flow.step_count} etapa(s) serão apagados. Fluxos que já foram
+                    executados não podem ser excluídos — nesse caso, desative-o.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate(flow.id)}
+                  >
+                    Excluir fluxo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </li>
       ))}
