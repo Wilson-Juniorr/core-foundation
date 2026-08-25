@@ -7,6 +7,17 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { FlowBuilderDialog } from "@/components/followup/flow-builder-dialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
