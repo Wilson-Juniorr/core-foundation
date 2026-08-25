@@ -247,6 +247,18 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
         >
           <Paperclip className="size-4" aria-hidden />
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Gravar áudio"
+          title="Gravar áudio"
+          disabled={!canSend || sending}
+          onClick={() => setRecorderOpen(true)}
+        >
+          <Mic className="size-4" aria-hidden />
+        </Button>
+
         <Textarea
           value={text}
           onChange={(event) => setText(event.target.value)}
