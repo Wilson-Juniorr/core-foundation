@@ -377,7 +377,7 @@ export async function deleteFlow(supabase: Client, flowId: string): Promise<{ ok
   if ((count ?? 0) > 0) {
     throw new FollowupError(
       "Este fluxo já foi usado em execuções e não pode ser excluído. Desative-o para parar de usá-lo.",
-      "conflict",
+      "run_exists",
     );
   }
 
