@@ -259,6 +259,17 @@ export function AssetFormDialog({
             {needsFile && !file && !asset ? "Selecione um arquivo" : "Salvar"}
           </Button>
         </DialogFooter>
+
+        <AudioRecorderDialog
+          open={recorderOpen}
+          onOpenChange={setRecorderOpen}
+          maxBytes={MAX_FILE_BYTES}
+          onConfirm={(recorded) => {
+            setFile(recorded);
+            setRecorderOpen(false);
+          }}
+        />
+
       </DialogContent>
     </Dialog>
   );
