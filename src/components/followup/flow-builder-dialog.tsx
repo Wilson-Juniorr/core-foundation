@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, Mic, Plus, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+import { AudioRecorderDialog } from "@/components/audio/audio-recorder-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -97,6 +98,7 @@ export function FlowBuilderDialog({
   const [windowStart, setWindowStart] = useState("");
   const [windowEnd, setWindowEnd] = useState("");
   const [steps, setSteps] = useState<StepDraft[]>([{ ...emptyStep(), delay_value: 0 }]);
+  const [recorderStep, setRecorderStep] = useState<number | null>(null);
   const strategies = useQuery({
     queryKey: ["message-strategies", "flow-builder"],
     queryFn: () => listMessageStrategies(),
@@ -602,6 +604,18 @@ export function FlowBuilderDialog({
             Salvar fluxo
           </Button>
         </DialogFooter>
+
+        <AudioRecorderDialog
+          open={recorderStep !== null}
+          onOpenChange={(next) => setRecorderStep(next ? recorderStep : null)}
+          maxBytes={MAX_UPLOAD_BYTES}
+          isSaving={uploadMutation.isPending}
+          onConfirm={(recorded) => {
+            if (recorderStep === null) return;
+            uploadMutation.mutate({ index: recorderStep, file: recorded });
+            setRecorderStep(null);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
