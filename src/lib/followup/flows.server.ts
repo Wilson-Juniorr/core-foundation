@@ -393,7 +393,7 @@ export async function deleteFlow(supabase: Client, flowId: string): Promise<{ ok
     const { error: actionsError } = await supabase
       .from("scheduled_actions")
       .delete()
-      .in("run_id", ids);
+      .in("flow_run_id", ids);
     if (actionsError) throw new Error(actionsError.message);
 
     const { error: delRunsError } = await supabase
