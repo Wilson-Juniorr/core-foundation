@@ -47,7 +47,9 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   const [text, setText] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
   const [generateOpen, setGenerateOpen] = useState(false);
+  const [recorderOpen, setRecorderOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const listRef = useRef<HTMLUListElement>(null);
 
   const conversationId = detail?.conversation.id ?? null;
