@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import { AudioRecorderDialog } from "@/components/audio/audio-recorder-dialog";
 
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -63,7 +62,6 @@ export function AssetFormDialog({
   const [isActive, setIsActive] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [recorderOpen, setRecorderOpen] = useState(false);
-
 
   useEffect(() => {
     if (!open) return;
@@ -202,7 +200,6 @@ export function AssetFormDialog({
             </div>
           )}
 
-
           {type === "audio" ? (
             <div className="space-y-2">
               <Label htmlFor="asset-transcript">Transcrição (opcional)</Label>
@@ -269,7 +266,6 @@ export function AssetFormDialog({
             setRecorderOpen(false);
           }}
         />
-
       </DialogContent>
     </Dialog>
   );

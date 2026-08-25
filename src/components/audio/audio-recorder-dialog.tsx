@@ -91,7 +91,9 @@ export function AudioRecorderDialog({
         return;
       }
       if (blob.size > maxBytes) {
-        toast.error(`Áudio maior que ${Math.floor(maxBytes / (1024 * 1024))} MB. Grave menos tempo.`);
+        toast.error(
+          `Áudio maior que ${Math.floor(maxBytes / (1024 * 1024))} MB. Grave menos tempo.`,
+        );
         reset();
         return;
       }
@@ -135,8 +137,8 @@ export function AudioRecorderDialog({
       tickRef.current = setInterval(() => {
         setSeconds((value) => {
           const next = value + 1;
-          if (next >= MAX_RECORDING_SECONDS) {
-            recorderRef.current?.state !== "inactive" && recorderRef.current?.stop();
+          if (next >= MAX_RECORDING_SECONDS && recorderRef.current?.state !== "inactive") {
+            recorderRef.current?.stop();
           }
           return next;
         });

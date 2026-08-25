@@ -19,7 +19,6 @@ import { IntelligenceStrip } from "@/components/intelligence/intelligence-strip"
 import { GenerateMessageDialog } from "@/components/library/generate-message-dialog";
 import { MessageBubble } from "./message-bubble";
 
-
 function mediaTypeFor(file: File): "audio" | "image" | "document" | "video" {
   if (file.type.startsWith("image/")) return "image";
   if (file.type.startsWith("audio/")) return "audio";
@@ -295,7 +294,6 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
         isSaving={mediaMutation.isPending}
         onConfirm={(file) => mediaMutation.mutate(file)}
       />
-
     </div>
   );
 }
