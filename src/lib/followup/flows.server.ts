@@ -378,7 +378,7 @@ export async function deleteFlow(supabase: Client, flowId: string): Promise<{ ok
   if ((count ?? 0) > 0) {
     throw new FollowupError(
       "Este fluxo tem execuções em andamento. Pare/desative essas execuções antes de excluir.",
-      "run_active",
+      "run_exists",
     );
   }
 
