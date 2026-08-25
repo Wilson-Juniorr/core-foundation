@@ -176,16 +176,27 @@ export function AssetFormDialog({
           ) : (
             <div className="space-y-2">
               <Label htmlFor="asset-file">Arquivo</Label>
-              <Input
-                id="asset-file"
-                type="file"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-              />
-              {asset?.filename && !file ? (
-                <p className="text-xs text-muted-foreground">Atual: {asset.filename}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="asset-file"
+                  type="file"
+                  className="flex-1"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
+                {type === "audio" ? (
+                  <Button type="button" variant="outline" onClick={() => setRecorderOpen(true)}>
+                    <Mic className="mr-2 size-4" aria-hidden /> Gravar áudio
+                  </Button>
+                ) : null}
+              </div>
+              {file ? (
+                <p className="text-muted-foreground text-xs">Selecionado: {file.name}</p>
+              ) : asset?.filename ? (
+                <p className="text-muted-foreground text-xs">Atual: {asset.filename}</p>
               ) : null}
             </div>
           )}
+
 
           {type === "audio" ? (
             <div className="space-y-2">
