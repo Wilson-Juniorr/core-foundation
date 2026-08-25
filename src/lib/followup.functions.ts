@@ -54,6 +54,14 @@ export const duplicateFollowupFlow = createServerFn({ method: "POST" })
     return duplicateFlow(context.supabase, context.userId, data.flowId);
   });
 
+export const deleteFollowupFlow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => flowIdSchema.parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { deleteFlow } = await import("./followup/flows.server");
+    return deleteFlow(context.supabase, data.flowId);
+  });
+
 export const setFollowupFlowActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
