@@ -282,6 +282,15 @@ function FlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
     onError: () => toast.error("Não foi possível duplicar."),
   });
 
+  const remove = useMutation({
+    mutationFn: (flowId: string) => deleteFollowupFlow({ data: { flowId } }),
+    onSuccess: async () => {
+      await invalidate();
+      toast.success("Fluxo excluído.");
+    },
+    onError: (error: Error) => toast.error(error.message || "Não foi possível excluir o fluxo."),
+  });
+
   if (flows.isLoading) return <LoadingState />;
   if (flows.isError) return <ErrorState onRetry={() => flows.refetch()} />;
   if ((flows.data ?? []).length === 0) {
