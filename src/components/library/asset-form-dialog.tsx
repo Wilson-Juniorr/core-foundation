@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
+
+import { AudioRecorderDialog } from "@/components/audio/audio-recorder-dialog";
+
 
 import { Button } from "@/components/ui/button";
 import {
