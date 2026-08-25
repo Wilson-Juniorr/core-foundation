@@ -366,20 +366,43 @@ export async function loadFollowupSummary(
   };
 }
 
-/** Exclui um fluxo e suas etapas. Fluxos com histórico de execuções não podem ser apagados. */
+/** Exclui um fluxo, suas etapas e o histórico de execuções. Fluxos com execução ativa são bloqueados. */
 export async function deleteFlow(supabase: Client, flowId: string): Promise<{ ok: true }> {
   const { count, error: countError } = await supabase
     .from("followup_runs")
     .select("id", { count: "exact", head: true })
-    .eq("flow_id", flowId);
+    .eq("flow_id", flowId)
+    .in("status", ["active", "paused"]);
   if (countError) throw new Error(countError.message);
 
   if ((count ?? 0) > 0) {
     throw new FollowupError(
-      "Este fluxo já foi usado em execuções e não pode ser excluído. Desative-o para parar de usá-lo.",
+      "Este fluxo tem execuções em andamento. Pare/desative essas execuções antes de excluir.",
       "run_exists",
     );
   }
+
+  const { data: runIds, error: runsError } = await supabase
+    .from("followup_runs")
+    .select("id")
+    .eq("flow_id", flowId);
+  if (runsError) throw new Error(runsError.message);
+
+  const ids = (runIds ?? []).map((r) => r.id);
+  if (ids.length > 0) {
+    const { error: actionsError } = await supabase
+      .from("scheduled_actions")
+      .delete()
+      .in("run_id", ids);
+    if (actionsError) throw new Error(actionsError.message);
+
+    const { error: delRunsError } = await supabase
+      .from("followup_runs")
+      .delete()
+      .eq("flow_id", flowId);
+    if (delRunsError) throw new Error(delRunsError.message);
+  }
+
 
   const { error } = await supabase.from("followup_flows").delete().eq("id", flowId);
   if (error) throw new Error(error.message);
