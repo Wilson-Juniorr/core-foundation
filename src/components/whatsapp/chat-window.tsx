@@ -115,8 +115,10 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
     },
     onSuccess: async () => {
       setText("");
+      setRecorderOpen(false);
       await invalidate();
     },
+
     onError: (error: Error) => toast.error(error.message),
   });
 
