@@ -62,6 +62,8 @@ export function AssetFormDialog({
   const [tags, setTags] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [file, setFile] = useState<File | null>(null);
+  const [recorderOpen, setRecorderOpen] = useState(false);
+
 
   useEffect(() => {
     if (!open) return;
