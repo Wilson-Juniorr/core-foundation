@@ -36,6 +36,7 @@ export class FollowupError extends Error {
     public code:
       | "flow_inactive"
       | "flow_empty"
+      | "flow_incomplete"
       | "run_exists"
       | "not_found"
       | "invalid_state"
