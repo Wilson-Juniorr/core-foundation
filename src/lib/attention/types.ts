@@ -16,6 +16,7 @@ export const ATTENTION_KINDS = [
   "low_ai_confidence",
   "flow_failed",
   "message_failed",
+  "flow_blocked",
   "missing_next_action",
   "overdue_next_action",
   "unlinked_conversation",
