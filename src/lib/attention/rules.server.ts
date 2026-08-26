@@ -168,11 +168,11 @@ export async function detectAttention(
     db.from("customer_memory").select("*").eq("user_id", userId).is("opportunity_id", null),
     db
       .from("scheduled_actions")
-      .select("id, contact_id, conversation_id, status, last_error, scheduled_for")
+      .select("id, contact_id, conversation_id, status, last_error, scheduled_for, flow_run_id")
       .eq("user_id", userId)
-      .eq("status", "failed")
+      .in("status", ["failed", "blocked"])
       .order("updated_at", { ascending: false })
-      .limit(50),
+      .limit(100),
     db
       .from("followup_runs")
       .select("id, contact_id, conversation_id, flow_id, status, stop_reason")
