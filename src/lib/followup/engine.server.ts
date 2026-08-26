@@ -464,11 +464,13 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
     .eq("id", run.flow_id)
     .maybeSingle();
 
+  // Inclui ações que ficaram bloqueadas (ex.: material sem arquivo): retomar
+  // significa voltar exatamente do passo onde o fluxo parou.
   const { data: pending } = await db
     .from("scheduled_actions")
     .select("*")
     .eq("flow_run_id", runId)
-    .eq("status", "scheduled")
+    .in("status", ["scheduled", "blocked"])
     .order("scheduled_for", { ascending: true });
 
   const pausedAt = run.paused_at ? new Date(run.paused_at).getTime() : now.getTime();
@@ -478,9 +480,13 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
       ? await db.from("followup_flow_steps").select("*").eq("id", action.flow_step_id).maybeSingle()
       : { data: null };
 
+    const wasBlocked = action.status === "blocked";
     // Preserva o intervalo relativo que faltava quando o fluxo foi pausado:
-    // evita explosão de mensagens atrasadas ao retomar.
-    const remainingMs = Math.max(0, new Date(action.scheduled_for).getTime() - pausedAt);
+    // evita explosão de mensagens atrasadas ao retomar. Ações bloqueadas já
+    // estavam vencidas, então voltam para a fila imediatamente.
+    const remainingMs = wasBlocked
+      ? 0
+      : Math.max(0, new Date(action.scheduled_for).getTime() - pausedAt);
     const window = windowFor(settings, flow ?? null, step ?? null);
     let next = nextAllowedInstant(new Date(now.getTime() + remainingMs), window, settings.timezone);
     next = await conversationGapShift(db, action.conversation_id, next, action.id);
@@ -488,10 +494,16 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
 
     await db
       .from("scheduled_actions")
-      .update({ scheduled_for: next.toISOString(), last_error: null })
+      .update({
+        status: "scheduled",
+        scheduled_for: next.toISOString(),
+        last_error: null,
+        ...(wasBlocked ? { attempts: 0 } : {}),
+      })
       .eq("id", action.id)
-      .eq("status", "scheduled");
+      .in("status", ["scheduled", "blocked"]);
   }
+
 
   await db
     .from("followup_runs")
