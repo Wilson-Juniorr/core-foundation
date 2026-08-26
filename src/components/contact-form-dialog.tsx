@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera } from "lucide-react";
+import { Camera, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,11 +15,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ReadContactDialog } from "@/components/read-contact-dialog";
 import { createContact, updateContact } from "@/lib/crm.functions";
 import type { Contact } from "@/lib/crm.types";
+import { startFollowupFlow } from "@/lib/followup.functions";
+import { flowsQuery, followupKeys } from "@/lib/followup.queries";
+import { isSendablePhone } from "@/lib/domain/phone";
 
 type FormState = {
   name: string;
@@ -41,6 +51,8 @@ const EMPTY_FORM: FormState = {
   opportunity_title: "",
 };
 
+const NO_FLOW = "none";
+
 function toFormState(contact: Contact | null): FormState {
   if (!contact) return EMPTY_FORM;
   return {
@@ -53,6 +65,7 @@ function toFormState(contact: Contact | null): FormState {
     opportunity_title: "",
   };
 }
+
 
 export function ContactFormDialog({
   open,
