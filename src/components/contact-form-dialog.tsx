@@ -311,7 +311,10 @@ export function ContactFormDialog({
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || (flowId !== NO_FLOW && !phoneUsable)}
+            >
               {mutation.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
