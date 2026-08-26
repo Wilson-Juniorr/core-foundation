@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera } from "lucide-react";
+import { Camera, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,11 +15,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ReadContactDialog } from "@/components/read-contact-dialog";
 import { createContact, updateContact } from "@/lib/crm.functions";
 import type { Contact } from "@/lib/crm.types";
+import { startFollowupFlow } from "@/lib/followup.functions";
+import { flowsQuery, followupKeys } from "@/lib/followup.queries";
+import { isSendablePhone } from "@/lib/domain/phone";
 
 type FormState = {
   name: string;
@@ -41,6 +51,8 @@ const EMPTY_FORM: FormState = {
   opportunity_title: "",
 };
 
+const NO_FLOW = "none";
+
 function toFormState(contact: Contact | null): FormState {
   if (!contact) return EMPTY_FORM;
   return {
@@ -53,6 +65,7 @@ function toFormState(contact: Contact | null): FormState {
     opportunity_title: "",
   };
 }
+
 
 export function ContactFormDialog({
   open,
@@ -68,12 +81,19 @@ export function ContactFormDialog({
   const queryClient = useQueryClient();
   const create = useServerFn(createContact);
   const update = useServerFn(updateContact);
+  const startFlow = useServerFn(startFollowupFlow);
   const [form, setForm] = useState<FormState>(toFormState(contact));
   const [reading, setReading] = useState(false);
+  const [flowId, setFlowId] = useState<string>(NO_FLOW);
+
+  const flows = useQuery({ ...flowsQuery(), enabled: open && !contact });
+  const activeFlows = (flows.data ?? []).filter((flow) => flow.is_active);
+  const phoneUsable = isSendablePhone(form.phone);
 
   useEffect(() => {
     if (!open) return;
     setForm({ ...toFormState(contact), ...(initialForm ?? {}) });
+    setFlowId(NO_FLOW);
   }, [open, contact, initialForm]);
 
   const mutation = useMutation({
@@ -87,18 +107,42 @@ export function ContactFormDialog({
       };
       if (contact) return update({ data: { id: contact.id, ...payload } });
 
-      return create({
+      const saved = await create({
         data: {
           ...payload,
           create_opportunity: values.create_opportunity,
           opportunity_title: values.opportunity_title,
         },
       });
+
+      if (flowId !== NO_FLOW && isSendablePhone(saved.phone)) {
+        try {
+          await startFlow({
+            data: {
+              flowId,
+              contactId: saved.id,
+              conversationId: null,
+              opportunityId: null,
+              replaceExisting: false,
+            },
+          });
+          toast.success("Follow-up iniciado para o novo cliente.");
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? `Cliente criado, mas o follow-up não iniciou: ${error.message}`
+              : "Cliente criado, mas o follow-up não iniciou.",
+          );
+        }
+      }
+
+      return saved;
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: followupKeys.root });
       toast.success(contact ? "Cliente atualizado" : "Cliente criado");
       onOpenChange(false);
       return saved;
@@ -107,6 +151,7 @@ export function ContactFormDialog({
       toast.error("Não foi possível salvar o cliente. Tente novamente.");
     },
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,11 +268,53 @@ export function ContactFormDialog({
             </div>
           )}
 
+          {!contact && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <Zap className="size-4 text-primary" />
+                <Label htmlFor="start-flow" className="text-sm font-medium">
+                  Iniciar follow-up no cadastro
+                </Label>
+              </div>
+              <Select value={flowId} onValueChange={setFlowId}>
+                <SelectTrigger id="start-flow">
+                  <SelectValue placeholder="Não iniciar agora" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_FLOW}>Não iniciar agora</SelectItem>
+                  {activeFlows.map((flow) => (
+                    <SelectItem key={flow.id} value={flow.id}>
+                      {flow.name} · {flow.step_count} etapa(s)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeFlows.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum fluxo ativo. Ative um fluxo em Follow-ups para usar aqui.
+                </p>
+              ) : flowId !== NO_FLOW && !phoneUsable ? (
+                <p className="text-xs text-destructive">
+                  Informe o telefone com DDD para o follow-up poder iniciar.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  As mensagens seguem as regras do fluxo (janela de envio, atrasos e parada na
+                  resposta do cliente).
+                </p>
+              )}
+            </div>
+          )}
+
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button
+              type="submit"
+              disabled={mutation.isPending || (flowId !== NO_FLOW && !phoneUsable)}
+            >
               {mutation.isPending ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
