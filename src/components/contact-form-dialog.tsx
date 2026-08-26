@@ -81,12 +81,19 @@ export function ContactFormDialog({
   const queryClient = useQueryClient();
   const create = useServerFn(createContact);
   const update = useServerFn(updateContact);
+  const startFlow = useServerFn(startFollowupFlow);
   const [form, setForm] = useState<FormState>(toFormState(contact));
   const [reading, setReading] = useState(false);
+  const [flowId, setFlowId] = useState<string>(NO_FLOW);
+
+  const flows = useQuery({ ...flowsQuery(), enabled: open && !contact });
+  const activeFlows = (flows.data ?? []).filter((flow) => flow.is_active);
+  const phoneUsable = isSendablePhone(form.phone);
 
   useEffect(() => {
     if (!open) return;
     setForm({ ...toFormState(contact), ...(initialForm ?? {}) });
+    setFlowId(NO_FLOW);
   }, [open, contact, initialForm]);
 
   const mutation = useMutation({
@@ -100,18 +107,42 @@ export function ContactFormDialog({
       };
       if (contact) return update({ data: { id: contact.id, ...payload } });
 
-      return create({
+      const saved = await create({
         data: {
           ...payload,
           create_opportunity: values.create_opportunity,
           opportunity_title: values.opportunity_title,
         },
       });
+
+      if (flowId !== NO_FLOW && isSendablePhone(saved.phone)) {
+        try {
+          await startFlow({
+            data: {
+              flowId,
+              contactId: saved.id,
+              conversationId: null,
+              opportunityId: null,
+              replaceExisting: false,
+            },
+          });
+          toast.success("Follow-up iniciado para o novo cliente.");
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? `Cliente criado, mas o follow-up não iniciou: ${error.message}`
+              : "Cliente criado, mas o follow-up não iniciou.",
+          );
+        }
+      }
+
+      return saved;
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: followupKeys.root });
       toast.success(contact ? "Cliente atualizado" : "Cliente criado");
       onOpenChange(false);
       return saved;
@@ -120,6 +151,7 @@ export function ContactFormDialog({
       toast.error("Não foi possível salvar o cliente. Tente novamente.");
     },
   });
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
