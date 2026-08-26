@@ -245,6 +245,68 @@ async function loadFlowWithSteps(db: Admin, userId: string, flowId: string) {
   return { flow, steps };
 }
 
+/**
+ * Verificação preventiva: nenhum fluxo começa se alguma etapa depender de um
+ * material (áudio/imagem/documento) que ainda não tem arquivo anexado. Antes,
+ * isso só aparecia horas depois, quando a etapa era bloqueada no envio.
+ */
+async function assertFlowMaterialsReady(
+  db: Admin,
+  userId: string,
+  steps: StepRow[],
+): Promise<void> {
+  const assetIds = steps
+    .filter((step) => step.content_mode === "asset_selection")
+    .map((step) => step.asset_id)
+    .filter((id): id is string => Boolean(id));
+
+  const problems: string[] = [];
+
+  for (const step of steps) {
+    if (step.content_mode === "asset_selection" && !step.asset_id) {
+      problems.push(`Etapa ${step.position}: nenhum material selecionado`);
+    }
+    if (
+      step.content_mode === "fixed_content" &&
+      step.action_type !== "text_message" &&
+      !step.media_reference
+    ) {
+      problems.push(`Etapa ${step.position}: arquivo não anexado`);
+    }
+  }
+
+  if (assetIds.length > 0) {
+    const { data: assets } = await db
+      .from("content_assets")
+      .select("id, name, type, storage_reference, body")
+      .eq("user_id", userId)
+      .in("id", assetIds);
+
+    const byId = new Map((assets ?? []).map((asset) => [asset.id, asset]));
+    for (const step of steps) {
+      if (step.content_mode !== "asset_selection" || !step.asset_id) continue;
+      const asset = byId.get(step.asset_id);
+      if (!asset) {
+        problems.push(`Etapa ${step.position}: material não encontrado`);
+        continue;
+      }
+      const ready = asset.type === "text" ? Boolean(asset.body) : Boolean(asset.storage_reference);
+      if (!ready) {
+        problems.push(`Etapa ${step.position}: "${asset.name}" ainda sem arquivo`);
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new FollowupError(
+      `Este fluxo ainda não está pronto para iniciar. ${problems.join("; ")}. Anexe os materiais na Biblioteca antes de iniciar.`,
+      "flow_incomplete",
+    );
+  }
+}
+
+
+
 /* ------------------------------ iniciar fluxo ----------------------------- */
 
 export async function previewFlow(
