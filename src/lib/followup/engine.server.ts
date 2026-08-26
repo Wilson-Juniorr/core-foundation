@@ -36,6 +36,7 @@ export class FollowupError extends Error {
     public code:
       | "flow_inactive"
       | "flow_empty"
+      | "flow_incomplete"
       | "run_exists"
       | "not_found"
       | "invalid_state"
@@ -245,6 +246,66 @@ async function loadFlowWithSteps(db: Admin, userId: string, flowId: string) {
   return { flow, steps };
 }
 
+/**
+ * Verificação preventiva: nenhum fluxo começa se alguma etapa depender de um
+ * material (áudio/imagem/documento) que ainda não tem arquivo anexado. Antes,
+ * isso só aparecia horas depois, quando a etapa era bloqueada no envio.
+ */
+async function assertFlowMaterialsReady(
+  db: Admin,
+  userId: string,
+  steps: StepRow[],
+): Promise<void> {
+  const assetIds = steps
+    .filter((step) => step.content_mode === "asset_selection")
+    .map((step) => step.asset_id)
+    .filter((id): id is string => Boolean(id));
+
+  const problems: string[] = [];
+
+  for (const step of steps) {
+    if (step.content_mode === "asset_selection" && !step.asset_id) {
+      problems.push(`Etapa ${step.position}: nenhum material selecionado`);
+    }
+    if (
+      step.content_mode === "fixed_content" &&
+      step.action_type !== "text_message" &&
+      !step.media_reference
+    ) {
+      problems.push(`Etapa ${step.position}: arquivo não anexado`);
+    }
+  }
+
+  if (assetIds.length > 0) {
+    const { data: assets } = await db
+      .from("content_assets")
+      .select("id, name, type, storage_reference, body")
+      .eq("user_id", userId)
+      .in("id", assetIds);
+
+    const byId = new Map((assets ?? []).map((asset) => [asset.id, asset]));
+    for (const step of steps) {
+      if (step.content_mode !== "asset_selection" || !step.asset_id) continue;
+      const asset = byId.get(step.asset_id);
+      if (!asset) {
+        problems.push(`Etapa ${step.position}: material não encontrado`);
+        continue;
+      }
+      const ready = asset.type === "text" ? Boolean(asset.body) : Boolean(asset.storage_reference);
+      if (!ready) {
+        problems.push(`Etapa ${step.position}: "${asset.name}" ainda sem arquivo`);
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new FollowupError(
+      `Este fluxo ainda não está pronto para iniciar. ${problems.join("; ")}. Anexe os materiais na Biblioteca antes de iniciar.`,
+      "flow_incomplete",
+    );
+  }
+}
+
 /* ------------------------------ iniciar fluxo ----------------------------- */
 
 export async function previewFlow(
@@ -326,6 +387,7 @@ export async function startFlow(
   const db = await adminClient();
   const { flow, steps } = await loadFlowWithSteps(db, userId, input.flowId);
   if (!flow.is_active) throw new FollowupError("Este fluxo está desativado.", "flow_inactive");
+  await assertFlowMaterialsReady(db, userId, steps);
 
   await assertContactAllowsAutomation(db, input.contactId);
 
@@ -464,11 +526,13 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
     .eq("id", run.flow_id)
     .maybeSingle();
 
+  // Inclui ações que ficaram bloqueadas (ex.: material sem arquivo): retomar
+  // significa voltar exatamente do passo onde o fluxo parou.
   const { data: pending } = await db
     .from("scheduled_actions")
     .select("*")
     .eq("flow_run_id", runId)
-    .eq("status", "scheduled")
+    .in("status", ["scheduled", "blocked"])
     .order("scheduled_for", { ascending: true });
 
   const pausedAt = run.paused_at ? new Date(run.paused_at).getTime() : now.getTime();
@@ -478,9 +542,13 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
       ? await db.from("followup_flow_steps").select("*").eq("id", action.flow_step_id).maybeSingle()
       : { data: null };
 
+    const wasBlocked = action.status === "blocked";
     // Preserva o intervalo relativo que faltava quando o fluxo foi pausado:
-    // evita explosão de mensagens atrasadas ao retomar.
-    const remainingMs = Math.max(0, new Date(action.scheduled_for).getTime() - pausedAt);
+    // evita explosão de mensagens atrasadas ao retomar. Ações bloqueadas já
+    // estavam vencidas, então voltam para a fila imediatamente.
+    const remainingMs = wasBlocked
+      ? 0
+      : Math.max(0, new Date(action.scheduled_for).getTime() - pausedAt);
     const window = windowFor(settings, flow ?? null, step ?? null);
     let next = nextAllowedInstant(new Date(now.getTime() + remainingMs), window, settings.timezone);
     next = await conversationGapShift(db, action.conversation_id, next, action.id);
@@ -488,9 +556,14 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
 
     await db
       .from("scheduled_actions")
-      .update({ scheduled_for: next.toISOString(), last_error: null })
+      .update({
+        status: "scheduled",
+        scheduled_for: next.toISOString(),
+        last_error: null,
+        ...(wasBlocked ? { attempts: 0 } : {}),
+      })
       .eq("id", action.id)
-      .eq("status", "scheduled");
+      .in("status", ["scheduled", "blocked"]);
   }
 
   await db

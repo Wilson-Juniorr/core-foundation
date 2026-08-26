@@ -17,6 +17,7 @@ export const KIND_LABELS: Record<AttentionKind, string> = {
   low_ai_confidence: "Leitura da IA incerta",
   flow_failed: "Fluxo falhou",
   message_failed: "Mensagem falhou",
+  flow_blocked: "Fluxo travado",
   missing_next_action: "Sem próxima ação",
   overdue_next_action: "Próxima ação atrasada",
   unlinked_conversation: "Conversa sem cliente",

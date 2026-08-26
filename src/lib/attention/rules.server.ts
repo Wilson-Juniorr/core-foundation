@@ -18,6 +18,7 @@ const BASE: Record<AttentionCandidate["kind"], number> = {
   objection_needs_human: 55,
   own_promise_overdue: 50,
   flow_failed: 48,
+  flow_blocked: 58,
   customer_replied: 44,
   high_interest: 44,
   document_received: 40,
@@ -167,11 +168,11 @@ export async function detectAttention(
     db.from("customer_memory").select("*").eq("user_id", userId).is("opportunity_id", null),
     db
       .from("scheduled_actions")
-      .select("id, contact_id, conversation_id, status, last_error, scheduled_for")
+      .select("id, contact_id, conversation_id, status, last_error, scheduled_for, flow_run_id")
       .eq("user_id", userId)
-      .eq("status", "failed")
+      .in("status", ["failed", "blocked"])
       .order("updated_at", { ascending: false })
-      .limit(50),
+      .limit(100),
     db
       .from("followup_runs")
       .select("id, contact_id, conversation_id, flow_id, status, stop_reason")
@@ -538,6 +539,32 @@ export async function detectAttention(
 
   for (const action of actionsResult.data ?? []) {
     const name = action.contact_id ? (contactName.get(action.contact_id) ?? "Cliente") : "Cliente";
+    if (action.status === "blocked") {
+      candidates.push(
+        build({
+          kind: "flow_blocked",
+          dedupe_key: `flow_blocked:${action.id}`,
+          title: "Fluxo travado numa etapa",
+          summary:
+            action.last_error === "blocked"
+              ? "A etapa depende de um material que ainda não tem arquivo anexado."
+              : (action.last_error ?? "A etapa foi bloqueada pelas regras de automação."),
+          reason: `Prioridade alta porque a sequência de ${name} parou nesta etapa e nada foi enviado.`,
+          suggested_action:
+            "Anexar o material que falta e retomar o acompanhamento do passo parado.",
+          suggested_action_kind: "fix_operational",
+          bucket: "overdue",
+          contact_id: action.contact_id,
+          conversation_id: action.conversation_id,
+          factors: [{ label: "Sequência interrompida", points: 12 }],
+          metadata: {
+            scheduled_action_id: action.id,
+            flow_run_id: action.flow_run_id ?? null,
+          },
+        }),
+      );
+      continue;
+    }
     candidates.push(
       build({
         kind: "message_failed",
