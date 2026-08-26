@@ -18,6 +18,7 @@ const BASE: Record<AttentionCandidate["kind"], number> = {
   objection_needs_human: 55,
   own_promise_overdue: 50,
   flow_failed: 48,
+  flow_blocked: 58,
   customer_replied: 44,
   high_interest: 44,
   document_received: 40,
