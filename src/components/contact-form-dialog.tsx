@@ -268,6 +268,45 @@ export function ContactFormDialog({
             </div>
           )}
 
+          {!contact && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <Zap className="size-4 text-primary" />
+                <Label htmlFor="start-flow" className="text-sm font-medium">
+                  Iniciar follow-up no cadastro
+                </Label>
+              </div>
+              <Select value={flowId} onValueChange={setFlowId}>
+                <SelectTrigger id="start-flow">
+                  <SelectValue placeholder="Não iniciar agora" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_FLOW}>Não iniciar agora</SelectItem>
+                  {activeFlows.map((flow) => (
+                    <SelectItem key={flow.id} value={flow.id}>
+                      {flow.name} · {flow.step_count} etapa(s)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeFlows.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum fluxo ativo. Ative um fluxo em Follow-ups para usar aqui.
+                </p>
+              ) : flowId !== NO_FLOW && !phoneUsable ? (
+                <p className="text-xs text-destructive">
+                  Informe o telefone com DDD para o follow-up poder iniciar.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  As mensagens seguem as regras do fluxo (janela de envio, atrasos e parada na
+                  resposta do cliente).
+                </p>
+              )}
+            </div>
+          )}
+
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
