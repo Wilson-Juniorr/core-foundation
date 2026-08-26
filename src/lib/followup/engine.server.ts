@@ -306,8 +306,6 @@ async function assertFlowMaterialsReady(
   }
 }
 
-
-
 /* ------------------------------ iniciar fluxo ----------------------------- */
 
 export async function previewFlow(
@@ -390,7 +388,6 @@ export async function startFlow(
   const { flow, steps } = await loadFlowWithSteps(db, userId, input.flowId);
   if (!flow.is_active) throw new FollowupError("Este fluxo está desativado.", "flow_inactive");
   await assertFlowMaterialsReady(db, userId, steps);
-
 
   await assertContactAllowsAutomation(db, input.contactId);
 
@@ -568,7 +565,6 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
       .eq("id", action.id)
       .in("status", ["scheduled", "blocked"]);
   }
-
 
   await db
     .from("followup_runs")

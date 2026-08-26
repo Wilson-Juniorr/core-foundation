@@ -550,7 +550,8 @@ export async function detectAttention(
               ? "A etapa depende de um material que ainda não tem arquivo anexado."
               : (action.last_error ?? "A etapa foi bloqueada pelas regras de automação."),
           reason: `Prioridade alta porque a sequência de ${name} parou nesta etapa e nada foi enviado.`,
-          suggested_action: "Anexar o material que falta e retomar o acompanhamento do passo parado.",
+          suggested_action:
+            "Anexar o material que falta e retomar o acompanhamento do passo parado.",
           suggested_action_kind: "fix_operational",
           bucket: "overdue",
           contact_id: action.contact_id,
@@ -581,7 +582,6 @@ export async function detectAttention(
       }),
     );
   }
-
 
   for (const run of runsResult.data ?? []) {
     const name = contactName.get(run.contact_id) ?? "Cliente";
