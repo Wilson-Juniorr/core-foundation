@@ -184,6 +184,15 @@ async function scheduleStep(
 
   const key = idempotencyKeyForStep(input.run.id, input.step.id);
 
+  // Etapa de mídia com arquivo próprio anexado tem prioridade sobre o material
+  // da Biblioteca (que pode estar sem arquivo). Evita bloqueio no envio.
+  const hasOwnFile =
+    input.step.action_type !== "text_message" && Boolean(input.step.media_reference);
+  const effectiveMode =
+    input.step.content_mode === "asset_selection" && hasOwnFile
+      ? "fixed_content"
+      : input.step.content_mode;
+
   const { data, error } = await db
     .from("scheduled_actions")
     .insert({
@@ -196,13 +205,12 @@ async function scheduleStep(
       action_type: input.step.action_type,
       content: input.step.content,
       media_reference:
-        input.step.content_mode === "asset_selection"
-          ? input.step.asset_id
-          : input.step.media_reference,
+        effectiveMode === "asset_selection" ? input.step.asset_id : input.step.media_reference,
       media_mime_type: input.step.media_mime_type,
       media_filename: input.step.media_filename,
-      content_mode: input.step.content_mode,
+      content_mode: effectiveMode,
       strategy_id: input.step.strategy_id,
+
       scheduled_for: scheduledFor.toISOString(),
       cancel_on_reply: input.flow.stop_on_reply,
       idempotency_key: key,
@@ -257,14 +265,19 @@ async function assertFlowMaterialsReady(
   steps: StepRow[],
 ): Promise<void> {
   const assetIds = steps
-    .filter((step) => step.content_mode === "asset_selection")
+    .filter(
+      (step) =>
+        step.content_mode === "asset_selection" &&
+        !(step.action_type !== "text_message" && step.media_reference),
+    )
     .map((step) => step.asset_id)
     .filter((id): id is string => Boolean(id));
 
   const problems: string[] = [];
 
   for (const step of steps) {
-    if (step.content_mode === "asset_selection" && !step.asset_id) {
+    const hasOwnFile = step.action_type !== "text_message" && Boolean(step.media_reference);
+    if (step.content_mode === "asset_selection" && !step.asset_id && !hasOwnFile) {
       problems.push(`Etapa ${step.position}: nenhum material selecionado`);
     }
     if (
@@ -286,6 +299,7 @@ async function assertFlowMaterialsReady(
     const byId = new Map((assets ?? []).map((asset) => [asset.id, asset]));
     for (const step of steps) {
       if (step.content_mode !== "asset_selection" || !step.asset_id) continue;
+      if (step.action_type !== "text_message" && step.media_reference) continue;
       const asset = byId.get(step.asset_id);
       if (!asset) {
         problems.push(`Etapa ${step.position}: material não encontrado`);
@@ -297,6 +311,7 @@ async function assertFlowMaterialsReady(
       }
     }
   }
+
 
   if (problems.length > 0) {
     throw new FollowupError(
