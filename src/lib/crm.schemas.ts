@@ -18,7 +18,22 @@ export const contactInputSchema = z.object({
   /** Cria automaticamente uma oportunidade na primeira etapa do pipeline. */
   create_opportunity: z.boolean().optional(),
   opportunity_title: z.string().trim().max(200).optional(),
+  /** Confirmação explícita quando já existe cliente com o mesmo telefone/e-mail. */
+  allow_duplicate: z.boolean().optional(),
 });
+
+/** Busca de cliente já cadastrado pelo telefone ou e-mail informado. */
+export const duplicateLookupSchema = z.object({
+  phone: z.string().trim().max(40).optional(),
+  email: z.string().trim().max(200).optional(),
+  excludeId: z.string().uuid().optional(),
+});
+
+/** Sinais operacionais (follow-up ativo, resposta recente) por cliente. */
+export const contactSignalsSchema = z.object({
+  contactIds: z.array(z.string().uuid()).min(1).max(200),
+});
+
 
 /** Prints enviados para leitura automática do cadastro (data URLs de imagem). */
 export const contactVisionSchema = z.object({
