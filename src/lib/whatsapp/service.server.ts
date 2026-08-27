@@ -64,7 +64,6 @@ export function webhookUrl(connection: ConnectionRow): string {
   return `${webhookBaseUrl()}/api/public/whatsapp/${connection.id}?secret=${connection.webhook_secret}`;
 }
 
-
 export function presentConnection(
   connection: ConnectionRow,
   hasCredentials = true,
@@ -440,8 +439,7 @@ export async function syncHistory(
         });
         if (outcome === "created") {
           messages += 1;
-          const conversationId =
-            (conversation as { id?: string } | null | undefined)?.id ?? null;
+          const conversationId = (conversation as { id?: string } | null | undefined)?.id ?? null;
           if (conversationId && message.direction === "inbound") {
             const previous = repliedConversations.get(conversationId);
             if (!previous || new Date(message.timestamp) > new Date(previous)) {
