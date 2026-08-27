@@ -370,3 +370,26 @@ export async function signMediaUrl(admin: Admin, mediaUrl: string | null): Promi
   }
   return data.signedUrl;
 }
+
+/**
+ * Conexão principal do usuário.
+ *
+ * O sistema pode ter mais de uma linha em `whatsapp_connections` (instância
+ * antiga de teste, provisionamento repetido). Consultar com `maybeSingle()`
+ * nesse cenário devolve erro e o sistema passa a se comportar como se não
+ * houvesse WhatsApp — foi o que travava os envios. Aqui a escolha é sempre
+ * determinística: conexão conectada primeiro, depois a mais recente.
+ */
+export async function loadPrimaryConnection(
+  admin: Admin,
+  userId: string,
+): Promise<ConnectionRow | null> {
+  const { data, error } = await admin
+    .from("whatsapp_connections")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  return rows.find((row) => row.status === "connected") ?? rows[0] ?? null;
+}

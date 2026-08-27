@@ -403,7 +403,6 @@ export async function deleteFlow(supabase: Client, flowId: string): Promise<{ ok
     if (delRunsError) throw new Error(delRunsError.message);
   }
 
-
   const { error } = await supabase.from("followup_flows").delete().eq("id", flowId);
   if (error) throw new Error(error.message);
   return { ok: true };
