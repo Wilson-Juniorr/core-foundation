@@ -265,14 +265,19 @@ async function assertFlowMaterialsReady(
   steps: StepRow[],
 ): Promise<void> {
   const assetIds = steps
-    .filter((step) => step.content_mode === "asset_selection")
+    .filter(
+      (step) =>
+        step.content_mode === "asset_selection" &&
+        !(step.action_type !== "text_message" && step.media_reference),
+    )
     .map((step) => step.asset_id)
     .filter((id): id is string => Boolean(id));
 
   const problems: string[] = [];
 
   for (const step of steps) {
-    if (step.content_mode === "asset_selection" && !step.asset_id) {
+    const hasOwnFile = step.action_type !== "text_message" && Boolean(step.media_reference);
+    if (step.content_mode === "asset_selection" && !step.asset_id && !hasOwnFile) {
       problems.push(`Etapa ${step.position}: nenhum material selecionado`);
     }
     if (
@@ -294,6 +299,7 @@ async function assertFlowMaterialsReady(
     const byId = new Map((assets ?? []).map((asset) => [asset.id, asset]));
     for (const step of steps) {
       if (step.content_mode !== "asset_selection" || !step.asset_id) continue;
+      if (step.action_type !== "text_message" && step.media_reference) continue;
       const asset = byId.get(step.asset_id);
       if (!asset) {
         problems.push(`Etapa ${step.position}: material não encontrado`);
@@ -305,6 +311,7 @@ async function assertFlowMaterialsReady(
       }
     }
   }
+
 
   if (problems.length > 0) {
     throw new FollowupError(
