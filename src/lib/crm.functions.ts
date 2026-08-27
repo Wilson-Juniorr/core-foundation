@@ -4,8 +4,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   contactArchiveSchema,
   contactInputSchema,
+  contactSignalsSchema,
   contactUpdateSchema,
   contactVisionSchema,
+  duplicateLookupSchema,
   idSchema,
   listContactsSchema,
   opportunityInputSchema,
@@ -15,11 +17,13 @@ import type { Database } from "@/integrations/supabase/types";
 import type {
   Contact,
   ContactDetail,
+  ContactSignal,
   DashboardMetrics,
   OpportunityWithRelations,
   PipelineStage,
   TimelineEvent,
 } from "./crm.types";
+
 import type { ExtractedContact } from "./crm/contact-vision.server";
 
 export const listContacts = createServerFn({ method: "GET" })
