@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Loader2, Mic, Paperclip, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -9,7 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { LoadingState } from "@/components/states";
 import { formatPhone } from "@/lib/domain/phone";
 import { MAX_MEDIA_BYTES } from "@/lib/whatsapp.schemas";
-import { listOlderMessages, sendWhatsAppMedia, sendWhatsAppText } from "@/lib/whatsapp.functions";
+import {
+  linkConversationContact,
+  listOlderMessages,
+  sendWhatsAppMedia,
+  sendWhatsAppText,
+} from "@/lib/whatsapp.functions";
+import { duplicateContactsQuery } from "@/lib/crm.queries";
 import { whatsappKeys } from "@/lib/whatsapp.queries";
 import type { ConversationDetail, ConversationMessage } from "@/lib/whatsapp/types";
 import { AudioRecorderDialog } from "@/components/audio/audio-recorder-dialog";
@@ -52,6 +58,31 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
   const listRef = useRef<HTMLUListElement>(null);
 
   const conversationId = detail?.conversation.id ?? null;
+  const unlinkedPhone =
+    detail?.conversation && !detail.conversation.contact_id
+      ? (detail.conversation.phone_number ?? "")
+      : "";
+
+  // Conversa sem cliente vinculado: se o telefone já está no cadastro,
+  // sugerimos o vínculo em um clique em vez de exigir busca manual.
+  const suggestion = useQuery({
+    ...duplicateContactsQuery(unlinkedPhone, ""),
+    enabled: Boolean(unlinkedPhone),
+  });
+  const suggestedContact = unlinkedPhone ? (suggestion.data?.[0] ?? null) : null;
+
+  const linkSuggestion = useMutation({
+    mutationFn: (contactId: string) =>
+      linkConversationContact({ data: { conversationId: conversationId!, contactId } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: whatsappKeys.conversationsRoot });
+      if (conversationId) {
+        await queryClient.invalidateQueries({ queryKey: whatsappKeys.conversation(conversationId) });
+      }
+      toast.success("Conversa vinculada ao cliente.");
+    },
+    onError: () => toast.error("Não foi possível vincular a conversa."),
+  });
   const [older, setOlder] = useState<ConversationMessage[]>([]);
   const [hasMore, setHasMore] = useState(false);
 
@@ -167,9 +198,22 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
               </Link>
             </Button>
           ) : (
-            <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
-              Vincular cliente
-            </Button>
+            <>
+              {suggestedContact ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={linkSuggestion.isPending}
+                  onClick={() => linkSuggestion.mutate(suggestedContact.id)}
+                  title="Este número já está cadastrado"
+                >
+                  Vincular a {suggestedContact.name}
+                </Button>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={() => setLinkOpen(true)}>
+                {suggestedContact ? "Outro cliente" : "Vincular cliente"}
+              </Button>
+            </>
           )}
         </div>
       </header>
