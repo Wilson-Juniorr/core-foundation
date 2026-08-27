@@ -4,8 +4,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   contactArchiveSchema,
   contactInputSchema,
+  contactSignalsSchema,
   contactUpdateSchema,
   contactVisionSchema,
+  duplicateLookupSchema,
   idSchema,
   listContactsSchema,
   opportunityInputSchema,
@@ -15,11 +17,13 @@ import type { Database } from "@/integrations/supabase/types";
 import type {
   Contact,
   ContactDetail,
+  ContactSignal,
   DashboardMetrics,
   OpportunityWithRelations,
   PipelineStage,
   TimelineEvent,
 } from "./crm.types";
+
 import type { ExtractedContact } from "./crm/contact-vision.server";
 
 export const listContacts = createServerFn({ method: "GET" })
@@ -76,12 +80,99 @@ export const getContactDetail = createServerFn({ method: "GET" })
     };
   });
 
+/** Avisa, antes de salvar, que já existe cliente com o mesmo telefone/e-mail. */
+export const findDuplicateContacts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => duplicateLookupSchema.parse(input ?? {}))
+  .handler(async ({ data, context }): Promise<Contact[]> => {
+    const { findDuplicateContacts: find } = await import("./crm.server");
+    return find(context.supabase, {
+      phone: data.phone ?? null,
+      email: data.email ?? null,
+      excludeId: data.excludeId ?? null,
+    });
+  });
+
+/**
+ * Sinais do dia a dia por cliente: acompanhamento em andamento, etapas
+ * bloqueadas e última resposta recebida. Evita iniciar fluxo duplicado ou
+ * automatizar alguém que acabou de responder.
+ */
+export const getContactSignals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => contactSignalsSchema.parse(input))
+  .handler(async ({ data, context }): Promise<ContactSignal[]> => {
+    const ids = data.contactIds;
+
+    const [runsResult, blockedResult, inboundResult] = await Promise.all([
+      context.supabase
+        .from("followup_runs")
+        .select("contact_id, status")
+        .in("contact_id", ids)
+        .in("status", ["active", "paused"]),
+      context.supabase
+        .from("scheduled_actions")
+        .select("contact_id")
+        .in("contact_id", ids)
+        .eq("status", "blocked"),
+      context.supabase
+        .from("messages")
+        .select("contact_id, sent_at")
+        .in("contact_id", ids)
+        .eq("direction", "inbound")
+        .order("sent_at", { ascending: false })
+        .limit(500),
+    ]);
+
+    const signals = new Map<string, ContactSignal>(
+      ids.map((id) => [
+        id,
+        { contact_id: id, followup_status: null, blocked_actions: 0, last_inbound_at: null },
+      ]),
+    );
+
+    for (const run of runsResult.data ?? []) {
+      if (!run.contact_id) continue;
+      const signal = signals.get(run.contact_id);
+      if (!signal) continue;
+      // "active" tem precedência sobre "paused" na exibição.
+      if (signal.followup_status !== "active") {
+        signal.followup_status = run.status === "active" ? "active" : "paused";
+      }
+    }
+
+    for (const action of blockedResult.data ?? []) {
+      if (!action.contact_id) continue;
+      const signal = signals.get(action.contact_id);
+      if (signal) signal.blocked_actions += 1;
+    }
+
+    for (const message of inboundResult.data ?? []) {
+      if (!message.contact_id) continue;
+      const signal = signals.get(message.contact_id);
+      if (signal && !signal.last_inbound_at) signal.last_inbound_at = message.sent_at;
+    }
+
+    return [...signals.values()];
+  });
+
 export const createContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => contactInputSchema.parse(input))
   .handler(async ({ data, context }): Promise<Contact> => {
     const { normalizePhone } = await import("./domain/phone");
-    const { logEvent } = await import("./crm.server");
+    const { findDuplicateContacts: find, logEvent } = await import("./crm.server");
+
+    // Rede de segurança contra duplo clique/corrida: o aviso da tela é a
+    // primeira barreira, esta é a definitiva.
+    if (!data.allow_duplicate) {
+      const duplicates = await find(context.supabase, { phone: data.phone, email: data.email });
+      if (duplicates.length > 0) {
+        throw new Error(
+          `Já existe um cliente com este contato: ${duplicates.map((item) => item.name).join(", ")}.`,
+        );
+      }
+    }
 
     const { data: row, error } = await context.supabase
       .from("contacts")

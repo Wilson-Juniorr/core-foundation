@@ -25,6 +25,8 @@ import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowPreviewQuery, flowsQuery, followupKeys } from "@/lib/followup.queries";
 import { ACTION_TYPE_LABELS } from "@/lib/followup/labels";
 import { isSendablePhone } from "@/lib/domain/phone";
+import { contactSignalsQuery } from "@/lib/crm.queries";
+import { formatRelative } from "@/lib/domain/datetime";
 
 export function StartFollowupDialog({
   open,
@@ -48,6 +50,12 @@ export function StartFollowupDialog({
   const flows = useQuery(flowsQuery());
   const [flowId, setFlowId] = useState<string | null>(null);
   const preview = useQuery({ ...flowPreviewQuery(flowId), enabled: open && Boolean(flowId) });
+  const signals = useQuery({ ...contactSignalsQuery([contactId]), enabled: open });
+  const lastInboundAt = signals.data?.[0]?.last_inbound_at ?? null;
+  // Cliente que respondeu há pouco merece atenção humana antes de automação.
+  const repliedRecently = lastInboundAt
+    ? Date.now() - new Date(lastInboundAt).getTime() < 3 * 24 * 60 * 60 * 1000
+    : false;
 
   const phoneUsable = isSendablePhone(contactPhone);
   const willCreateConversation = !conversationId && phoneUsable;
@@ -133,6 +141,13 @@ export function StartFollowupDialog({
                     “{preview.data.first_action_content}”
                   </p>
                 )}
+              </div>
+            )}
+
+            {repliedRecently && lastInboundAt && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                Este cliente respondeu {formatRelative(lastInboundAt)}. Confirme se faz sentido
+                automatizar agora — talvez uma resposta sua pessoalmente funcione melhor.
               </div>
             )}
 

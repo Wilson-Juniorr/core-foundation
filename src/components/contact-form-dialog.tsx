@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, Zap } from "lucide-react";
+import { AlertTriangle, Camera, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,10 +27,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ReadContactDialog } from "@/components/read-contact-dialog";
 import { createContact, updateContact } from "@/lib/crm.functions";
+import { duplicateContactsQuery } from "@/lib/crm.queries";
 import type { Contact } from "@/lib/crm.types";
 import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowsQuery, followupKeys } from "@/lib/followup.queries";
-import { isSendablePhone } from "@/lib/domain/phone";
+import { formatPhone, isSendablePhone } from "@/lib/domain/phone";
 
 type FormState = {
   name: string;
@@ -84,6 +86,8 @@ export function ContactFormDialog({
   const [form, setForm] = useState<FormState>(toFormState(contact));
   const [reading, setReading] = useState(false);
   const [flowId, setFlowId] = useState<string>(NO_FLOW);
+  const [allowDuplicate, setAllowDuplicate] = useState(false);
+  const [lookup, setLookup] = useState({ phone: "", email: "" });
 
   const flows = useQuery({ ...flowsQuery(), enabled: open && !contact });
   const activeFlows = (flows.data ?? []).filter((flow) => flow.is_active);
@@ -93,7 +97,28 @@ export function ContactFormDialog({
     if (!open) return;
     setForm({ ...toFormState(contact), ...(initialForm ?? {}) });
     setFlowId(NO_FLOW);
+    setAllowDuplicate(false);
   }, [open, contact, initialForm]);
+
+  // Só consultamos duplicidade depois que o usuário para de digitar.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const digits = form.phone.replace(/\D/g, "");
+      setLookup({
+        phone: digits.length >= 10 ? form.phone : "",
+        email: form.email.includes("@") ? form.email : "",
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [form.phone, form.email]);
+
+  const hasLookup = Boolean(lookup.phone || lookup.email);
+  const duplicates = useQuery({
+    ...duplicateContactsQuery(lookup.phone, lookup.email, contact?.id ?? null),
+    enabled: open && hasLookup,
+  });
+  const duplicateList = hasLookup ? (duplicates.data ?? []) : [];
+  const blockedByDuplicate = duplicateList.length > 0 && !allowDuplicate;
 
   const mutation = useMutation({
     mutationFn: async (values: FormState) => {
@@ -111,6 +136,7 @@ export function ContactFormDialog({
           ...payload,
           create_opportunity: values.create_opportunity,
           opportunity_title: values.opportunity_title,
+          allow_duplicate: allowDuplicate || duplicateList.length === 0,
         },
       });
 
@@ -146,8 +172,12 @@ export function ContactFormDialog({
       onOpenChange(false);
       return saved;
     },
-    onError: () => {
-      toast.error("Não foi possível salvar o cliente. Tente novamente.");
+    onError: (error) => {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível salvar o cliente. Tente novamente.",
+      );
     },
   });
 
@@ -212,6 +242,55 @@ export function ContactFormDialog({
               />
             </div>
           </div>
+
+          {duplicateList.length > 0 && (
+            <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <div className="flex items-start gap-2">
+                <AlertTriangle
+                  className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400"
+                  aria-hidden
+                />
+                <div className="min-w-0 space-y-2 text-sm">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    {duplicateList.length === 1
+                      ? "Já existe um cliente com este contato"
+                      : "Já existem clientes com este contato"}
+                  </p>
+                  <ul className="space-y-2">
+                    {duplicateList.map((item) => (
+                      <li key={item.id} className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">{item.name}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {formatPhone(item.phone) || item.email || "sem contato"}
+                        </span>
+                        <Button asChild size="sm" variant="outline">
+                          <Link
+                            to="/clientes/$contactId"
+                            params={{ contactId: item.id }}
+                            onClick={() => onOpenChange(false)}
+                          >
+                            Ver cliente
+                          </Link>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              {!contact && (
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="allow-duplicate" className="text-xs font-normal">
+                    Cadastrar mesmo assim
+                  </Label>
+                  <Switch
+                    id="allow-duplicate"
+                    checked={allowDuplicate}
+                    onCheckedChange={setAllowDuplicate}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="contact-source">Origem</Label>
@@ -310,7 +389,11 @@ export function ContactFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || (flowId !== NO_FLOW && !phoneUsable)}
+              disabled={
+                mutation.isPending ||
+                (!contact && blockedByDuplicate) ||
+                (flowId !== NO_FLOW && !phoneUsable)
+              }
             >
               {mutation.isPending ? "Salvando…" : "Salvar"}
             </Button>

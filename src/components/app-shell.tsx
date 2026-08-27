@@ -17,6 +17,7 @@ import {
   Workflow,
 } from "lucide-react";
 
+import { GlobalSearch } from "@/components/global-search";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
@@ -174,6 +175,7 @@ export function AppShell({
           </div>
 
           <div className="flex items-center gap-2">
+            <GlobalSearch />
             {actions}
             <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sair da conta">
               <LogOut className="size-4" />

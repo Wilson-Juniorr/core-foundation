@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 import type { TimelineEventType } from "./domain/events";
-import type { Opportunity, OpportunityWithRelations } from "./crm.types";
+import type { Contact, Opportunity, OpportunityWithRelations } from "./crm.types";
 
 type Client = SupabaseClient<Database>;
 
@@ -109,4 +109,36 @@ export async function logOpportunityChanges(
       metadata: { from_status: before.status, to_status: after.status },
     });
   }
+}
+
+/**
+ * Duplicidade de cadastro é um problema de dia a dia: o mesmo lead volta por
+ * outro canal e vira dois clientes. Comparamos pelo telefone normalizado
+ * (E.164) e pelo e-mail, para que "(11) 91238-9903" e "11912389903" sejam
+ * reconhecidos como o mesmo número.
+ */
+export async function findDuplicateContacts(
+  supabase: Client,
+  input: { phone?: string | null; email?: string | null; excludeId?: string | null },
+): Promise<Contact[]> {
+  const { normalizePhone } = await import("./domain/phone");
+
+  const phone = normalizePhone(input.phone ?? null);
+  const email = input.email?.trim().toLowerCase() || null;
+  if (!phone && !email) return [];
+
+  const found = new Map<string, Contact>();
+
+  if (phone) {
+    const { data } = await supabase.from("contacts").select("*").eq("phone", phone).limit(5);
+    for (const row of data ?? []) found.set(row.id, row as Contact);
+  }
+
+  if (email) {
+    const { data } = await supabase.from("contacts").select("*").ilike("email", email).limit(5);
+    for (const row of data ?? []) found.set(row.id, row as Contact);
+  }
+
+  if (input.excludeId) found.delete(input.excludeId);
+  return [...found.values()];
 }
