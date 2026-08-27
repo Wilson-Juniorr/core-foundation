@@ -28,10 +28,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ReadContactDialog } from "@/components/read-contact-dialog";
 import { createContact, updateContact } from "@/lib/crm.functions";
+import { duplicateContactsQuery } from "@/lib/crm.queries";
 import type { Contact } from "@/lib/crm.types";
 import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowsQuery, followupKeys } from "@/lib/followup.queries";
-import { isSendablePhone } from "@/lib/domain/phone";
+import { formatPhone, isSendablePhone } from "@/lib/domain/phone";
+
 
 type FormState = {
   name: string;
