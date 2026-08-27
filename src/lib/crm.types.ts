@@ -63,3 +63,12 @@ export type DashboardMetrics = {
   dueToday: number;
   attention: OpportunityWithRelations[];
 };
+
+/** Sinais do dia a dia: acompanhamento em andamento e última resposta do cliente. */
+export type ContactSignal = {
+  contact_id: string;
+  followup_status: "active" | "paused" | null;
+  blocked_actions: number;
+  last_inbound_at: string | null;
+};
+
