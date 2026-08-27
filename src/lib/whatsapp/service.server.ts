@@ -44,8 +44,24 @@ function requestOrigin(): string {
   }
 }
 
+/**
+ * O provedor entrega webhooks a partir da internet, então o endereço precisa ser
+ * estável e público. A URL de preview (`id-preview--<id>.lovable.app`) exige
+ * sessão e responde 302 — webhooks caem no vazio. Aqui trocamos por um endereço
+ * fixo do projeto (ou pelo override explícito de ambiente).
+ */
+function webhookBaseUrl(): string {
+  const override = process.env["WHATSAPP_WEBHOOK_BASE_URL"];
+  if (override) return override.replace(/\/+$/, "");
+
+  const origin = requestOrigin();
+  const preview = /^https:\/\/id-preview--([0-9a-f-]+)\.lovable\.app$/i.exec(origin);
+  if (preview) return `https://project--${preview[1]}-dev.lovable.app`;
+  return origin;
+}
+
 export function webhookUrl(connection: ConnectionRow): string {
-  return `${requestOrigin()}/api/public/whatsapp/${connection.id}?secret=${connection.webhook_secret}`;
+  return `${webhookBaseUrl()}/api/public/whatsapp/${connection.id}?secret=${connection.webhook_secret}`;
 }
 
 export function presentConnection(
@@ -390,13 +406,17 @@ export async function syncHistory(
   let chats = 0;
   let messages = 0;
   let skipped = 0;
+  /* Respostas descobertas pela sincronização (ex.: webhook fora do ar) também
+     precisam interromper follow-ups — senão o cliente responde e o sistema
+     continua enviando. */
+  const repliedConversations = new Map<string, string>();
 
   try {
     const chatList = await provider.fetchChats(creds, { limit: chatLimit });
 
     for (const chat of chatList) {
       chats += 1;
-      await upsertConversation(db, {
+      const conversation = await upsertConversation(db, {
         userId,
         connectionId: connection.id,
         externalChatId: chat.externalChatId,
@@ -417,8 +437,16 @@ export async function syncHistory(
           // Histórico importado não gera contadores de não lidas.
           countUnread: false,
         });
-        if (outcome === "created") messages += 1;
-        else skipped += 1;
+        if (outcome === "created") {
+          messages += 1;
+          const conversationId = (conversation as { id?: string } | null | undefined)?.id ?? null;
+          if (conversationId && message.direction === "inbound") {
+            const previous = repliedConversations.get(conversationId);
+            if (!previous || new Date(message.timestamp) > new Date(previous)) {
+              repliedConversations.set(conversationId, message.timestamp);
+            }
+          }
+        } else skipped += 1;
       }
     }
   } catch (error) {
@@ -434,7 +462,22 @@ export async function syncHistory(
     throw new Error(message);
   }
 
+  if (repliedConversations.size > 0) {
+    const { stopRunsForReply } = await import("@/lib/followup/engine.server");
+    for (const [conversationId, repliedAt] of repliedConversations) {
+      try {
+        await stopRunsForReply({ userId, conversationId, repliedAt });
+      } catch (error) {
+        waLog.warn("sync_stop_runs_failed", {
+          conversation_id: conversationId,
+          reason: error instanceof Error ? error.name : "unknown",
+        });
+      }
+    }
+  }
+
   const finishedAt = new Date().toISOString();
+
   await db
     .from("whatsapp_connections")
     .update({
