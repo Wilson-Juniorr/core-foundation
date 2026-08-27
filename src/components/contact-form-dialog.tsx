@@ -176,8 +176,12 @@ export function ContactFormDialog({
       onOpenChange(false);
       return saved;
     },
-    onError: () => {
-      toast.error("Não foi possível salvar o cliente. Tente novamente.");
+    onError: (error) => {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível salvar o cliente. Tente novamente.",
+      );
     },
   });
 
@@ -391,7 +395,11 @@ export function ContactFormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={mutation.isPending || (flowId !== NO_FLOW && !phoneUsable)}
+              disabled={
+                mutation.isPending ||
+                (!contact && blockedByDuplicate) ||
+                (flowId !== NO_FLOW && !phoneUsable)
+              }
             >
               {mutation.isPending ? "Salvando…" : "Salvar"}
             </Button>
