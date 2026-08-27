@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { contactsQuery } from "@/lib/crm.queries";
+import { contactSignalsQuery, contactsQuery } from "@/lib/crm.queries";
 import { formatPhone } from "@/lib/domain/phone";
 
 export const Route = createFileRoute("/_authenticated/clientes/")({
@@ -40,6 +40,9 @@ function ContactsPage() {
   const [reading, setReading] = useState(false);
   const [printContact, setPrintContact] = useState<ReadResult | null>(null);
   const contacts = useQuery(contactsQuery(search, includeArchived));
+  const contactIds = (contacts.data ?? []).map((contact) => contact.id);
+  const signals = useQuery(contactSignalsQuery(contactIds));
+  const signalById = new Map((signals.data ?? []).map((signal) => [signal.contact_id, signal]));
 
   return (
     <AppShell
@@ -116,7 +119,24 @@ function ContactsPage() {
                       {formatPhone(contact.phone) || contact.email || "Sem contato registrado"}
                     </p>
                   </div>
-                  {contact.is_archived ? <Badge variant="outline">Arquivado</Badge> : null}
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {(() => {
+                      const signal = signalById.get(contact.id);
+                      if (!signal) return null;
+                      return (
+                        <>
+                          {signal.blocked_actions > 0 ? (
+                            <Badge variant="destructive">Follow-up bloqueado</Badge>
+                          ) : signal.followup_status === "active" ? (
+                            <Badge>Follow-up ativo</Badge>
+                          ) : signal.followup_status === "paused" ? (
+                            <Badge variant="secondary">Follow-up pausado</Badge>
+                          ) : null}
+                        </>
+                      );
+                    })()}
+                    {contact.is_archived ? <Badge variant="outline">Arquivado</Badge> : null}
+                  </div>
                 </Link>
               </li>
             ))}
