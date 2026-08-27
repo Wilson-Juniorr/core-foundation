@@ -44,9 +44,26 @@ function requestOrigin(): string {
   }
 }
 
-export function webhookUrl(connection: ConnectionRow): string {
-  return `${requestOrigin()}/api/public/whatsapp/${connection.id}?secret=${connection.webhook_secret}`;
+/**
+ * O provedor entrega webhooks a partir da internet, então o endereço precisa ser
+ * estável e público. A URL de preview (`id-preview--<id>.lovable.app`) exige
+ * sessão e responde 302 — webhooks caem no vazio. Aqui trocamos por um endereço
+ * fixo do projeto (ou pelo override explícito de ambiente).
+ */
+function webhookBaseUrl(): string {
+  const override = process.env["WHATSAPP_WEBHOOK_BASE_URL"];
+  if (override) return override.replace(/\/+$/, "");
+
+  const origin = requestOrigin();
+  const preview = /^https:\/\/id-preview--([0-9a-f-]+)\.lovable\.app$/i.exec(origin);
+  if (preview) return `https://project--${preview[1]}-dev.lovable.app`;
+  return origin;
 }
+
+export function webhookUrl(connection: ConnectionRow): string {
+  return `${webhookBaseUrl()}/api/public/whatsapp/${connection.id}?secret=${connection.webhook_secret}`;
+}
+
 
 export function presentConnection(
   connection: ConnectionRow,
