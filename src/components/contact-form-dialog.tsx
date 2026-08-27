@@ -243,6 +243,57 @@ export function ContactFormDialog({
             </div>
           </div>
 
+          {duplicateList.length > 0 && (
+            <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <div className="flex items-start gap-2">
+                <AlertTriangle
+                  className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400"
+                  aria-hidden
+                />
+                <div className="min-w-0 space-y-2 text-sm">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    {duplicateList.length === 1
+                      ? "Já existe um cliente com este contato"
+                      : "Já existem clientes com este contato"}
+                  </p>
+                  <ul className="space-y-2">
+                    {duplicateList.map((item) => (
+                      <li key={item.id} className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">{item.name}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {formatPhone(item.phone) || item.email || "sem contato"}
+                        </span>
+                        <Button asChild size="sm" variant="outline">
+                          <Link
+                            to="/clientes/$contactId"
+                            params={{ contactId: item.id }}
+                            onClick={() => onOpenChange(false)}
+                          >
+                            Ver cliente
+                          </Link>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              {!contact && (
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="allow-duplicate" className="text-xs font-normal">
+                    Cadastrar mesmo assim
+                  </Label>
+                  <Switch
+                    id="allow-duplicate"
+                    checked={allowDuplicate}
+                    onCheckedChange={setAllowDuplicate}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+
+
           <div className="space-y-2">
             <Label htmlFor="contact-source">Origem</Label>
             <Input
