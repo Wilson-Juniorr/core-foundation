@@ -66,7 +66,6 @@ function toFormState(contact: Contact | null): FormState {
   };
 }
 
-
 export function ContactFormDialog({
   open,
   onOpenChange,
@@ -151,7 +150,6 @@ export function ContactFormDialog({
       toast.error("Não foi possível salvar o cliente. Tente novamente.");
     },
   });
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -305,7 +303,6 @@ export function ContactFormDialog({
               )}
             </div>
           )}
-
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

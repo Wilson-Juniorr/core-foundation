@@ -11,6 +11,7 @@ import {
   STORAGE_PREFIX,
   applyConnectionUpdate,
   loadCredentials,
+  loadPrimaryConnection,
   refreshConversationAggregates,
   signMediaUrl,
   upsertConversation,
@@ -89,12 +90,7 @@ export function mapConversation(row: ConversationRow): ConversationListItem {
  */
 export async function ensureConnection(userId: string): Promise<ConnectionRow | null> {
   const db = await admin();
-  const { data, error } = await db
-    .from("whatsapp_connections")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
+  const data = await loadPrimaryConnection(db, userId);
   if (data) return data;
 
   const { readUazapiEnv } = await import("./env.server");
@@ -154,11 +150,7 @@ export async function saveSettings(
 ): Promise<WhatsAppConnection> {
   const db = await admin();
 
-  const { data: existing } = await db
-    .from("whatsapp_connections")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const existing = await loadPrimaryConnection(db, userId);
 
   let connection = existing;
 
@@ -246,11 +238,7 @@ export async function provisionInstance(
     );
   }
 
-  const { data: existing } = await db
-    .from("whatsapp_connections")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const existing = await loadPrimaryConnection(db, userId);
 
   let connection = existing;
   if (!connection) {
