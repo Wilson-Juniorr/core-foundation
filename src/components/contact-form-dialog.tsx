@@ -5,7 +5,6 @@ import { AlertTriangle, Camera, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,7 +32,6 @@ import type { Contact } from "@/lib/crm.types";
 import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowsQuery, followupKeys } from "@/lib/followup.queries";
 import { formatPhone, isSendablePhone } from "@/lib/domain/phone";
-
 
 type FormState = {
   name: string;
@@ -141,8 +139,6 @@ export function ContactFormDialog({
           allow_duplicate: allowDuplicate || duplicateList.length === 0,
         },
       });
-
-
 
       if (flowId !== NO_FLOW && isSendablePhone(saved.phone)) {
         try {
@@ -295,8 +291,6 @@ export function ContactFormDialog({
               )}
             </div>
           )}
-
-
 
           <div className="space-y-2">
             <Label htmlFor="contact-source">Origem</Label>

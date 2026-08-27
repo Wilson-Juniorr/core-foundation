@@ -174,7 +174,6 @@ export const createContact = createServerFn({ method: "POST" })
       }
     }
 
-
     const { data: row, error } = await context.supabase
       .from("contacts")
       .insert({

@@ -49,7 +49,6 @@ export const contactSignalsQuery = (contactIds: string[]) =>
     staleTime: 30_000,
   });
 
-
 export const contactsQuery = (search = "", includeArchived = false) =>
   queryOptions({
     queryKey: crmKeys.contacts(search, includeArchived),

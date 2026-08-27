@@ -312,7 +312,6 @@ async function assertFlowMaterialsReady(
     }
   }
 
-
   if (problems.length > 0) {
     throw new FollowupError(
       `Este fluxo ainda não está pronto para iniciar. ${problems.join("; ")}. Anexe os materiais na Biblioteca antes de iniciar.`,

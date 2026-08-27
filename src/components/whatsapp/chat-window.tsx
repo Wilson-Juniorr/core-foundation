@@ -77,7 +77,9 @@ export function ChatWindow({ detail, isLoading, canSend, onBack }: Props) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: whatsappKeys.conversationsRoot });
       if (conversationId) {
-        await queryClient.invalidateQueries({ queryKey: whatsappKeys.conversation(conversationId) });
+        await queryClient.invalidateQueries({
+          queryKey: whatsappKeys.conversation(conversationId),
+        });
       }
       toast.success("Conversa vinculada ao cliente.");
     },

@@ -71,4 +71,3 @@ export type ContactSignal = {
   blocked_actions: number;
   last_inbound_at: string | null;
 };
-
