@@ -88,6 +88,8 @@ export function ContactFormDialog({
   const [form, setForm] = useState<FormState>(toFormState(contact));
   const [reading, setReading] = useState(false);
   const [flowId, setFlowId] = useState<string>(NO_FLOW);
+  const [allowDuplicate, setAllowDuplicate] = useState(false);
+  const [lookup, setLookup] = useState({ phone: "", email: "" });
 
   const flows = useQuery({ ...flowsQuery(), enabled: open && !contact });
   const activeFlows = (flows.data ?? []).filter((flow) => flow.is_active);
@@ -97,7 +99,28 @@ export function ContactFormDialog({
     if (!open) return;
     setForm({ ...toFormState(contact), ...(initialForm ?? {}) });
     setFlowId(NO_FLOW);
+    setAllowDuplicate(false);
   }, [open, contact, initialForm]);
+
+  // Só consultamos duplicidade depois que o usuário para de digitar.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const digits = form.phone.replace(/\D/g, "");
+      setLookup({
+        phone: digits.length >= 10 ? form.phone : "",
+        email: form.email.includes("@") ? form.email : "",
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [form.phone, form.email]);
+
+  const hasLookup = Boolean(lookup.phone || lookup.email);
+  const duplicates = useQuery({
+    ...duplicateContactsQuery(lookup.phone, lookup.email, contact?.id ?? null),
+    enabled: open && hasLookup,
+  });
+  const duplicateList = hasLookup ? (duplicates.data ?? []) : [];
+  const blockedByDuplicate = duplicateList.length > 0 && !allowDuplicate;
 
   const mutation = useMutation({
     mutationFn: async (values: FormState) => {
@@ -115,8 +138,11 @@ export function ContactFormDialog({
           ...payload,
           create_opportunity: values.create_opportunity,
           opportunity_title: values.opportunity_title,
+          allow_duplicate: allowDuplicate || duplicateList.length === 0,
         },
       });
+
+
 
       if (flowId !== NO_FLOW && isSendablePhone(saved.phone)) {
         try {
