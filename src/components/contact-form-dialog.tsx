@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, Zap } from "lucide-react";
+import { AlertTriangle, Camera, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
 
 import { Button } from "@/components/ui/button";
 import {
