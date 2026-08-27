@@ -946,11 +946,8 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
   }
 
   // WhatsApp desconectado: a ação é preservada e reagendada, nunca perdida.
-  const { data: connection } = await db
-    .from("whatsapp_connections")
-    .select("status")
-    .eq("user_id", action.user_id)
-    .maybeSingle();
+  const { loadPrimaryConnection } = await import("@/lib/whatsapp/store.server");
+  const connection = await loadPrimaryConnection(db, action.user_id);
   if (!connection || connection.status !== "connected") {
     const retryAt = nextAllowedInstant(
       new Date(now.getTime() + DISCONNECTED_RETRY_MINUTES * 60_000),

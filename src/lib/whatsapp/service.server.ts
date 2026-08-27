@@ -11,6 +11,7 @@ import {
   STORAGE_PREFIX,
   applyConnectionUpdate,
   loadCredentials,
+  loadPrimaryConnection,
   refreshConversationAggregates,
   signMediaUrl,
   upsertConversation,
