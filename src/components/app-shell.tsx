@@ -146,13 +146,13 @@ export function AppShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-64 shrink-0 border-r bg-sidebar lg:block">
+    <div className="bg-background flex min-h-screen">
+      <aside className="bg-sidebar hidden w-64 shrink-0 border-r lg:block">
         <NavContent />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b px-4 py-4 sm:px-8">
+        <header className="bg-background/80 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur sm:px-8">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button
