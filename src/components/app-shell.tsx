@@ -171,9 +171,9 @@ export function AppShell({
           </Sheet>
 
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold">{title}</h1>
+            <h1 className="font-display truncate text-lg font-semibold tracking-tight">{title}</h1>
             {description ? (
-              <p className="truncate text-sm text-muted-foreground">{description}</p>
+              <p className="text-muted-foreground truncate text-xs">{description}</p>
             ) : null}
           </div>
 
@@ -188,7 +188,15 @@ export function AppShell({
 
         <OperationBanner />
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
+        <main className="grid-tech min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
+
+        <footer className="text-muted-foreground/70 flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2 text-[10px] tracking-[0.12em] uppercase sm:px-8">
+          <span className="flex items-center gap-1.5">
+            <span className="bg-signal size-1.5 rounded-full" aria-hidden />
+            Sistema online
+          </span>
+          <span>{PRODUCT_NAME} · acompanhamento comercial</span>
+        </footer>
       </div>
     </div>
   );
