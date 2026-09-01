@@ -31,7 +31,20 @@ export const Route = createFileRoute("/_authenticated/pipeline")({
   component: PipelinePage,
 });
 
+/** Faixas coloridas das etapas, na ordem do kanban (referência Bitrix24). */
+const STAGE_COLORS = [
+  "#f1b62c",
+  "#e8a03c",
+  "#f07f4a",
+  "#4ab4e8",
+  "#3d8fd6",
+  "#7b8fd6",
+  "#5bbf7a",
+  "#3fae8f",
+] as const;
+
 function PipelinePage() {
+
   const queryClient = useQueryClient();
   const stages = useQuery(pipelineStagesQuery());
   const opportunities = useQuery(opportunitiesQuery());
@@ -90,12 +103,17 @@ function PipelinePage() {
           description="As etapas padrão são criadas junto com a conta. Recarregue a página em instantes."
         />
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {(stages.data ?? []).map((stage) => {
+        <div className="flex gap-3 overflow-x-auto pb-4">
+          {(stages.data ?? []).map((stage, stageIndex) => {
             const stageOpportunities = (opportunities.data ?? []).filter(
               (opportunity) =>
                 opportunity.pipeline_stage_id === stage.id && opportunity.status === "open",
             );
+            const stageTotal = stageOpportunities.reduce(
+              (sum, item) => sum + (item.estimated_value ?? 0),
+              0,
+            );
+            const stageColor = STAGE_COLORS[stageIndex % STAGE_COLORS.length];
 
             return (
               <div
@@ -120,18 +138,26 @@ function PipelinePage() {
                   });
                 }}
                 className={cn(
-                  "flex w-72 shrink-0 flex-col rounded-lg border bg-card/50 p-3 transition-colors",
-                  dragOverStage === stage.id && "border-ring bg-secondary/60",
+                  "flex w-72 shrink-0 flex-col gap-2 transition-colors",
+                  dragOverStage === stage.id && "rounded-md ring-2 ring-ring",
                 )}
               >
-                <div className="flex items-center justify-between px-1 pb-3">
-                  <p className="text-sm font-semibold">{stage.name}</p>
-                  <span className="text-xs text-muted-foreground">{stageOpportunities.length}</span>
+                {/* Faixa da etapa: cor sólida, nome e contagem — leitura Bitrix. */}
+                <div
+                  className="flex items-center justify-between rounded-sm px-3 py-2 text-xs font-bold tracking-wide text-white uppercase"
+                  style={{ backgroundColor: stageColor }}
+                >
+                  <span className="truncate">{stage.name}</span>
+                  <span className="ml-2 shrink-0 opacity-90">{stageOpportunities.length}</span>
                 </div>
+
+                <p className="text-muted-foreground text-center text-xs font-semibold">
+                  {formatCurrency(stageTotal)}
+                </p>
 
                 <div className="flex flex-col gap-2">
                   {stageOpportunities.length === 0 ? (
-                    <p className="rounded-md border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
+                    <p className="text-muted-foreground rounded-md border border-dashed px-3 py-6 text-center text-xs">
                       Nenhuma oportunidade
                     </p>
                   ) : (
@@ -142,19 +168,19 @@ function PipelinePage() {
                         onDragStart={(event) =>
                           event.dataTransfer.setData("text/plain", opportunity.id)
                         }
-                        className="cursor-grab rounded-md border bg-card p-3 shadow-sm active:cursor-grabbing"
+                        className="bg-card cursor-grab rounded-sm border p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
                       >
                         <Link
                           to="/clientes/$contactId"
                           params={{ contactId: opportunity.contact_id }}
                           className="block"
                         >
-                          <p className="truncate text-sm font-medium">{opportunity.title}</p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {opportunity.contact_name}
-                          </p>
-                          <p className="mt-2 text-xs text-muted-foreground">
+                          <p className="truncate text-sm font-semibold">{opportunity.title}</p>
+                          <p className="text-foreground mt-1 text-sm font-bold">
                             {formatCurrency(opportunity.estimated_value)}
+                          </p>
+                          <p className="text-primary mt-1 truncate text-xs">
+                            {opportunity.contact_name}
                           </p>
                           <NextActionBadge
                             nextActionAt={opportunity.next_action_at}
@@ -169,6 +195,7 @@ function PipelinePage() {
             );
           })}
         </div>
+
       )}
     </AppShell>
   );
