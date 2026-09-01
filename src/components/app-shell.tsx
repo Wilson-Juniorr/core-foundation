@@ -148,12 +148,12 @@ export function AppShell({
 
   return (
     <div className="bg-background flex min-h-screen">
-      <aside className="bg-sidebar hidden w-64 shrink-0 border-r lg:block">
+      <aside className="bg-sidebar hidden w-60 shrink-0 lg:block">
         <NavContent />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="bg-background/80 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur sm:px-8">
+        <header className="bg-card sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 shadow-sm sm:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button
@@ -165,14 +165,14 @@ export function AppShell({
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
+            <SheetContent side="left" className="bg-sidebar w-72 border-0 p-0">
               <SheetTitle className="sr-only">Navegação</SheetTitle>
               <NavContent onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
 
           <div className="min-w-0 flex-1">
-            <h1 className="font-display truncate text-lg font-semibold tracking-tight">{title}</h1>
+            <h1 className="font-display truncate text-lg font-bold tracking-tight">{title}</h1>
             {description ? (
               <p className="text-muted-foreground truncate text-xs">{description}</p>
             ) : null}
@@ -189,16 +189,17 @@ export function AppShell({
 
         <OperationBanner />
 
-        <main className="grid-tech min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6">{children}</main>
 
-        <footer className="text-muted-foreground/70 flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2 text-[10px] tracking-[0.12em] uppercase sm:px-8">
+        <footer className="text-muted-foreground/70 flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2 text-[11px] sm:px-6">
           <span className="flex items-center gap-1.5">
-            <span className="bg-signal size-1.5 rounded-full" aria-hidden />
+            <span className="bg-success size-1.5 rounded-full" aria-hidden />
             Sistema online
           </span>
           <span>{PRODUCT_NAME} · acompanhamento comercial</span>
         </footer>
       </div>
     </div>
+
   );
 }
