@@ -72,16 +72,16 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   return (
-    <div className="flex h-full flex-col gap-8 px-3 py-6">
-      <div className="px-3">
-        <p className="font-display text-base font-semibold tracking-tight">{PRODUCT_NAME}</p>
-        <p className="text-signal mt-1 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">
-          <span className="bg-signal size-1.5 rounded-full" aria-hidden />
+    <div className="bg-sidebar text-sidebar-foreground flex h-full flex-col gap-6 py-4">
+      <div className="px-4">
+        <p className="font-display text-base font-bold tracking-tight">{PRODUCT_NAME}</p>
+        <p className="text-sidebar-foreground/70 mt-1 flex items-center gap-1.5 text-[11px] font-semibold">
+          <span className="bg-success size-1.5 rounded-full" aria-hidden />
           Operação ativa
         </p>
       </div>
 
-      <nav className="flex flex-col gap-0.5">
+      <nav className="flex flex-col gap-0.5 px-2">
         {ACTIVE_ITEMS.map((item) => {
           const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
           return (
@@ -90,21 +90,21 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
               to={item.to}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 border-l-2 px-3 py-2 text-sm transition-colors duration-150",
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150",
                 active
-                  ? "border-signal bg-secondary text-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground border-transparent",
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
               )}
             >
-              <item.icon className={cn("size-4", active && "text-signal")} />
+              <item.icon className={cn("size-4", active && "text-sidebar-primary")} />
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="flex flex-col gap-1">
-        <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+      <div className="flex flex-col gap-1 px-2">
+        <p className="text-sidebar-foreground/50 px-3 pb-1 text-[11px] font-semibold tracking-wider uppercase">
           Em breve
         </p>
         {UPCOMING_ITEMS.map((item) => (
@@ -112,7 +112,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
             key={item.label}
             aria-disabled="true"
             title="Disponível em um próximo módulo"
-            className="flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground/50"
+            className="text-sidebar-foreground/40 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm"
           >
             <item.icon className="size-4" />
             {item.label}
@@ -122,6 +122,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
     </div>
   );
 }
+
 
 export function AppShell({
   title,
