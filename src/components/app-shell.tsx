@@ -44,7 +44,7 @@ function OperationBanner() {
   if (notices.length === 0) return null;
 
   return (
-    <div className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-900 sm:px-8 dark:bg-amber-950/40 dark:text-amber-200">
+    <div className="border-b border-[var(--warning)]/30 bg-[var(--warning)]/10 px-4 py-2 text-xs text-[var(--warning)] sm:px-8">
       {notices.join(" · ")}{" "}
       <Link to="/configuracoes" className="underline">
         Ajustar
@@ -72,13 +72,16 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   return (
-    <div className="flex h-full flex-col gap-8 px-4 py-6">
-      <div className="px-2">
+    <div className="flex h-full flex-col gap-8 px-3 py-6">
+      <div className="px-3">
         <p className="font-display text-base font-semibold tracking-tight">{PRODUCT_NAME}</p>
-        <p className="mt-1 text-xs text-muted-foreground">Acompanhamento comercial</p>
+        <p className="text-signal mt-1 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">
+          <span className="bg-signal size-1.5 rounded-full" aria-hidden />
+          Operação ativa
+        </p>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5">
         {ACTIVE_ITEMS.map((item) => {
           const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
           return (
@@ -87,13 +90,13 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
               to={item.to}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 border-l-2 px-3 py-2 text-sm transition-colors duration-150",
                 active
-                  ? "bg-secondary font-medium text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+                  ? "border-signal bg-secondary text-foreground font-semibold"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground border-transparent",
               )}
             >
-              <item.icon className="size-4" />
+              <item.icon className={cn("size-4", active && "text-signal")} />
               {item.label}
             </Link>
           );
@@ -143,13 +146,13 @@ export function AppShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-64 shrink-0 border-r bg-sidebar lg:block">
+    <div className="bg-background flex min-h-screen">
+      <aside className="bg-sidebar hidden w-64 shrink-0 border-r lg:block">
         <NavContent />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b px-4 py-4 sm:px-8">
+        <header className="bg-background/80 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur sm:px-8">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button
@@ -168,9 +171,9 @@ export function AppShell({
           </Sheet>
 
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold">{title}</h1>
+            <h1 className="font-display truncate text-lg font-semibold tracking-tight">{title}</h1>
             {description ? (
-              <p className="truncate text-sm text-muted-foreground">{description}</p>
+              <p className="text-muted-foreground truncate text-xs">{description}</p>
             ) : null}
           </div>
 
@@ -185,7 +188,15 @@ export function AppShell({
 
         <OperationBanner />
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
+        <main className="grid-tech min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
+
+        <footer className="text-muted-foreground/70 flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2 text-[10px] tracking-[0.12em] uppercase sm:px-8">
+          <span className="flex items-center gap-1.5">
+            <span className="bg-signal size-1.5 rounded-full" aria-hidden />
+            Sistema online
+          </span>
+          <span>{PRODUCT_NAME} · acompanhamento comercial</span>
+        </footer>
       </div>
     </div>
   );
