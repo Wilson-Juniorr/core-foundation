@@ -31,7 +31,20 @@ export const Route = createFileRoute("/_authenticated/pipeline")({
   component: PipelinePage,
 });
 
+/** Faixas coloridas das etapas, na ordem do kanban (referência Bitrix24). */
+const STAGE_COLORS = [
+  "#f1b62c",
+  "#e8a03c",
+  "#f07f4a",
+  "#4ab4e8",
+  "#3d8fd6",
+  "#7b8fd6",
+  "#5bbf7a",
+  "#3fae8f",
+] as const;
+
 function PipelinePage() {
+
   const queryClient = useQueryClient();
   const stages = useQuery(pipelineStagesQuery());
   const opportunities = useQuery(opportunitiesQuery());
