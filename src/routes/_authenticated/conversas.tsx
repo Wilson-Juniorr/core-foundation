@@ -82,14 +82,16 @@ function ConversasPage() {
         )}
 
         {selectedId && detail.data?.conversation.contact_id && (
-          <div className="shrink-0">
+          <div className="shrink-0 space-y-3">
             <FollowupPanel
               contactId={detail.data.conversation.contact_id}
               conversationId={selectedId}
               compact
             />
+            <SmartControlCard conversationId={selectedId} />
           </div>
         )}
+
 
         {conversations.isLoading ? (
           <LoadingState />
