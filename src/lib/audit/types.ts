@@ -51,7 +51,10 @@ export type AuditAction =
   | "smart_closing_detected"
   | "smart_irritation_detected"
   | "smart_action_approved"
-  | "smart_action_rejected";
+  | "smart_action_rejected"
+  | "smart_refusal_detected"
+  | "smart_loss_reason_captured"
+  | "smart_declined";
 
 export type AuditSeverity = "info" | "warning" | "critical";
 
@@ -115,6 +118,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   smart_irritation_detected: "Incômodo do cliente detectado",
   smart_action_approved: "Ação inteligente aprovada",
   smart_action_rejected: "Ação inteligente recusada",
+  smart_refusal_detected: "Cliente sinalizou desinteresse",
+  smart_loss_reason_captured: "Motivo da recusa registrado",
+  smart_declined: "Acompanhamento declinado com elegância",
 };
 
 export const AUDIT_FILTERS = [

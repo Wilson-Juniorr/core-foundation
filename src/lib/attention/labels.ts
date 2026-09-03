@@ -23,6 +23,7 @@ export const KIND_LABELS: Record<AttentionKind, string> = {
   unlinked_conversation: "Conversa sem cliente",
   whatsapp_disconnected: "WhatsApp desconectado",
   own_promise_overdue: "Sua promessa venceu",
+  reactivation_due: "Reativação sugerida",
 };
 
 export function kindLabel(kind: string): string {

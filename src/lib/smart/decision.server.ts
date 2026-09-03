@@ -31,6 +31,8 @@ export interface SmartDecisionInput {
   memorySummary: string | null;
   pendingCommitments: { responsible: string; description: string; due_at: string | null }[];
   recentStrategies: { strategy: string; used_at: string; got_reply: boolean }[];
+  /** Fase do acompanhamento pós-cotação, quando aplicável. */
+  phase?: "recovery" | "decline" | "reactivation" | null;
   attemptsThisWeek: number;
 }
 
@@ -57,7 +59,29 @@ function buildPrompt(input: SmartDecisionInput): string {
     (SMART_STRATEGIES as readonly string[]).includes(item),
   );
 
+  const phaseDirective =
+    input.phase === "recovery"
+      ? [
+          "FASE ATUAL: RECUPERAÇÃO DE OBJEÇÃO.",
+          'O cliente disse explicitamente que não tem mais interesse. Use action="send" com strategy="LOSS_REASON_DISCOVERY".',
+          "A mensagem deve: aceitar a decisão sem insistir, agradecer, e fazer UMA pergunta simples sobre o motivo (atendimento, preço, prazo, escolheu outra opção ou mudou de planos), oferecendo refazer a cotação apenas se o motivo puder ser ajustado. Sem cobrança, sem argumentar contra a decisão.",
+        ]
+      : input.phase === "decline"
+        ? [
+            "FASE ATUAL: DECLÍNIO DIGNO.",
+            'O cliente confirmou a recusa. Use action="send" com strategy="GRACEFUL_DECLINE".',
+            "A mensagem deve apenas agradecer, encerrar com elegância e informar que não haverá mais contatos automáticos. Nenhuma pergunta e nenhuma nova oferta.",
+          ]
+        : input.phase === "reactivation"
+          ? [
+              "FASE ATUAL: REATIVAÇÃO DE LONGO PRAZO.",
+              'O prazo principal já passou e o cliente nunca recusou. Prefira action="send" com strategy="REACTIVATION" e abordagem diferente das anteriores, ou action="wait" se não houver contexto suficiente.',
+            ]
+          : [];
+
   const lines = [
+    ...phaseDirective,
+    phaseDirective.length > 0 ? "" : "",
     `Objetivo comercial: ${input.objective}`,
     `Prazo máximo do acompanhamento: ${input.deadlineAt ?? "sem prazo definido"}`,
     `Autonomia configurada: ${input.config.autonomy}`,

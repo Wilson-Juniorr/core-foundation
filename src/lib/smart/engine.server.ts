@@ -22,9 +22,10 @@ import {
 import { blockingDeadline, pendingCommitments } from "./commitments.server";
 import { ensureControl, loadControl, patchControl, refreshPressure } from "./control.server";
 import { decideNextStep } from "./decision.server";
-import { evaluatePreSend, humanCooldownUntil } from "./rules";
+import { classifyLossReason, evaluatePreSend, humanCooldownUntil } from "./rules";
 import type { PreSendDecision } from "./rules";
-import { SMART_STRATEGY_META } from "./types";
+import { LOSS_REASON_LABELS, SMART_STRATEGY_META } from "./types";
+import type { SmartStrategy } from "./types";
 
 type Admin = SupabaseClient<Database>;
 type ActionRow = Database["public"]["Tables"]["scheduled_actions"]["Row"];
@@ -281,9 +282,43 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     opportunity_id: run.opportunity_id,
   };
 
-  if (run.deadline_at && new Date(run.deadline_at) <= now) {
-    await completeRun(db, runRef, "Prazo máximo do acompanhamento alcançado.");
-    return "deadline_reached";
+  const phase =
+    run.smart_state === "refusal_recovery"
+      ? ("recovery" as const)
+      : run.smart_state === "declining"
+        ? ("decline" as const)
+        : run.smart_state === "reactivation"
+          ? ("reactivation" as const)
+          : null;
+
+  // Prazo máximo alcançado sem recusa: o acompanhamento não morre, ele muda de
+  // ritmo — passa a reativação de longo prazo (uma tentativa por mês).
+  if (run.deadline_at && new Date(run.deadline_at) <= now && phase !== "reactivation") {
+    if (phase === "recovery" || phase === "decline") {
+      await db
+        .from("followup_runs")
+        .update({ next_evaluation_at: new Date(now.getTime() + HOUR_MS).toISOString() })
+        .eq("id", run.id);
+    } else {
+      await db
+        .from("followup_runs")
+        .update({
+          smart_state: "reactivation",
+          deadline_at: null,
+          next_evaluation_at: new Date(now.getTime() + 30 * DAY_MS).toISOString(),
+        })
+        .eq("id", run.id);
+      await writeAudit(db, run.user_id, {
+        action: "smart_strategy_selected",
+        summary:
+          "Prazo principal alcançado sem recusa do cliente: acompanhamento passa a reativação mensal.",
+        entityType: "followup_run",
+        entityId: run.id,
+        actor: "system",
+        metadata: { smart_state: "reactivation" },
+      });
+      return "reactivation_mode";
+    }
   }
 
   // Oportunidade encerrada: nada mais a acompanhar.
@@ -365,7 +400,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     got_reply: Boolean(item.got_reply),
   }));
 
-  if (usage.length >= config.max_actions_per_week) {
+  if (usage.length >= config.max_actions_per_week && !phase) {
     await db
       .from("followup_runs")
       .update({
@@ -377,7 +412,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   }
 
   const lastUsedAt = usage[0]?.used_at ? new Date(usage[0].used_at) : null;
-  if (lastUsedAt) {
+  if (lastUsedAt && !phase) {
     const minNext = new Date(lastUsedAt.getTime() + config.min_hours_between_actions * HOUR_MS);
     if (now < minNext) {
       await db
@@ -388,7 +423,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     }
   }
 
-  if (pressure.score > config.max_pressure) {
+  if (pressure.score > config.max_pressure && !phase) {
     await db
       .from("followup_runs")
       .update({
@@ -443,6 +478,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     })),
     recentStrategies: usage,
     attemptsThisWeek: usage.length,
+    phase,
   });
 
   await writeAudit(db, run.user_id, {
@@ -461,17 +497,28 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     },
   });
 
-  if (decision.action === "complete") {
+  if (phase && !decision.message) {
+    await handoff(
+      db,
+      runRef,
+      phase === "decline"
+        ? "Não foi possível redigir o encerramento automaticamente."
+        : "Não foi possível redigir a pergunta sobre o motivo da recusa.",
+    );
+    return "phase_handoff";
+  }
+
+  if (decision.action === "complete" && !phase) {
     await completeRun(db, runRef, decision.reason);
     return "completed";
   }
 
-  if (decision.action === "handoff") {
+  if (decision.action === "handoff" && !phase) {
     await handoff(db, runRef, decision.reason, { confidence: decision.confidence });
     return "handoff";
   }
 
-  if (decision.action === "wait" || !decision.strategy || !decision.message) {
+  if (!phase && (decision.action === "wait" || !decision.strategy || !decision.message)) {
     const waitHours = decision.waitHours > 0 ? decision.waitHours : 24;
     await db
       .from("followup_runs")
@@ -499,8 +546,19 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const target = new Date(now.getTime() + Math.max(0, decision.waitHours) * HOUR_MS);
   const scheduledFor = nextAllowedInstant(target, window, settings.timezone);
 
+  const forcedStrategy: SmartStrategy | null =
+    phase === "recovery"
+      ? "LOSS_REASON_DISCOVERY"
+      : phase === "decline"
+        ? "GRACEFUL_DECLINE"
+        : null;
+  const strategy = forcedStrategy ?? decision.strategy;
+
+  // Recuperação de objeção e declínio nunca saem sem você ver.
   const needsApproval =
-    config.autonomy !== "auto" || decision.confidence < Number(config.confidence_min);
+    Boolean(forcedStrategy) ||
+    config.autonomy !== "auto" ||
+    decision.confidence < Number(config.confidence_min);
 
   const { data: action, error } = await db
     .from("scheduled_actions")
@@ -516,8 +574,8 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       scheduled_for: scheduledFor.toISOString(),
       status: needsApproval ? "needs_approval" : "scheduled",
       cancel_on_reply: true,
-      idempotency_key: `smart:${run.id}:${decision.strategy}:${scheduledFor.toISOString()}`,
-      smart_strategy: decision.strategy,
+      idempotency_key: `smart:${run.id}:${strategy}:${scheduledFor.toISOString()}`,
+      smart_strategy: strategy,
       context_version: control.context_version,
       generated_at: now.toISOString(),
       decision_reason: decision.reason,
@@ -533,7 +591,15 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   await db
     .from("followup_runs")
     .update({
-      smart_state: needsApproval ? "waiting_approval" : "acting",
+      smart_state: phase
+        ? phase === "recovery"
+          ? "refusal_recovery"
+          : phase === "decline"
+            ? "declining"
+            : "reactivation"
+        : needsApproval
+          ? "waiting_approval"
+          : "acting",
       next_evaluation_at: new Date(
         scheduledFor.getTime() + config.min_hours_between_actions * HOUR_MS,
       ).toISOString(),
@@ -773,6 +839,124 @@ export async function recordStrategyUsage(
     state: "waiting_customer",
     next_responsible: "customer",
     next_responsible_reason: "Aguardando resposta do cliente.",
+  });
+
+  if (action.smart_strategy === "GRACEFUL_DECLINE") {
+    await finalizeDecline(db, action);
+  }
+}
+
+/**
+ * Declínio digno concluído: a oportunidade é marcada como perdida com o motivo
+ * classificado, o acompanhamento é encerrado e fica um lembrete de reativação
+ * para daqui a seis meses. Não aplicamos `do_not_contact`: o cliente recusou
+ * esta cotação, não o relacionamento.
+ */
+async function finalizeDecline(db: Admin, action: ActionRow): Promise<void> {
+  const { data: lastInbound } = await db
+    .from("messages")
+    .select("text_content")
+    .eq("conversation_id", action.conversation_id)
+    .eq("direction", "inbound")
+    .order("sent_at", { ascending: false })
+    .limit(3);
+
+  const reasonText = (lastInbound ?? [])
+    .map((item) => item.text_content ?? "")
+    .join(" ")
+    .trim();
+  const lossReason = classifyLossReason(reasonText);
+  const lossLabel = LOSS_REASON_LABELS[lossReason];
+
+  if (action.opportunity_id) {
+    const { data: opportunity } = await db
+      .from("opportunities")
+      .select("id, status, notes")
+      .eq("id", action.opportunity_id)
+      .maybeSingle();
+    if (opportunity && opportunity.status === "open") {
+      await db
+        .from("opportunities")
+        .update({
+          status: "lost",
+          next_action_at: null,
+          next_action_description: null,
+          notes: [opportunity.notes, `Perda registrada pelo acompanhamento — motivo: ${lossLabel}.`]
+            .filter(Boolean)
+            .join("\n"),
+        })
+        .eq("id", opportunity.id);
+      await logEvent(db, action.user_id, {
+        event_type: "opportunity_lost",
+        contact_id: action.contact_id,
+        opportunity_id: opportunity.id,
+        metadata: { loss_reason: lossReason, source: "smart_decline" },
+      });
+    }
+  }
+
+  if (action.flow_run_id) {
+    await db
+      .from("followup_runs")
+      .update({
+        status: "completed",
+        smart_state: "completed",
+        completed_at: new Date().toISOString(),
+        stop_reason: `Cliente recusou (${lossLabel}). Acompanhamento declinado com elegância.`,
+        next_evaluation_at: null,
+      })
+      .eq("id", action.flow_run_id);
+  }
+
+  await patchControl(db, action.conversation_id, {
+    owner: "none",
+    state: "completed",
+    next_responsible: "none",
+    next_responsible_reason: `Cliente recusou (${lossLabel}).`,
+    buying_stage: "lost",
+  });
+
+  // Lembrete de reativação em 6 meses (fica adormecido na Central de Atenção).
+  const reactivateAt = new Date(Date.now() + 180 * DAY_MS);
+  await db.from("attention_items").insert({
+    user_id: action.user_id,
+    contact_id: action.contact_id,
+    conversation_id: action.conversation_id,
+    opportunity_id: action.opportunity_id,
+    kind: "reactivation_due",
+    priority: "low",
+    priority_score: 10,
+    title: "Reativação sugerida",
+    summary: `Cliente recusou por ${lossLabel}. Vale um novo contato agora.`,
+    reason: "Seis meses desde o declínio do acompanhamento.",
+    suggested_action: "Refazer a cotação com condições atuais.",
+    suggested_action_source: "rule",
+    bucket: "waiting",
+    status: "snoozed",
+    snoozed_until: reactivateAt.toISOString(),
+    dedupe_key: `reactivation:${action.conversation_id}:${reactivateAt.toISOString().slice(0, 10)}`,
+    blocks_automation: false,
+    metadata: { loss_reason: lossReason },
+  });
+
+  await writeAudit(db, action.user_id, {
+    action: "smart_declined",
+    summary: `Acompanhamento declinado: ${lossLabel}. Reativação sugerida em 6 meses.`,
+    entityType: "conversation",
+    entityId: action.conversation_id,
+    actor: "system",
+    metadata: { loss_reason: lossReason },
+  });
+  await logEvent(db, action.user_id, {
+    event_type: "smart_declined",
+    contact_id: action.contact_id,
+    opportunity_id: action.opportunity_id,
+    metadata: { loss_reason: lossReason },
+  });
+  await logEvent(db, action.user_id, {
+    event_type: "smart_reactivation_scheduled",
+    contact_id: action.contact_id,
+    metadata: { at: reactivateAt.toISOString() },
   });
 }
 

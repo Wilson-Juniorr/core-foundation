@@ -14,6 +14,7 @@ import { writeAudit } from "@/lib/audit/log.server";
 import {
   computePressure,
   detectClosingSignal,
+  detectExplicitRefusal,
   detectIrritation,
   humanCooldownUntil,
 } from "./rules";
@@ -277,6 +278,7 @@ export async function registerCustomerMessage(
 
   const closing = detectClosingSignal(input.text ?? null);
   const irritated = detectIrritation(input.text ?? null);
+  const refused = detectExplicitRefusal(input.text ?? null);
   const audioWithoutText = input.messageType === "audio" && !(input.text ?? "").trim();
 
   const state: ControlState = closing || irritated ? "waiting_human" : "waiting_human";
@@ -312,19 +314,29 @@ export async function registerCustomerMessage(
   // Debounce: mensagens em sequência levam a uma única reavaliação.
   const { data: runs } = await db
     .from("followup_runs")
-    .select("id, followup_flows!inner(kind)")
+    .select("id, smart_state, followup_flows!inner(kind)")
     .eq("conversation_id", input.conversationId)
     .in("status", ["active", "paused"])
     .eq("followup_flows.kind", "smart");
 
-  const criticalNow = closing || irritated;
+  const criticalNow = closing || irritated || refused;
   const nextEval = new Date(Date.now() + (criticalNow ? 0 : 3 * 60_000)).toISOString();
 
   for (const run of runs ?? []) {
     await db
       .from("followup_runs")
       .update({
-        smart_state: closing ? "closing" : irritated ? "needs_human" : "waiting_decision",
+        // Recusa explícita não encerra o acompanhamento: entra na fase de
+        // recuperação de objeção, que sempre passa pela sua aprovação.
+        smart_state: closing
+          ? "closing"
+          : irritated
+            ? "needs_human"
+            : refused
+              ? run.smart_state === "refusal_recovery" || run.smart_state === "declining"
+                ? "declining"
+                : "refusal_recovery"
+              : "waiting_decision",
         next_evaluation_at: nextEval,
         ...(irritated || closing ? { status: "paused", paused_at: new Date().toISOString() } : {}),
       })
@@ -340,6 +352,24 @@ export async function registerCustomerMessage(
       actor: "system",
       severity: "warning",
       metadata: { message_id: input.messageId ?? null },
+    });
+  }
+
+  if (refused && !irritated) {
+    await writeAudit(db, input.userId, {
+      action: "smart_refusal_detected",
+      summary:
+        "Cliente sinalizou desinteresse: o sistema vai propor uma pergunta para entender o motivo, com sua aprovação.",
+      entityType: "conversation",
+      entityId: input.conversationId,
+      actor: "system",
+      severity: "warning",
+      metadata: { message_id: input.messageId ?? null },
+    });
+    await logEvent(db, input.userId, {
+      event_type: "smart_refusal_detected",
+      contact_id: input.contactId ?? null,
+      metadata: { conversation_id: input.conversationId },
     });
   }
 
