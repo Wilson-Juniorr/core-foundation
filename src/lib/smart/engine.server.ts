@@ -22,9 +22,10 @@ import {
 import { blockingDeadline, pendingCommitments } from "./commitments.server";
 import { ensureControl, loadControl, patchControl, refreshPressure } from "./control.server";
 import { decideNextStep } from "./decision.server";
-import { evaluatePreSend, humanCooldownUntil } from "./rules";
+import { classifyLossReason, evaluatePreSend, humanCooldownUntil } from "./rules";
 import type { PreSendDecision } from "./rules";
-import { SMART_STRATEGY_META } from "./types";
+import { LOSS_REASON_LABELS, SMART_STRATEGY_META } from "./types";
+import type { SmartStrategy } from "./types";
 
 type Admin = SupabaseClient<Database>;
 type ActionRow = Database["public"]["Tables"]["scheduled_actions"]["Row"];
@@ -281,9 +282,43 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     opportunity_id: run.opportunity_id,
   };
 
-  if (run.deadline_at && new Date(run.deadline_at) <= now) {
-    await completeRun(db, runRef, "Prazo máximo do acompanhamento alcançado.");
-    return "deadline_reached";
+  const phase =
+    run.smart_state === "refusal_recovery"
+      ? ("recovery" as const)
+      : run.smart_state === "declining"
+        ? ("decline" as const)
+        : run.smart_state === "reactivation"
+          ? ("reactivation" as const)
+          : null;
+
+  // Prazo máximo alcançado sem recusa: o acompanhamento não morre, ele muda de
+  // ritmo — passa a reativação de longo prazo (uma tentativa por mês).
+  if (run.deadline_at && new Date(run.deadline_at) <= now && phase !== "reactivation") {
+    if (phase === "recovery" || phase === "decline") {
+      await db
+        .from("followup_runs")
+        .update({ next_evaluation_at: new Date(now.getTime() + HOUR_MS).toISOString() })
+        .eq("id", run.id);
+    } else {
+      await db
+        .from("followup_runs")
+        .update({
+          smart_state: "reactivation",
+          deadline_at: null,
+          next_evaluation_at: new Date(now.getTime() + 30 * DAY_MS).toISOString(),
+        })
+        .eq("id", run.id);
+      await writeAudit(db, run.user_id, {
+        action: "smart_strategy_selected",
+        summary:
+          "Prazo principal alcançado sem recusa do cliente: acompanhamento passa a reativação mensal.",
+        entityType: "followup_run",
+        entityId: run.id,
+        actor: "system",
+        metadata: { smart_state: "reactivation" },
+      });
+      return "reactivation_mode";
+    }
   }
 
   // Oportunidade encerrada: nada mais a acompanhar.
@@ -365,7 +400,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     got_reply: Boolean(item.got_reply),
   }));
 
-  if (usage.length >= config.max_actions_per_week) {
+  if (usage.length >= config.max_actions_per_week && !phase) {
     await db
       .from("followup_runs")
       .update({
@@ -377,7 +412,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   }
 
   const lastUsedAt = usage[0]?.used_at ? new Date(usage[0].used_at) : null;
-  if (lastUsedAt) {
+  if (lastUsedAt && !phase) {
     const minNext = new Date(lastUsedAt.getTime() + config.min_hours_between_actions * HOUR_MS);
     if (now < minNext) {
       await db
@@ -388,7 +423,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     }
   }
 
-  if (pressure.score > config.max_pressure) {
+  if (pressure.score > config.max_pressure && !phase) {
     await db
       .from("followup_runs")
       .update({
@@ -443,6 +478,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     })),
     recentStrategies: usage,
     attemptsThisWeek: usage.length,
+    phase,
   });
 
   await writeAudit(db, run.user_id, {
@@ -461,17 +497,31 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     },
   });
 
-  if (decision.action === "complete") {
+  if (phase && !decision.message) {
+    await handoff(
+      db,
+      runRef,
+      phase === "decline"
+        ? "Não foi possível redigir o encerramento automaticamente."
+        : "Não foi possível redigir a pergunta sobre o motivo da recusa.",
+    );
+    return "phase_handoff";
+  }
+
+  if (decision.action === "complete" && !phase) {
     await completeRun(db, runRef, decision.reason);
     return "completed";
   }
 
-  if (decision.action === "handoff") {
+  if (decision.action === "handoff" && !phase) {
     await handoff(db, runRef, decision.reason, { confidence: decision.confidence });
     return "handoff";
   }
 
-  if (decision.action === "wait" || !decision.strategy || !decision.message) {
+  if (
+    !phase &&
+    (decision.action === "wait" || !decision.strategy || !decision.message)
+  ) {
     const waitHours = decision.waitHours > 0 ? decision.waitHours : 24;
     await db
       .from("followup_runs")
@@ -499,8 +549,15 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const target = new Date(now.getTime() + Math.max(0, decision.waitHours) * HOUR_MS);
   const scheduledFor = nextAllowedInstant(target, window, settings.timezone);
 
+  const forcedStrategy: SmartStrategy | null =
+    phase === "recovery" ? "LOSS_REASON_DISCOVERY" : phase === "decline" ? "GRACEFUL_DECLINE" : null;
+  const strategy = forcedStrategy ?? decision.strategy;
+
+  // Recuperação de objeção e declínio nunca saem sem você ver.
   const needsApproval =
-    config.autonomy !== "auto" || decision.confidence < Number(config.confidence_min);
+    Boolean(forcedStrategy) ||
+    config.autonomy !== "auto" ||
+    decision.confidence < Number(config.confidence_min);
 
   const { data: action, error } = await db
     .from("scheduled_actions")
@@ -516,8 +573,8 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       scheduled_for: scheduledFor.toISOString(),
       status: needsApproval ? "needs_approval" : "scheduled",
       cancel_on_reply: true,
-      idempotency_key: `smart:${run.id}:${decision.strategy}:${scheduledFor.toISOString()}`,
-      smart_strategy: decision.strategy,
+      idempotency_key: `smart:${run.id}:${strategy}:${scheduledFor.toISOString()}`,
+      smart_strategy: strategy,
       context_version: control.context_version,
       generated_at: now.toISOString(),
       decision_reason: decision.reason,
@@ -533,7 +590,15 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   await db
     .from("followup_runs")
     .update({
-      smart_state: needsApproval ? "waiting_approval" : "acting",
+      smart_state: phase
+        ? phase === "recovery"
+          ? "refusal_recovery"
+          : phase === "decline"
+            ? "declining"
+            : "reactivation"
+        : needsApproval
+          ? "waiting_approval"
+          : "acting",
       next_evaluation_at: new Date(
         scheduledFor.getTime() + config.min_hours_between_actions * HOUR_MS,
       ).toISOString(),
