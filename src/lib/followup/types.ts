@@ -65,6 +65,8 @@ export interface FollowupRunView {
   id: string;
   flow_id: string;
   flow_name: string;
+  /** Modo do fluxo: clássico (etapas fixas) ou inteligente (orquestrado por IA). */
+  flow_kind: "classic" | "smart";
   contact_id: string;
   contact_name: string | null;
   conversation_id: string;
@@ -78,6 +80,10 @@ export interface FollowupRunView {
   stopped_at: string | null;
   completed_at: string | null;
   stop_reason: string | null;
+  /** Estado do orquestrador inteligente (apenas fluxos smart). */
+  smart_state: string | null;
+  /** Próxima reavaliação do orquestrador inteligente. */
+  next_evaluation_at: string | null;
   next_action: ScheduledActionView | null;
 }
 
