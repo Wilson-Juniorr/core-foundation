@@ -96,6 +96,8 @@ export function ContactFormDialog({
 
   const flows = useQuery({ ...flowsQuery(), enabled: open && !contact });
   const activeFlows = (flows.data ?? []).filter((flow) => flow.is_active);
+  const smartFlows = useQuery({ ...smartFlowsQuery(), enabled: open && !contact });
+  const activeSmartFlows = (smartFlows.data ?? []).filter((flow) => flow.is_active);
   const phoneUsable = isSendablePhone(form.phone);
 
   useEffect(() => {
