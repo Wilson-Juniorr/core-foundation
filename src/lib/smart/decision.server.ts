@@ -82,6 +82,7 @@ function buildPrompt(input: SmartDecisionInput): string {
   const lines = [
     ...phaseDirective,
     phaseDirective.length > 0 ? "" : "",
+    `Cliente: ${input.contactName ?? "nome não registrado"}`,
     `Objetivo comercial: ${input.objective}`,
     `Prazo máximo do acompanhamento: ${input.deadlineAt ?? "sem prazo definido"}`,
     `Autonomia configurada: ${input.config.autonomy}`,
@@ -110,10 +111,17 @@ function buildPrompt(input: SmartDecisionInput): string {
       : "Nenhuma estratégia usada ainda.",
     "",
     "Últimas mensagens (mais antiga primeiro):",
-    ...input.recentMessages.map(
-      (item) =>
-        `[${item.at}] ${item.direction === "inbound" ? "CLIENTE" : "CONSULTOR"} (${item.type}): ${item.text ?? "(sem texto)"}`,
-    ),
+    ...(input.recentMessages.length === 0
+      ? ["(esta conversa não tem nenhuma mensagem registrada)"]
+      : input.recentMessages.map(
+          (item) =>
+            `[${item.at}] ${item.direction === "inbound" ? "CLIENTE" : "CONSULTOR"} (${item.type}): ${
+              item.text?.trim() ||
+              (item.type === "text" ? "(sem texto)" : `(${item.type} sem transcrição)`)
+            }`,
+        )),
+    "",
+    'A mensagem precisa citar algo concreto do histórico acima (o que o cliente pediu, disse ou combinamos). Se o histórico não sustentar nada concreto, não invente contexto: use action="wait" ou action="handoff".',
   ];
 
   return lines.filter(Boolean).join("\n");

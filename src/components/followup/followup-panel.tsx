@@ -217,8 +217,12 @@ export function FollowupPanel({
                     </div>
                     <p className="text-muted-foreground text-xs">
                       {formatDateTime(action.scheduled_for)}
-                      {action.content ? ` · ${action.content.slice(0, 60)}` : ""}
                     </p>
+                    {action.content ? (
+                      <p className="bg-muted/50 mt-1 rounded-md p-2 text-xs whitespace-pre-wrap">
+                        {action.content}
+                      </p>
+                    ) : null}
                     {action.last_error ? (
                       <p className="text-destructive text-xs">{action.last_error}</p>
                     ) : null}

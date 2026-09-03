@@ -12,6 +12,7 @@ import type {
   ConversationControlView,
   ConversationSmartView,
   SmartFlowConfig,
+  SmartContextBasis,
   SmartFlowSummary,
   SmartPendingAction,
   SmartRunView,
@@ -121,13 +122,71 @@ function toControlView(
   };
 }
 
+/**
+ * Reconstrói o que a IA enxerga da conversa: histórico considerado, última fala
+ * do cliente e memória. Serve para o usuário auditar se a mensagem proposta
+ * realmente está baseada no histórico.
+ */
+async function buildContextBasis(
+  db: Client,
+  userId: string,
+  conversationId: string,
+): Promise<SmartContextBasis> {
+  const [{ data: conversation }, { data: messages }] = await Promise.all([
+    db
+      .from("conversations")
+      .select("contact_id")
+      .eq("id", conversationId)
+      .eq("user_id", userId)
+      .maybeSingle(),
+    db
+      .from("messages")
+      .select("direction, message_type, text_content, sent_at")
+      .eq("conversation_id", conversationId)
+      .order("sent_at", { ascending: false })
+      .limit(25),
+  ]);
+
+  const rows = messages ?? [];
+  const lastInbound = rows.find((item) => item.direction === "inbound") ?? null;
+
+  let memorySummary: string | null = null;
+  let memoryUpdatedAt: string | null = null;
+  if (conversation?.contact_id) {
+    const { data: memory } = await db
+      .from("customer_memory")
+      .select("current_summary, last_analyzed_at")
+      .eq("contact_id", conversation.contact_id)
+      .maybeSingle();
+    memorySummary = memory?.current_summary ?? null;
+    memoryUpdatedAt = memory?.last_analyzed_at ?? null;
+  }
+
+  return {
+    messages_considered: rows.length,
+    inbound_count: rows.filter((item) => item.direction === "inbound").length,
+    outbound_count: rows.filter((item) => item.direction === "outbound").length,
+    untranscribed_media: rows.filter(
+      (item) => item.message_type !== "text" && !item.text_content?.trim(),
+    ).length,
+    last_inbound_at: lastInbound?.sent_at ?? null,
+    last_inbound_preview: lastInbound?.text_content?.trim()
+      ? lastInbound.text_content.trim().slice(0, 240)
+      : lastInbound
+        ? `[${lastInbound.message_type} sem transcrição]`
+        : null,
+    memory_summary: memorySummary,
+    memory_updated_at: memoryUpdatedAt,
+  };
+}
+
 /** Visão compacta usada na conversa e na página do cliente. */
 export async function getConversationSmartView(
   db: Client,
   userId: string,
   conversationId: string,
 ): Promise<ConversationSmartView> {
-  const [{ data: control }, { data: runs }, { data: commitments }, { data: pending }] =
+  const [{ data: control }, { data: runs }, { data: commitments }, { data: pending }, basis] =
     await Promise.all([
       db
         .from("conversation_control")
@@ -164,6 +223,7 @@ export async function getConversationSmartView(
         .not("smart_strategy", "is", null)
         .in("status", ["scheduled", "needs_approval", "stale"])
         .order("scheduled_for", { ascending: true }),
+      buildContextBasis(db, userId, conversationId),
     ]);
 
   const runRow = (runs ?? [])[0];
@@ -195,6 +255,7 @@ export async function getConversationSmartView(
   return {
     control: control ? toControlView(control) : null,
     run,
+    basis,
     commitments: (commitments ?? []).map((item): Commitment => ({
       id: item.id,
       responsible: item.responsible as Commitment["responsible"],
