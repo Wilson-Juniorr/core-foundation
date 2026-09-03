@@ -127,7 +127,7 @@ export async function getConversationSmartView(
   userId: string,
   conversationId: string,
 ): Promise<ConversationSmartView> {
-  const [{ data: control }, { data: runs }, { data: commitments }, { data: pending }] =
+  const [{ data: control }, { data: runs }, { data: commitments }, { data: pending }, basis] =
     await Promise.all([
       db
         .from("conversation_control")
