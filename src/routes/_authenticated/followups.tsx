@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Loader2, Pause, Pencil, Play, Plus, Square, Trash2, X } from "lucide-react";
+import { Brain, Copy, Loader2, Pause, Pencil, Play, Plus, Square, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { FlowBuilderDialog } from "@/components/followup/flow-builder-dialog";
+import { SmartFlowDialog } from "@/components/smart/smart-flow-dialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
+import { smartFlowsQuery } from "@/lib/smart.queries";
+import { AUTONOMY_LABELS } from "@/lib/smart/types";
+
 import {
   AlertDialog,
   AlertDialogAction,
