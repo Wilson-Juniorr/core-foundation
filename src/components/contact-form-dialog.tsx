@@ -33,6 +33,9 @@ import { duplicateContactsQuery } from "@/lib/crm.queries";
 import type { Contact } from "@/lib/crm.types";
 import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowsQuery, followupKeys } from "@/lib/followup.queries";
+import { startSmartFlowFn } from "@/lib/smart.functions";
+import { smartFlowsQuery, smartKeys } from "@/lib/smart.queries";
+import { AUTONOMY_LABELS } from "@/lib/smart/types";
 import { formatPhone, isSendablePhone } from "@/lib/domain/phone";
 
 type FormState = {
