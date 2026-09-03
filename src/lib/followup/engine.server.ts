@@ -1159,8 +1159,33 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
     return "skipped";
   }
 
+  /* Última barreira do Smart Flow: reconfere o contexto depois do claim e
+     imediatamente antes do provider, fechando a janela de race condition.
+     Ações clássicas seguem exatamente como antes. */
+  if (action.smart_strategy) {
+    const { smartPreSendCheck } = await import("@/lib/smart/engine.server");
+    const preSend = await smartPreSendCheck(db, effectiveAction);
+    if (!preSend.allowed) {
+      // smartPreSendCheck já gravou status, motivo e auditoria da ação.
+      await recordDecision(db, {
+        ...auditBase,
+        decision: preSend.verdict === "approval" ? "approval_required" : "blocked",
+        blockedBy: `smart_${preSend.verdict}`,
+        reason: preSend.reason,
+        confidence: adaptive.confidence,
+        strategyName: adaptive.strategyName,
+      });
+      return "skipped";
+    }
+  }
+
   try {
     const sendResult = await deliverAction(db, effectiveAction, text);
+
+    if (action.smart_strategy) {
+      const { recordStrategyUsage } = await import("@/lib/smart/engine.server");
+      await recordStrategyUsage(db, effectiveAction, sendResult.messageId);
+    }
 
     await releaseAction(db, action, {
       status: "sent",
@@ -1168,6 +1193,7 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
       message_id: sendResult.messageId,
       last_error: null,
     });
+
 
     await recordDecision(db, {
       ...auditBase,
