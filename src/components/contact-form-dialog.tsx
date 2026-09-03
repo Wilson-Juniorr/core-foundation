@@ -19,7 +19,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -31,6 +33,9 @@ import { duplicateContactsQuery } from "@/lib/crm.queries";
 import type { Contact } from "@/lib/crm.types";
 import { startFollowupFlow } from "@/lib/followup.functions";
 import { flowsQuery, followupKeys } from "@/lib/followup.queries";
+import { startSmartFlowFn } from "@/lib/smart.functions";
+import { smartFlowsQuery, smartKeys } from "@/lib/smart.queries";
+import { AUTONOMY_LABELS } from "@/lib/smart/types";
 import { formatPhone, isSendablePhone } from "@/lib/domain/phone";
 
 type FormState = {
@@ -91,6 +96,8 @@ export function ContactFormDialog({
 
   const flows = useQuery({ ...flowsQuery(), enabled: open && !contact });
   const activeFlows = (flows.data ?? []).filter((flow) => flow.is_active);
+  const smartFlows = useQuery({ ...smartFlowsQuery(), enabled: open && !contact });
+  const activeSmartFlows = (smartFlows.data ?? []).filter((flow) => flow.is_active);
   const phoneUsable = isSendablePhone(form.phone);
 
   useEffect(() => {
@@ -141,17 +148,30 @@ export function ContactFormDialog({
       });
 
       if (flowId !== NO_FLOW && isSendablePhone(saved.phone)) {
+        const [kind, id] = flowId.split(":");
         try {
-          await startFlow({
-            data: {
-              flowId,
-              contactId: saved.id,
-              conversationId: null,
-              opportunityId: null,
-              replaceExisting: false,
-            },
-          });
-          toast.success("Follow-up iniciado para o novo cliente.");
+          if (kind === "smart") {
+            await startSmartFlowFn({
+              data: {
+                flowId: id,
+                contactId: saved.id,
+                conversationId: null,
+                opportunityId: null,
+              },
+            });
+            toast.success("Acompanhamento inteligente iniciado para o novo cliente.");
+          } else {
+            await startFlow({
+              data: {
+                flowId: id,
+                contactId: saved.id,
+                conversationId: null,
+                opportunityId: null,
+                replaceExisting: false,
+              },
+            });
+            toast.success("Follow-up iniciado para o novo cliente.");
+          }
         } catch (error) {
           toast.error(
             error instanceof Error
@@ -168,6 +188,7 @@ export function ContactFormDialog({
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: followupKeys.root });
+      queryClient.invalidateQueries({ queryKey: smartKeys.root });
       toast.success(contact ? "Cliente atualizado" : "Cliente criado");
       onOpenChange(false);
       return saved;
@@ -359,14 +380,29 @@ export function ContactFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_FLOW}>Não iniciar agora</SelectItem>
-                  {activeFlows.map((flow) => (
-                    <SelectItem key={flow.id} value={flow.id}>
-                      {flow.name} · {flow.step_count} etapa(s)
-                    </SelectItem>
-                  ))}
+                  {activeSmartFlows.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Inteligentes</SelectLabel>
+                      {activeSmartFlows.map((flow) => (
+                        <SelectItem key={flow.id} value={`smart:${flow.id}`}>
+                          {flow.name} · {AUTONOMY_LABELS[flow.config.autonomy]}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {activeFlows.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Clássicos</SelectLabel>
+                      {activeFlows.map((flow) => (
+                        <SelectItem key={flow.id} value={`classic:${flow.id}`}>
+                          {flow.name} · {flow.step_count} etapa(s)
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
-              {activeFlows.length === 0 ? (
+              {activeFlows.length === 0 && activeSmartFlows.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   Nenhum fluxo ativo. Ative um fluxo em Follow-ups para usar aqui.
                 </p>
@@ -376,12 +412,13 @@ export function ContactFormDialog({
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  As mensagens seguem as regras do fluxo (janela de envio, atrasos e parada na
-                  resposta do cliente).
+                  As mensagens seguem as regras do fluxo (janela de envio, atrasos, aprovação e
+                  parada na resposta do cliente).
                 </p>
               )}
             </div>
           )}
+
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
