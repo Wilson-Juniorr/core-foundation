@@ -39,24 +39,36 @@ export async function listSmartFlows(db: Client, userId: string): Promise<SmartF
     );
 
   return flows.map((flow) => {
-    const config = Array.isArray(flow.smart_flow_configs)
+    const raw = Array.isArray(flow.smart_flow_configs)
       ? flow.smart_flow_configs[0]
       : flow.smart_flow_configs;
+    const config: SmartFlowConfig = {
+      flow_id: flow.id,
+      goal: raw?.goal ?? "",
+      max_duration_days: raw?.max_duration_days ?? 30,
+      autonomy: (raw?.autonomy ?? "assist") as SmartFlowConfig["autonomy"],
+      allowed_strategies: (raw?.allowed_strategies ?? []) as string[],
+      allowed_media: (raw?.allowed_media ?? []) as string[],
+      max_pressure: raw?.max_pressure ?? 60,
+      min_hours_between_actions: raw?.min_hours_between_actions ?? 24,
+      max_actions_per_week: raw?.max_actions_per_week ?? 2,
+      handoff_situations: (raw?.handoff_situations ?? []) as string[],
+      completion_criteria: raw?.completion_criteria ?? null,
+      confidence_min: raw?.confidence_min != null ? Number(raw.confidence_min) : 0.6,
+    };
     return {
       id: flow.id,
       name: flow.name,
       description: flow.description,
       is_active: flow.is_active,
       updated_at: flow.updated_at,
-      goal: config?.goal ?? "",
-      autonomy: (config?.autonomy ?? "assist") as SmartFlowSummary["autonomy"],
-      max_duration_days: config?.max_duration_days ?? 30,
-      allowed_strategies: (config?.allowed_strategies ?? []) as string[],
+      config,
       active_runs: (runs ?? []).filter(
         (run) => run.flow_id === flow.id && run.status === "active",
       ).length,
     };
   });
+
 }
 
 export async function getSmartFlow(db: Client, userId: string, flowId: string) {
