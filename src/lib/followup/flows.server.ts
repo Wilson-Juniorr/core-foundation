@@ -306,7 +306,6 @@ async function mapRuns(supabase: Client, rows: RunRowJoined[]): Promise<Followup
 const RUN_SELECT =
   "*, followup_flows(name, kind, followup_flow_steps(id, position)), contacts(name)";
 
-
 export async function listRuns(
   supabase: Client,
   statuses: Database["public"]["Enums"]["followup_run_status"][],

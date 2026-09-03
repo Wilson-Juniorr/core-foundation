@@ -143,7 +143,9 @@ export function FollowupPanel({
             </div>
             {run.flow_kind === "smart" ? (
               <p className="text-muted-foreground">
-                {run.smart_state ? SMART_RUN_STATE_LABELS[run.smart_state as SmartRunState] : "Em acompanhamento"}
+                {run.smart_state
+                  ? SMART_RUN_STATE_LABELS[run.smart_state as SmartRunState]
+                  : "Em acompanhamento"}
                 {run.next_evaluation_at
                   ? ` · próxima análise em ${formatDateTime(run.next_evaluation_at)}`
                   : ""}
@@ -167,7 +169,6 @@ export function FollowupPanel({
                   : "Sem próxima ação agendada."}
               </p>
             )}
-
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {run.status === "active" ? (
@@ -238,7 +239,6 @@ export function FollowupPanel({
                 </li>
               ))}
             </ul>
-
           </div>
         )}
       </CardContent>
