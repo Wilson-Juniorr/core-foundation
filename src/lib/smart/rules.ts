@@ -317,15 +317,15 @@ export interface PressureResult {
 export function computePressure(input: PressureInput): PressureResult {
   const factors: Record<string, number> = {};
 
-  factors.outbound_volume = Math.min(40, input.outboundLast7d * 10);
-  factors.unanswered = Math.min(30, input.unansweredAttempts * 12);
-  factors.audio_volume = Math.min(10, input.audioLast7d * 5);
-  factors.negative_signals = Math.min(15, input.negativeSignals * 8);
-  factors.pending_commitment = input.hasPendingCustomerCommitment ? 10 : 0;
+  factors["outbound_volume"] = Math.min(40, input.outboundLast7d * 10);
+  factors["unanswered"] = Math.min(30, input.unansweredAttempts * 12);
+  factors["audio_volume"] = Math.min(10, input.audioLast7d * 5);
+  factors["negative_signals"] = Math.min(15, input.negativeSignals * 8);
+  factors["pending_commitment"] = input.hasPendingCustomerCommitment ? 10 : 0;
 
   // Tempo dilui a pressão.
   const hours = input.hoursSinceLastOutbound;
-  factors.recency =
+  factors["recency"] =
     hours === null ? 0 : hours < 6 ? 15 : hours < 24 ? 8 : hours < 72 ? 0 : -10;
 
   const score = Object.values(factors).reduce((total, value) => total + value, 0);
