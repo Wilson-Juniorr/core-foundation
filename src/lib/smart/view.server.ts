@@ -11,10 +11,12 @@ import type {
   Commitment,
   ConversationControlView,
   ConversationSmartView,
+  SmartFlowConfig,
   SmartFlowSummary,
   SmartPendingAction,
   SmartRunView,
 } from "./types";
+
 
 type Client = SupabaseClient<Database>;
 
