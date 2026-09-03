@@ -14,6 +14,7 @@ import { writeAudit } from "@/lib/audit/log.server";
 import {
   computePressure,
   detectClosingSignal,
+  detectExplicitRefusal,
   detectIrritation,
   humanCooldownUntil,
 } from "./rules";
