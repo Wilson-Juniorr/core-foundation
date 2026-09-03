@@ -90,6 +90,8 @@ export const SMART_STRATEGIES = [
   "FUTURE_CALLBACK",
   "REACTIVATION",
   "SOFT_CLOSE",
+  "LOSS_REASON_DISCOVERY",
+  "GRACEFUL_DECLINE",
   "HUMAN_HANDOFF",
 ] as const;
 export type SmartStrategy = (typeof SMART_STRATEGIES)[number];
@@ -153,6 +155,16 @@ export const SMART_STRATEGY_META: Record<SmartStrategy, SmartStrategyMeta> = {
     label: "Encerramento gentil",
     intent: "Encerrar o acompanhamento deixando a porta aberta, sem pressionar.",
   },
+  LOSS_REASON_DISCOVERY: {
+    label: "Entender a recusa",
+    intent:
+      "O cliente disse que não tem mais interesse. Agradecer sem insistir, aceitar a decisão e fazer UMA pergunta simples para entender o motivo (atendimento, preço, prazo, escolheu outra opção ou apenas mudou de planos), oferecendo refazer a cotação apenas se o motivo for algo que possa ser ajustado. Nunca cobrar, nunca argumentar contra a decisão.",
+  },
+  GRACEFUL_DECLINE: {
+    label: "Declínio digno",
+    intent:
+      "Encerrar o acompanhamento com elegância: agradecer o tempo do cliente, registrar que ficou à disposição e deixar claro que não haverá mais contatos automáticos. Nenhuma pergunta, nenhuma nova oferta.",
+  },
   HUMAN_HANDOFF: {
     label: "Chamar você",
     intent: "Situação exige atendimento humano.",
@@ -195,6 +207,9 @@ export const SMART_RUN_STATES = [
   "human_active",
   "needs_human",
   "closing",
+  "refusal_recovery",
+  "declining",
+  "reactivation",
   "paused",
   "completed",
 ] as const;
@@ -210,6 +225,9 @@ export const SMART_RUN_STATE_LABELS: Record<SmartRunState, string> = {
   human_active: "Você está conduzindo",
   needs_human: "Precisa de você",
   closing: "Fechando",
+  refusal_recovery: "Entendendo a recusa",
+  declining: "Declinando com elegância",
+  reactivation: "Reativação de longo prazo",
   paused: "Pausado",
   completed: "Encerrado",
 };
@@ -343,3 +361,26 @@ export function pressureLabel(score: number): string {
   if (score >= 40) return "Média";
   return "Baixa";
 }
+
+/* ---------------------------- motivos de recusa --------------------------- */
+
+export const LOSS_REASONS = [
+  "price",
+  "service",
+  "competitor",
+  "timing",
+  "no_need",
+  "unresponsive",
+  "unknown",
+] as const;
+export type LossReason = (typeof LOSS_REASONS)[number];
+
+export const LOSS_REASON_LABELS: Record<LossReason, string> = {
+  price: "Preço / valor",
+  service: "Atendimento",
+  competitor: "Escolheu outra opção",
+  timing: "Momento inadequado",
+  no_need: "Sem necessidade agora",
+  unresponsive: "Nunca respondeu",
+  unknown: "Não informado",
+};

@@ -6,7 +6,7 @@
  */
 
 import { DEFAULT_TIMEZONE, zonedParts } from "@/lib/followup/time";
-import type { CommitmentResponsible, SmartStrategy } from "./types";
+import type { CommitmentResponsible, SmartStrategy, LossReason } from "./types";
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -286,6 +286,31 @@ const IRRITATION_RE =
 
 export function detectClosingSignal(text: string | null): boolean {
   return CLOSING_RE.test(text ?? "");
+}
+
+const REFUSAL_RE =
+  /\b(n(ã|a)o\s+(tenho|tem)\s+(mais\s+)?interesse|sem\s+interesse|n(ã|a)o\s+quero\s+mais|desisti|desistimos|n(ã|a)o\s+vou\s+(mais\s+)?(fazer|fechar|seguir)|j(á|a)\s+(fechei|contratei|assinei)\s+(com|outro|outra)|escolhi\s+outr[ao]|fiquei\s+com\s+outr[ao]|deixa\s+pra\s+(depois|outra\s+hora)|n(ã|a)o\s+precis[oa]\s+mais|pode\s+(cancelar|encerrar)|me\s+(descadastr|remov)|para\s+de\s+me\s+mandar|n(ã|a)o\s+me\s+mande?\s+mais)\b/i;
+
+/** Recusa explícita do cliente — dispara a fase de recuperação de objeção. */
+export function detectExplicitRefusal(text: string | null): boolean {
+  return REFUSAL_RE.test(text ?? "");
+}
+
+/** Classificação determinística do motivo da recusa (sem custo de IA). */
+export function classifyLossReason(text: string | null): LossReason {
+  const value = (text ?? "").toLowerCase();
+  if (!value.trim()) return "unknown";
+  if (/(car[oa]|pre(ç|c)o|valor|or(ç|c)amento|caro\s+demais|fora\s+do\s+meu\s+bolso|apertad)/.test(value))
+    return "price";
+  if (/(atendimento|demorou|demora|resposta|mal\s+atendid|grosseir|n(ã|a)o\s+me\s+respond)/.test(value))
+    return "service";
+  if (/(outr[ao]\s+(corretor|empresa|plano|seguradora|proposta)|j(á|a)\s+(fechei|contratei|assinei)|escolhi\s+outr|fiquei\s+com\s+outr)/.test(value))
+    return "competitor";
+  if (/(agora\s+n(ã|a)o|depois|mais\s+pra\s+frente|ano\s+que\s+vem|momento|adiar|deixa\s+pra)/.test(value))
+    return "timing";
+  if (/(n(ã|a)o\s+precis|desnecess|resolvi\s+de\s+outr|mudei\s+de\s+planos|sem\s+necessidade)/.test(value))
+    return "no_need";
+  return "unknown";
 }
 
 export function detectIrritation(text: string | null): boolean {
