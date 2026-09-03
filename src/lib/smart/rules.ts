@@ -300,15 +300,35 @@ export function detectExplicitRefusal(text: string | null): boolean {
 export function classifyLossReason(text: string | null): LossReason {
   const value = (text ?? "").toLowerCase();
   if (!value.trim()) return "unknown";
-  if (/(car[oa]|pre(ç|c)o|valor|or(ç|c)amento|caro\s+demais|fora\s+do\s+meu\s+bolso|apertad)/.test(value))
+  if (
+    /(car[oa]|pre(ç|c)o|valor|or(ç|c)amento|caro\s+demais|fora\s+do\s+meu\s+bolso|apertad)/.test(
+      value,
+    )
+  )
     return "price";
-  if (/(atendimento|demorou|demora|resposta|mal\s+atendid|grosseir|n(ã|a)o\s+me\s+respond)/.test(value))
+  if (
+    /(atendimento|demorou|demora|resposta|mal\s+atendid|grosseir|n(ã|a)o\s+me\s+respond)/.test(
+      value,
+    )
+  )
     return "service";
-  if (/(outr[ao]\s+(corretor|empresa|plano|seguradora|proposta)|j(á|a)\s+(fechei|contratei|assinei)|escolhi\s+outr|fiquei\s+com\s+outr)/.test(value))
+  if (
+    /(outr[ao]\s+(corretor|empresa|plano|seguradora|proposta)|j(á|a)\s+(fechei|contratei|assinei)|escolhi\s+outr|fiquei\s+com\s+outr)/.test(
+      value,
+    )
+  )
     return "competitor";
-  if (/(agora\s+n(ã|a)o|depois|mais\s+pra\s+frente|ano\s+que\s+vem|momento|adiar|deixa\s+pra)/.test(value))
+  if (
+    /(agora\s+n(ã|a)o|depois|mais\s+pra\s+frente|ano\s+que\s+vem|momento|adiar|deixa\s+pra)/.test(
+      value,
+    )
+  )
     return "timing";
-  if (/(n(ã|a)o\s+precis|desnecess|resolvi\s+de\s+outr|mudei\s+de\s+planos|sem\s+necessidade)/.test(value))
+  if (
+    /(n(ã|a)o\s+precis|desnecess|resolvi\s+de\s+outr|mudei\s+de\s+planos|sem\s+necessidade)/.test(
+      value,
+    )
+  )
     return "no_need";
   return "unknown";
 }

@@ -518,10 +518,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     return "handoff";
   }
 
-  if (
-    !phase &&
-    (decision.action === "wait" || !decision.strategy || !decision.message)
-  ) {
+  if (!phase && (decision.action === "wait" || !decision.strategy || !decision.message)) {
     const waitHours = decision.waitHours > 0 ? decision.waitHours : 24;
     await db
       .from("followup_runs")
@@ -550,7 +547,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const scheduledFor = nextAllowedInstant(target, window, settings.timezone);
 
   const forcedStrategy: SmartStrategy | null =
-    phase === "recovery" ? "LOSS_REASON_DISCOVERY" : phase === "decline" ? "GRACEFUL_DECLINE" : null;
+    phase === "recovery"
+      ? "LOSS_REASON_DISCOVERY"
+      : phase === "decline"
+        ? "GRACEFUL_DECLINE"
+        : null;
   const strategy = forcedStrategy ?? decision.strategy;
 
   // Recuperação de objeção e declínio nunca saem sem você ver.
