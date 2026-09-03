@@ -40,7 +40,9 @@ export function FollowupPanel({
 }) {
   const queryClient = useQueryClient();
   const [starting, setStarting] = useState(false);
+  const [startingSmart, setStartingSmart] = useState(false);
   const [scheduling, setScheduling] = useState(false);
+
 
   const summary = useQuery(
     followupSummaryQuery(conversationId ? { conversationId } : { contactId }),
