@@ -10,15 +10,11 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database, Json } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 import { writeAudit } from "@/lib/audit/log.server";
 import { logEvent } from "@/lib/crm.server";
-import { resolveSendWindow, nextAllowedInstant } from "@/lib/followup/time";
-import {
-  blockingDeadline,
-  fulfillCommitmentsBy,
-  pendingCommitments,
-} from "./commitments.server";
+import { mergeWindows, makeWindow, nextAllowedInstant, DEFAULT_TIMEZONE } from "@/lib/followup/time";
+import { blockingDeadline, pendingCommitments } from "./commitments.server";
 import { ensureControl, loadControl, patchControl, refreshPressure } from "./control.server";
 import { decideNextStep } from "./decision.server";
 import { evaluatePreSend, humanCooldownUntil } from "./rules";
@@ -50,7 +46,7 @@ async function loadSettings(db: Admin, userId: string) {
     .eq("user_id", userId)
     .maybeSingle();
   return {
-    timezone: data?.timezone ?? "America/Sao_Paulo",
+    timezone: data?.timezone ?? DEFAULT_TIMEZONE,
     windowStart: data?.send_window_start ?? "09:00",
     windowEnd: data?.send_window_end ?? "20:00",
   };
@@ -492,10 +488,9 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   /* --------------------------- agendar a ação ---------------------------- */
 
   const settings = await loadSettings(db, run.user_id);
-  const window = resolveSendWindow(
-    { start: settings.windowStart, end: settings.windowEnd },
-    { start: run.followup_flows.window_start, end: run.followup_flows.window_end },
-    null,
+  const window = mergeWindows(
+    makeWindow(settings.windowStart, settings.windowEnd),
+    makeWindow(run.followup_flows.window_start, run.followup_flows.window_end),
   );
 
   const target = new Date(now.getTime() + Math.max(0, decision.waitHours) * HOUR_MS);
@@ -584,7 +579,7 @@ export async function evaluateDueSmartRuns(
         summary: "Falha ao reavaliar um acompanhamento inteligente.",
         entityType: "followup_run",
         entityId: run.id,
-        severity: "error",
+        severity: "critical",
         actor: "system",
         metadata: { error: error instanceof Error ? error.message : "erro" },
       }).catch(() => undefined);
@@ -718,7 +713,7 @@ export async function smartPreSendCheck(
       verdict: decision.verdict,
       strategy: action.smart_strategy,
       defer_until: decision.deferUntil?.toISOString() ?? null,
-    } as unknown as Json,
+    },
   });
 
   if (action.contact_id) {
@@ -768,11 +763,11 @@ export async function recordStrategyUsage(
     message_id: messageId,
     strategy: action.smart_strategy,
     channel: action.action_type,
-    message_preview: (action.content ?? "").slice(0, 300),
+    content_preview: (action.content ?? "").slice(0, 300),
   });
 
   await patchControl(db, action.conversation_id, {
-    last_ai_message_at: new Date().toISOString(),
+    last_automation_at: new Date().toISOString(),
     state: "waiting_customer",
     next_responsible: "customer",
     next_responsible_reason: "Aguardando resposta do cliente.",
@@ -785,18 +780,10 @@ export async function markStrategyReply(db: Admin, conversationId: string): Prom
     .from("smart_strategy_usage")
     .select("id")
     .eq("conversation_id", conversationId)
-    .is("got_reply", null)
+    .eq("got_reply", false)
     .order("used_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (!last) return;
-  await db
-    .from("smart_strategy_usage")
-    .update({ got_reply: true, replied_at: new Date().toISOString() })
-    .eq("id", last.id);
-  await fulfillCommitmentsBy(db, {
-    userId: "",
-    conversationId,
-    responsible: "customer",
-  });
+  await db.from("smart_strategy_usage").update({ got_reply: true }).eq("id", last.id);
 }
