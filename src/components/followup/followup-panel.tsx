@@ -216,7 +216,14 @@ export function FollowupPanel({
         opportunityId={opportunityId ?? null}
         hasActiveRun={Boolean(run)}
       />
-      {conversationId && (
+      <StartSmartFlowDialog
+        open={startingSmart}
+        onOpenChange={setStartingSmart}
+        contactId={contactId}
+        conversationId={conversationId}
+        opportunityId={opportunityId ?? null}
+      />
+
         <ScheduleMessageDialog
           open={scheduling}
           onOpenChange={setScheduling}
