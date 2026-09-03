@@ -17,7 +17,14 @@ import {
   resumeFollowupRun,
 } from "@/lib/followup.functions";
 import { followupKeys, followupSummaryQuery } from "@/lib/followup.queries";
-import { ACTION_TYPE_LABELS, RUN_STATUS_LABELS, stopReasonLabel } from "@/lib/followup/labels";
+import {
+  ACTION_TYPE_LABELS,
+  RUN_STATUS_LABELS,
+  SCHEDULED_STATUS_LABELS,
+  stopReasonLabel,
+} from "@/lib/followup/labels";
+import { SMART_RUN_STATE_LABELS } from "@/lib/smart/types";
+import type { SmartRunState } from "@/lib/smart/types";
 
 /**
  * Painel de follow-up reutilizado na página do cliente e na conversa.
