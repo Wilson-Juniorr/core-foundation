@@ -140,7 +140,11 @@ export async function decideNextStep(
 
     const confidence = Math.max(0, Math.min(1, Number(raw.confidence ?? 0)));
     let action = raw.action;
-    let strategy = pickAllowedStrategy(raw.strategy, allowed, fatigued);
+    let strategy = pickAllowedStrategy({
+      preferred: raw.strategy,
+      allowed,
+      fatigued,
+    });
 
     if (action === "send" && (!strategy || !(raw.message ?? "").trim())) {
       // IA sugeriu envio sem estratégia válida ou sem texto: nunca improvisamos.
