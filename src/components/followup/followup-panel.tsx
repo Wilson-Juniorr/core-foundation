@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Pause, Play, Plus, Square, X } from "lucide-react";
+import { Brain, CalendarClock, Pause, Play, Plus, Square, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { ScheduleMessageDialog } from "@/components/followup/schedule-message-dialog";
 import { StartFollowupDialog } from "@/components/followup/start-followup-dialog";
+import { StartSmartFlowDialog } from "@/components/smart/start-smart-flow-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/followup.functions";
 import { followupKeys, followupSummaryQuery } from "@/lib/followup.queries";
 import { ACTION_TYPE_LABELS, RUN_STATUS_LABELS, stopReasonLabel } from "@/lib/followup/labels";
+
 
 /**
  * Painel de follow-up reutilizado na página do cliente e na conversa.
