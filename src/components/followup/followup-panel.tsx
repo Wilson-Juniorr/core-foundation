@@ -203,18 +203,29 @@ export function FollowupPanel({
 
         {!compact && scheduled.length > 0 && (
           <div className="space-y-2 border-t pt-3">
-            <p className="text-xs font-medium tracking-wide uppercase">Agendadas</p>
+            <p className="text-xs font-medium tracking-wide uppercase">Próximas ações</p>
             <ul className="space-y-2">
               {scheduled.map((action) => (
                 <li key={action.id} className="flex items-start justify-between gap-3">
-                  <div>
-                    <p>{ACTION_TYPE_LABELS[action.action_type]}</p>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p>{ACTION_TYPE_LABELS[action.action_type]}</p>
+                      <Badge variant="outline" className="text-xs">
+                        {SCHEDULED_STATUS_LABELS[action.status]}
+                      </Badge>
+                    </div>
                     <p className="text-muted-foreground text-xs">
                       {formatDateTime(action.scheduled_for)}
                       {action.content ? ` · ${action.content.slice(0, 60)}` : ""}
                     </p>
+                    {action.last_error ? (
+                      <p className="text-destructive text-xs">{action.last_error}</p>
+                    ) : null}
                   </div>
-                  {action.status === "scheduled" && (
+                  {(action.status === "scheduled" ||
+                    action.status === "needs_approval" ||
+                    action.status === "blocked" ||
+                    action.status === "stale") && (
                     <Button
                       size="icon"
                       variant="ghost"
@@ -227,6 +238,7 @@ export function FollowupPanel({
                 </li>
               ))}
             </ul>
+
           </div>
         )}
       </CardContent>
