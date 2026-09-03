@@ -107,9 +107,14 @@ function toControlView(
     next_responsible_reason: row.next_responsible_reason,
     next_responsible_at: row.next_responsible_at,
     buying_stage: row.buying_stage as ConversationControlView["buying_stage"],
+    interest_score: row.interest_score != null ? Number(row.interest_score) : null,
+    response_probability:
+      row.response_probability != null ? Number(row.response_probability) : null,
     pressure_score: row.pressure_score,
+    pressure_factors: (row.pressure_factors ?? {}) as Record<string, number>,
     primary_objection: row.primary_objection,
     confidence: row.confidence != null ? Number(row.confidence) : null,
+
     audio_context_unknown: row.audio_context_unknown,
     decision_reason: row.decision_reason,
     last_inbound_at: row.last_inbound_at,
