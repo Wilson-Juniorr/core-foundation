@@ -406,6 +406,98 @@ export type Database = {
           },
         ]
       }
+      commitments: {
+        Row: {
+          commitment_type: string
+          confidence: number
+          contact_id: string | null
+          conversation_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          description: string
+          due_at: string | null
+          due_window_end: string | null
+          id: string
+          is_ambiguous: boolean
+          opportunity_id: string | null
+          responsible: string
+          source: string
+          source_message_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          commitment_type: string
+          confidence?: number
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          description: string
+          due_at?: string | null
+          due_window_end?: string | null
+          id?: string
+          is_ambiguous?: boolean
+          opportunity_id?: string | null
+          responsible: string
+          source?: string
+          source_message_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          commitment_type?: string
+          confidence?: number
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          description?: string
+          due_at?: string | null
+          due_window_end?: string | null
+          id?: string
+          is_ambiguous?: boolean
+          opportunity_id?: string | null
+          responsible?: string
+          source?: string
+          source_message_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commitments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_preferences: {
         Row: {
           automation_allowed: boolean
@@ -551,6 +643,95 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      conversation_control: {
+        Row: {
+          audio_context_unknown: boolean
+          buying_stage: string
+          confidence: number | null
+          context_updated_at: string | null
+          context_version: number
+          conversation_id: string
+          created_at: string
+          decision_reason: string | null
+          interest_score: number | null
+          last_analyzed_message_id: string | null
+          last_automation_at: string | null
+          last_human_message_at: string | null
+          last_inbound_at: string | null
+          next_responsible: string
+          next_responsible_at: string | null
+          next_responsible_reason: string | null
+          owner: string
+          pressure_factors: Json
+          pressure_score: number
+          primary_objection: string | null
+          response_probability: number | null
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audio_context_unknown?: boolean
+          buying_stage?: string
+          confidence?: number | null
+          context_updated_at?: string | null
+          context_version?: number
+          conversation_id: string
+          created_at?: string
+          decision_reason?: string | null
+          interest_score?: number | null
+          last_analyzed_message_id?: string | null
+          last_automation_at?: string | null
+          last_human_message_at?: string | null
+          last_inbound_at?: string | null
+          next_responsible?: string
+          next_responsible_at?: string | null
+          next_responsible_reason?: string | null
+          owner?: string
+          pressure_factors?: Json
+          pressure_score?: number
+          primary_objection?: string | null
+          response_probability?: number | null
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audio_context_unknown?: boolean
+          buying_stage?: string
+          confidence?: number | null
+          context_updated_at?: string | null
+          context_version?: number
+          conversation_id?: string
+          created_at?: string
+          decision_reason?: string | null
+          interest_score?: number | null
+          last_analyzed_message_id?: string | null
+          last_automation_at?: string | null
+          last_human_message_at?: string | null
+          last_inbound_at?: string | null
+          next_responsible?: string
+          next_responsible_at?: string | null
+          next_responsible_reason?: string | null
+          owner?: string
+          pressure_factors?: Json
+          pressure_score?: number
+          primary_objection?: string | null
+          response_probability?: number | null
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_control_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversation_insights: {
         Row: {
@@ -913,6 +1094,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          kind: string
           name: string
           stop_on_reply: boolean
           updated_at: string
@@ -925,6 +1107,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          kind?: string
           name: string
           stop_on_reply?: boolean
           updated_at?: string
@@ -937,6 +1120,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          kind?: string
           name?: string
           stop_on_reply?: boolean
           updated_at?: string
@@ -953,10 +1137,13 @@ export type Database = {
           conversation_id: string
           created_at: string
           current_step_id: string | null
+          deadline_at: string | null
           flow_id: string
           id: string
+          next_evaluation_at: string | null
           opportunity_id: string | null
           paused_at: string | null
+          smart_state: string | null
           started_at: string
           status: Database["public"]["Enums"]["followup_run_status"]
           stop_reason: string | null
@@ -970,10 +1157,13 @@ export type Database = {
           conversation_id: string
           created_at?: string
           current_step_id?: string | null
+          deadline_at?: string | null
           flow_id: string
           id?: string
+          next_evaluation_at?: string | null
           opportunity_id?: string | null
           paused_at?: string | null
+          smart_state?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["followup_run_status"]
           stop_reason?: string | null
@@ -987,10 +1177,13 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           current_step_id?: string | null
+          deadline_at?: string | null
           flow_id?: string
           id?: string
+          next_evaluation_at?: string | null
           opportunity_id?: string | null
           paused_at?: string | null
+          smart_state?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["followup_run_status"]
           stop_reason?: string | null
@@ -1435,13 +1628,16 @@ export type Database = {
           contact_id: string | null
           content: string | null
           content_mode: Database["public"]["Enums"]["followup_content_mode"]
+          context_version: number | null
           conversation_id: string
           created_at: string
+          decision_reason: string | null
           draft_id: string | null
           executed_at: string | null
           external_message_id: string | null
           flow_run_id: string | null
           flow_step_id: string | null
+          generated_at: string | null
           id: string
           idempotency_key: string
           last_error: string | null
@@ -1450,8 +1646,10 @@ export type Database = {
           media_reference: string | null
           message_id: string | null
           opportunity_id: string | null
+          requires_approval: boolean
           scheduled_for: string
           simulated_at: string | null
+          smart_strategy: string | null
           status: Database["public"]["Enums"]["scheduled_action_status"]
           strategy_id: string | null
           updated_at: string
@@ -1464,13 +1662,16 @@ export type Database = {
           contact_id?: string | null
           content?: string | null
           content_mode?: Database["public"]["Enums"]["followup_content_mode"]
+          context_version?: number | null
           conversation_id: string
           created_at?: string
+          decision_reason?: string | null
           draft_id?: string | null
           executed_at?: string | null
           external_message_id?: string | null
           flow_run_id?: string | null
           flow_step_id?: string | null
+          generated_at?: string | null
           id?: string
           idempotency_key: string
           last_error?: string | null
@@ -1479,8 +1680,10 @@ export type Database = {
           media_reference?: string | null
           message_id?: string | null
           opportunity_id?: string | null
+          requires_approval?: boolean
           scheduled_for: string
           simulated_at?: string | null
+          smart_strategy?: string | null
           status?: Database["public"]["Enums"]["scheduled_action_status"]
           strategy_id?: string | null
           updated_at?: string
@@ -1493,13 +1696,16 @@ export type Database = {
           contact_id?: string | null
           content?: string | null
           content_mode?: Database["public"]["Enums"]["followup_content_mode"]
+          context_version?: number | null
           conversation_id?: string
           created_at?: string
+          decision_reason?: string | null
           draft_id?: string | null
           executed_at?: string | null
           external_message_id?: string | null
           flow_run_id?: string | null
           flow_step_id?: string | null
+          generated_at?: string | null
           id?: string
           idempotency_key?: string
           last_error?: string | null
@@ -1508,8 +1714,10 @@ export type Database = {
           media_reference?: string | null
           message_id?: string | null
           opportunity_id?: string | null
+          requires_approval?: boolean
           scheduled_for?: string
           simulated_at?: string | null
+          smart_strategy?: string | null
           status?: Database["public"]["Enums"]["scheduled_action_status"]
           strategy_id?: string | null
           updated_at?: string
@@ -1570,6 +1778,164 @@ export type Database = {
             columns: ["strategy_id"]
             isOneToOne: false
             referencedRelation: "message_strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      smart_flow_configs: {
+        Row: {
+          allowed_media: string[]
+          allowed_strategies: string[]
+          autonomy: string
+          completion_criteria: string | null
+          confidence_min: number
+          created_at: string
+          flow_id: string
+          goal: string
+          handoff_situations: string[]
+          max_actions_per_week: number
+          max_duration_days: number
+          max_pressure: number
+          min_hours_between_actions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_media?: string[]
+          allowed_strategies?: string[]
+          autonomy?: string
+          completion_criteria?: string | null
+          confidence_min?: number
+          created_at?: string
+          flow_id: string
+          goal: string
+          handoff_situations?: string[]
+          max_actions_per_week?: number
+          max_duration_days?: number
+          max_pressure?: number
+          min_hours_between_actions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_media?: string[]
+          allowed_strategies?: string[]
+          autonomy?: string
+          completion_criteria?: string | null
+          confidence_min?: number
+          created_at?: string
+          flow_id?: string
+          goal?: string
+          handoff_situations?: string[]
+          max_actions_per_week?: number
+          max_duration_days?: number
+          max_pressure?: number
+          min_hours_between_actions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_flow_configs_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: true
+            referencedRelation: "followup_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      smart_strategy_usage: {
+        Row: {
+          channel: string
+          contact_id: string | null
+          content_preview: string | null
+          conversation_id: string | null
+          created_at: string
+          flow_run_id: string | null
+          got_reply: boolean
+          id: string
+          message_id: string | null
+          outcome: string
+          reply_after_minutes: number | null
+          scheduled_action_id: string | null
+          sentiment_after: string | null
+          strategy: string
+          updated_at: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          contact_id?: string | null
+          content_preview?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          flow_run_id?: string | null
+          got_reply?: boolean
+          id?: string
+          message_id?: string | null
+          outcome?: string
+          reply_after_minutes?: number | null
+          scheduled_action_id?: string | null
+          sentiment_after?: string | null
+          strategy: string
+          updated_at?: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          contact_id?: string | null
+          content_preview?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          flow_run_id?: string | null
+          got_reply?: boolean
+          id?: string
+          message_id?: string | null
+          outcome?: string
+          reply_after_minutes?: number | null
+          scheduled_action_id?: string | null
+          sentiment_after?: string | null
+          strategy?: string
+          updated_at?: string
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_strategy_usage_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_strategy_usage_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_strategy_usage_flow_run_id_fkey"
+            columns: ["flow_run_id"]
+            isOneToOne: false
+            referencedRelation: "followup_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_strategy_usage_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "smart_strategy_usage_scheduled_action_id_fkey"
+            columns: ["scheduled_action_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_actions"
             referencedColumns: ["id"]
           },
         ]
@@ -1860,6 +2226,8 @@ export type Database = {
         | "skipped"
         | "blocked"
         | "simulated"
+        | "needs_approval"
+        | "stale"
       strategy_autonomy: "manual" | "approval_required" | "automatic"
       whatsapp_connection_status:
         | "not_configured"
@@ -1882,12 +2250,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1911,11 +2279,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1936,11 +2304,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1961,11 +2329,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1978,11 +2346,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2052,6 +2420,8 @@ export const Constants = {
         "skipped",
         "blocked",
         "simulated",
+        "needs_approval",
+        "stale",
       ],
       strategy_autonomy: ["manual", "approval_required", "automatic"],
       whatsapp_connection_status: [
