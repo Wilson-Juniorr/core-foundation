@@ -24,7 +24,7 @@ export const smartFlowInputSchema = z.object({
   window_end: timeOfDay,
   goal: z.string().trim().min(5, "Descreva o objetivo comercial").max(500),
   max_duration_days: z.number().int().min(1).max(180),
-  autonomy: z.enum(["observe", "assist", "autonomous"]),
+  autonomy: z.enum(["observe", "assist", "auto"]),
   allowed_strategies: z
     .array(z.enum(SMART_STRATEGIES))
     .min(1, "Escolha pelo menos uma estratégia permitida"),
