@@ -322,6 +322,19 @@ export interface ConversationSmartView {
   pending: SmartPendingAction[];
 }
 
+/** Decisão do orquestrador para o próximo passo do acompanhamento. */
+export interface SmartDecision {
+  action: "send" | "wait" | "handoff" | "complete";
+  strategy: SmartStrategy | null;
+  reason: string;
+  confidence: number;
+  waitHours: number;
+  nextResponsible: NextResponsible;
+  message: string | null;
+  model: string;
+  promptVersion: string;
+}
+
 export function pressureLabel(score: number): string {
   if (score >= 70) return "Alta";
   if (score >= 40) return "Média";

@@ -9,10 +9,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
-import { callAiGateway } from "@/lib/ai/gateway.server";
+import { completeStructured } from "@/lib/ai/gateway.server";
 import { fatiguedStrategies, pickAllowedStrategy } from "./rules";
 import type { SmartDecision, SmartStrategy } from "./types";
-import { SMART_STRATEGIES, SMART_STRATEGY_LABELS } from "./types";
+import { SMART_STRATEGIES, SMART_STRATEGY_META } from "./types";
 
 type Admin = SupabaseClient<Database>;
 type ConfigRow = Database["public"]["Tables"]["smart_flow_configs"]["Row"];
@@ -30,7 +30,7 @@ export interface SmartDecisionInput {
   recentMessages: { direction: string; type: string; text: string | null; at: string }[];
   memorySummary: string | null;
   pendingCommitments: { responsible: string; description: string; due_at: string | null }[];
-  recentStrategies: { strategy: string; at: string; got_reply: boolean | null }[];
+  recentStrategies: { strategy: string; used_at: string; got_reply: boolean }[];
   attemptsThisWeek: number;
 }
 
@@ -57,10 +57,10 @@ function buildPrompt(input: SmartDecisionInput): string {
   const lines = [
     `Objetivo comercial: ${input.objective}`,
     `Prazo máximo do acompanhamento: ${input.deadlineAt ?? "sem prazo definido"}`,
-    `Autonomia configurada: ${input.config.autonomy_mode}`,
-    `Estratégias permitidas: ${allowed.map((item) => `${item} (${SMART_STRATEGY_LABELS[item as SmartStrategy] ?? item})`).join(", ")}`,
-    `Tentativas nesta semana: ${input.attemptsThisWeek} de ${input.config.max_attempts_per_week}`,
-    `Pressão acumulada na conversa: ${input.control.pressure_score}/100 (limite ${input.config.max_pressure_score})`,
+    `Autonomia configurada: ${input.config.autonomy}`,
+    `Estratégias permitidas: ${allowed.map((item) => `${item} (${SMART_STRATEGY_META[item as SmartStrategy]?.label ?? item})`).join(", ")}`,
+    `Tentativas nesta semana: ${input.attemptsThisWeek} de ${input.config.max_actions_per_week}`,
+    `Pressão acumulada na conversa: ${input.control.pressure_score}/100 (limite ${input.config.max_pressure})`,
     `Estágio de compra estimado: ${input.control.buying_stage}`,
     `Quem está com a bola agora: ${input.control.next_responsible}`,
     `Controle da conversa: ${input.control.owner} / ${input.control.state}`,
@@ -122,7 +122,7 @@ export async function decideNextStep(
   const fatigued = fatiguedStrategies(input.recentStrategies, new Date());
 
   try {
-    const raw = await callAiGateway<{
+    const { data: raw } = await completeStructured<{
       action: "send" | "wait" | "handoff" | "complete";
       strategy: string;
       reason: string;
@@ -135,7 +135,7 @@ export async function decideNextStep(
       system: SYSTEM_PROMPT,
       user: buildPrompt(input),
       schemaName: "smart_flow_decision",
-      schema: decisionSchema as unknown as Record<string, unknown>,
+      schema: decisionSchema,
     });
 
     const confidence = Math.max(0, Math.min(1, Number(raw.confidence ?? 0)));
