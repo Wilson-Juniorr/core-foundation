@@ -26,6 +26,7 @@ const BASE: Record<AttentionCandidate["kind"], number> = {
   missing_next_action: 26,
   unlinked_conversation: 22,
   low_ai_confidence: 18,
+  reactivation_due: 10,
 };
 
 function priorityFromScore(score: number): AttentionPriority {
