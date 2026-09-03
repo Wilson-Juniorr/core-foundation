@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { ContactFormDialog } from "@/components/contact-form-dialog";
 import { FollowupPanel } from "@/components/followup/followup-panel";
+import { SmartControlCard } from "@/components/smart/smart-control-card";
+
 import { MessageGeneratorCard } from "@/components/library/message-generator-card";
 import { ContactPreferencesCard } from "@/components/automation/contact-preferences-card";
 import { IntelligenceCard } from "@/components/intelligence/intelligence-card";
