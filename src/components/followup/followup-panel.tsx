@@ -128,19 +128,39 @@ export function FollowupPanel({
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium">{run.flow_name}</p>
               <Badge variant="secondary">{RUN_STATUS_LABELS[run.status]}</Badge>
+              {run.flow_kind === "smart" && (
+                <Badge variant="outline" className="gap-1">
+                  <Brain className="size-3" /> Inteligente
+                </Badge>
+              )}
             </div>
-            <p className="text-muted-foreground">
-              Etapa {run.current_step_position ?? 1} de {run.total_steps} · {run.remaining_steps}{" "}
-              restante(s)
-            </p>
+            {run.flow_kind === "smart" ? (
+              <p className="text-muted-foreground">
+                {run.smart_state ? SMART_RUN_STATE_LABELS[run.smart_state as SmartRunState] : "Em acompanhamento"}
+                {run.next_evaluation_at
+                  ? ` · próxima análise em ${formatDateTime(run.next_evaluation_at)}`
+                  : ""}
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                Etapa {run.current_step_position ?? 1} de {run.total_steps} · {run.remaining_steps}{" "}
+                restante(s)
+              </p>
+            )}
             {run.next_action ? (
               <p className="text-muted-foreground">
                 Próxima ação: {ACTION_TYPE_LABELS[run.next_action.action_type]} em{" "}
-                {formatDateTime(run.next_action.scheduled_for)}
+                {formatDateTime(run.next_action.scheduled_for)} ·{" "}
+                {SCHEDULED_STATUS_LABELS[run.next_action.status]}
               </p>
             ) : (
-              <p className="text-muted-foreground">Sem próxima ação agendada.</p>
+              <p className="text-muted-foreground">
+                {run.flow_kind === "smart"
+                  ? "Nenhuma mensagem gerada ainda — a IA reavalia o contexto a cada ciclo."
+                  : "Sem próxima ação agendada."}
+              </p>
             )}
+
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {run.status === "active" ? (
