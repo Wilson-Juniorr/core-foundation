@@ -286,8 +286,12 @@ export interface ConversationControlView {
   audio_context_unknown: boolean;
   confidence: number | null;
   decision_reason: string | null;
+  last_inbound_at?: string | null;
+  last_human_message_at?: string | null;
+  last_automation_at?: string | null;
   context_updated_at: string | null;
 }
+
 
 export interface SmartRunView {
   id: string;
