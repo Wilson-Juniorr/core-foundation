@@ -164,6 +164,7 @@ export async function getConversationSmartView(
         .not("smart_strategy", "is", null)
         .in("status", ["scheduled", "needs_approval", "stale"])
         .order("scheduled_for", { ascending: true }),
+      buildContextBasis(db, userId, conversationId),
     ]);
 
   const runRow = (runs ?? [])[0];
