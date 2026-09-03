@@ -459,13 +459,72 @@ function ScheduledTab() {
   );
 }
 
+/** Fluxos inteligentes: objetivo e limites, sem etapas fixas. */
+function SmartFlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) {
+  const flows = useQuery(smartFlowsQuery());
+
+  if (flows.isLoading) return <LoadingState />;
+  if (flows.isError) return <ErrorState onRetry={() => flows.refetch()} />;
+  if ((flows.data ?? []).length === 0) {
+    return (
+      <EmptyState
+        title="Nenhum fluxo inteligente"
+        description="No fluxo inteligente você define o objetivo e os limites; a automação decide quando falar e quando chamar você."
+        action={
+          <Button onClick={() => onEdit(null)}>
+            <Brain className="mr-1 size-4" /> Criar fluxo inteligente
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {(flows.data ?? []).map((flow) => (
+        <Card key={flow.id}>
+          <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+            <div>
+              <CardTitle className="text-base">{flow.name}</CardTitle>
+              <p className="text-muted-foreground text-sm">{flow.config.goal}</p>
+            </div>
+            <Badge variant={flow.is_active ? "secondary" : "outline"}>
+              {flow.is_active ? "Ativo" : "Inativo"}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              {AUTONOMY_LABELS[flow.config.autonomy]} · até {flow.config.max_duration_days} dias ·{" "}
+              {flow.config.max_actions_per_week} ações/semana
+            </p>
+            <p className="text-muted-foreground">
+              {flow.config.allowed_strategies.length} estratégias permitidas ·{" "}
+              {flow.active_runs} acompanhamento(s) em andamento
+            </p>
+            <Button size="sm" variant="outline" onClick={() => onEdit(flow.id)}>
+              Editar
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function FollowupsPage() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingFlowId, setEditingFlowId] = useState<string | null>(null);
+  const [smartOpen, setSmartOpen] = useState(false);
+  const [editingSmartId, setEditingSmartId] = useState<string | null>(null);
 
   function openBuilder(flowId: string | null) {
     setEditingFlowId(flowId);
     setBuilderOpen(true);
+  }
+
+  function openSmart(flowId: string | null) {
+    setEditingSmartId(flowId);
+    setSmartOpen(true);
   }
 
   return (
@@ -473,9 +532,14 @@ function FollowupsPage() {
       title="Follow-ups"
       description="Fluxos automáticos que continuam rodando mesmo com o app fechado."
       actions={
-        <Button onClick={() => openBuilder(null)}>
-          <Plus className="mr-1 size-4" /> Novo fluxo
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => openSmart(null)}>
+            <Brain className="mr-1 size-4" /> Fluxo inteligente
+          </Button>
+          <Button onClick={() => openBuilder(null)}>
+            <Plus className="mr-1 size-4" /> Novo fluxo
+          </Button>
+        </div>
       }
     >
       <div className="space-y-6">
@@ -484,6 +548,7 @@ function FollowupsPage() {
         <Tabs defaultValue="flows">
           <TabsList>
             <TabsTrigger value="flows">Fluxos</TabsTrigger>
+            <TabsTrigger value="smart">Inteligentes</TabsTrigger>
             <TabsTrigger value="active">Ativos</TabsTrigger>
             <TabsTrigger value="paused">Pausados</TabsTrigger>
             <TabsTrigger value="scheduled">Agendadas</TabsTrigger>
@@ -492,6 +557,9 @@ function FollowupsPage() {
 
           <TabsContent value="flows" className="mt-4">
             <FlowsTab onEdit={openBuilder} />
+          </TabsContent>
+          <TabsContent value="smart" className="mt-4">
+            <SmartFlowsTab onEdit={openSmart} />
           </TabsContent>
           <TabsContent value="active" className="mt-4">
             <RunList status="active" />
@@ -509,6 +577,8 @@ function FollowupsPage() {
       </div>
 
       <FlowBuilderDialog open={builderOpen} onOpenChange={setBuilderOpen} flowId={editingFlowId} />
+      <SmartFlowDialog open={smartOpen} onOpenChange={setSmartOpen} flowId={editingSmartId} />
     </AppShell>
   );
 }
+
