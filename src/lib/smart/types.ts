@@ -336,12 +336,26 @@ export interface SmartPendingAction {
   is_stale: boolean;
 }
 
+/** O que a IA realmente enxergou ao decidir — serve para auditar a mensagem. */
+export interface SmartContextBasis {
+  messages_considered: number;
+  inbound_count: number;
+  outbound_count: number;
+  untranscribed_media: number;
+  last_inbound_at: string | null;
+  last_inbound_preview: string | null;
+  memory_summary: string | null;
+  memory_updated_at: string | null;
+}
+
 export interface ConversationSmartView {
   control: ConversationControlView | null;
   run: SmartRunView | null;
   commitments: Commitment[];
   pending: SmartPendingAction[];
+  basis: SmartContextBasis;
 }
+
 
 /** Decisão do orquestrador para o próximo passo do acompanhamento. */
 export interface SmartDecision {
