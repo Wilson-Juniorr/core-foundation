@@ -88,7 +88,7 @@ export function StartSmartFlowDialog({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Fluxo</Label>
-              <Select value={flowId ?? undefined} onValueChange={setFlowId}>
+              <Select value={flowId ?? ""} onValueChange={(value) => setFlowId(value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Escolha o fluxo" />
                 </SelectTrigger>
