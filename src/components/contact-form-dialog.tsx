@@ -148,17 +148,30 @@ export function ContactFormDialog({
       });
 
       if (flowId !== NO_FLOW && isSendablePhone(saved.phone)) {
+        const [kind, id] = flowId.split(":");
         try {
-          await startFlow({
-            data: {
-              flowId,
-              contactId: saved.id,
-              conversationId: null,
-              opportunityId: null,
-              replaceExisting: false,
-            },
-          });
-          toast.success("Follow-up iniciado para o novo cliente.");
+          if (kind === "smart") {
+            await startSmartFlowFn({
+              data: {
+                flowId: id,
+                contactId: saved.id,
+                conversationId: null,
+                opportunityId: null,
+              },
+            });
+            toast.success("Acompanhamento inteligente iniciado para o novo cliente.");
+          } else {
+            await startFlow({
+              data: {
+                flowId: id,
+                contactId: saved.id,
+                conversationId: null,
+                opportunityId: null,
+                replaceExisting: false,
+              },
+            });
+            toast.success("Follow-up iniciado para o novo cliente.");
+          }
         } catch (error) {
           toast.error(
             error instanceof Error
@@ -175,6 +188,7 @@ export function ContactFormDialog({
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: followupKeys.root });
+      queryClient.invalidateQueries({ queryKey: smartKeys.root });
       toast.success(contact ? "Cliente atualizado" : "Cliente criado");
       onOpenChange(false);
       return saved;
