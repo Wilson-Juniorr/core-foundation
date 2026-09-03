@@ -182,7 +182,11 @@ export async function getConversationSmartView(
         id: runRow.id,
         flow_id: runRow.flow_id,
         flow_name: runRow.followup_flows.name,
+        contact_id: runRow.contact_id,
+        contact_name: runRow.contacts?.name ?? null,
+        conversation_id: runRow.conversation_id,
         status: runRow.status,
+
         smart_state: (runRow.smart_state ?? null) as SmartRunView["smart_state"],
         autonomy: configAutonomy as SmartRunView["autonomy"],
         deadline_at: runRow.deadline_at,
