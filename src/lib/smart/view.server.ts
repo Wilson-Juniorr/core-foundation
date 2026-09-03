@@ -12,6 +12,7 @@ import type {
   ConversationControlView,
   ConversationSmartView,
   SmartFlowConfig,
+  SmartContextBasis,
   SmartFlowSummary,
   SmartPendingAction,
   SmartRunView,
@@ -254,6 +255,7 @@ export async function getConversationSmartView(
   return {
     control: control ? toControlView(control) : null,
     run,
+    basis,
     commitments: (commitments ?? []).map((item): Commitment => ({
       id: item.id,
       responsible: item.responsible as Commitment["responsible"],
