@@ -356,7 +356,6 @@ export interface ConversationSmartView {
   basis: SmartContextBasis;
 }
 
-
 /** Decisão do orquestrador para o próximo passo do acompanhamento. */
 export interface SmartDecision {
   action: "send" | "wait" | "handoff" | "complete";

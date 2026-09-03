@@ -71,9 +71,8 @@ export function SmartControlCard({ conversationId }: { conversationId: string | 
   const control = smart.data?.control ?? null;
   const run = smart.data?.run ?? null;
   const commitments = smart.data?.commitments ?? [];
-  const pending = (smart.data?.pending ?? []).filter(
-    (item) => item.requires_approval || item.is_stale,
-  );
+  const pending = smart.data?.pending ?? [];
+  const basis = smart.data?.basis ?? null;
 
   if (!conversationId) return null;
   if (!control && !run && commitments.length === 0 && pending.length === 0) return null;
@@ -148,9 +147,37 @@ export function SmartControlCard({ conversationId }: { conversationId: string | 
           </div>
         )}
 
+        {basis && (run || pending.length > 0) && (
+          <div className="space-y-1 border-t pt-3">
+            <p className="text-xs font-medium tracking-wide uppercase">Base usada pela IA</p>
+            <p className="text-muted-foreground text-xs">
+              {basis.messages_considered === 0
+                ? "Nenhuma mensagem nesta conversa — sem histórico, a IA não tem base real e a mensagem tende a ficar genérica."
+                : `${basis.messages_considered} mensagens lidas (${basis.inbound_count} do cliente, ${basis.outbound_count} nossas).`}
+              {basis.untranscribed_media > 0
+                ? ` ${basis.untranscribed_media} mídia(s) sem transcrição — esse conteúdo não entrou no contexto.`
+                : ""}
+            </p>
+            {basis.last_inbound_preview ? (
+              <p className="text-muted-foreground text-xs">
+                Última fala do cliente
+                {basis.last_inbound_at ? ` (${formatDateTime(basis.last_inbound_at)})` : ""}: “
+                {basis.last_inbound_preview}”
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-xs">O cliente nunca respondeu por aqui.</p>
+            )}
+            <p className="text-muted-foreground text-xs">
+              {basis.memory_summary
+                ? `Memória: ${basis.memory_summary}`
+                : "Sem memória analisada do cliente ainda."}
+            </p>
+          </div>
+        )}
+
         {pending.length > 0 && (
           <div className="space-y-3 border-t pt-3">
-            <p className="text-xs font-medium tracking-wide uppercase">Aguardando sua aprovação</p>
+            <p className="text-xs font-medium tracking-wide uppercase">Mensagem que será enviada</p>
             {pending.map((item) => {
               const strategy = item.smart_strategy as SmartStrategy | null;
               return (
@@ -160,39 +187,49 @@ export function SmartControlCard({ conversationId }: { conversationId: string | 
                       <Badge variant="secondary">{SMART_STRATEGY_META[strategy].label}</Badge>
                     )}
                     {item.is_stale && <Badge variant="destructive">Contexto mudou</Badge>}
+                    {item.requires_approval || item.is_stale ? (
+                      <Badge variant="outline">Aguardando sua aprovação</Badge>
+                    ) : (
+                      <Badge variant="outline">
+                        Envio automático em {formatDateTime(item.scheduled_for)}
+                      </Badge>
+                    )}
                   </div>
                   {item.decision_reason && (
                     <p className="text-muted-foreground text-xs">{item.decision_reason}</p>
                   )}
                   <Textarea
-                    rows={3}
+                    rows={6}
+                    readOnly={!(item.requires_approval || item.is_stale)}
                     value={edits[item.id] ?? item.content ?? ""}
                     onChange={(event) =>
                       setEdits((current) => ({ ...current, [item.id]: event.target.value }))
                     }
                   />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        approve.mutate({
-                          actionId: item.id,
-                          content: edits[item.id] ?? item.content ?? null,
-                        })
-                      }
-                      disabled={approve.isPending}
-                    >
-                      <Check className="mr-1 size-4" /> Aprovar e enviar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => reject.mutate(item.id)}
-                      disabled={reject.isPending}
-                    >
-                      <X className="mr-1 size-4" /> Descartar
-                    </Button>
-                  </div>
+                  {(item.requires_approval || item.is_stale) && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          approve.mutate({
+                            actionId: item.id,
+                            content: edits[item.id] ?? item.content ?? null,
+                          })
+                        }
+                        disabled={approve.isPending}
+                      >
+                        <Check className="mr-1 size-4" /> Aprovar e enviar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => reject.mutate(item.id)}
+                        disabled={reject.isPending}
+                      >
+                        <X className="mr-1 size-4" /> Descartar
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}
