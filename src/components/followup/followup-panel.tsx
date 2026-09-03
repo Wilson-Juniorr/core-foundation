@@ -212,7 +212,6 @@ export function FollowupPanel({
         contactId={contactId}
         conversationId={conversationId}
         contactPhone={contactPhone ?? null}
-
         opportunityId={opportunityId ?? null}
         hasActiveRun={Boolean(run)}
       />
@@ -223,7 +222,7 @@ export function FollowupPanel({
         conversationId={conversationId}
         opportunityId={opportunityId ?? null}
       />
-
+      {conversationId && (
         <ScheduleMessageDialog
           open={scheduling}
           onOpenChange={setScheduling}
@@ -231,6 +230,7 @@ export function FollowupPanel({
           contactId={contactId}
         />
       )}
+
     </Card>
   );
 }
