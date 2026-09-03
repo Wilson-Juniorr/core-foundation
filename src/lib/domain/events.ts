@@ -35,6 +35,9 @@ export const TIMELINE_EVENT_TYPES = [
   "smart_action_deferred",
   "smart_handoff",
   "smart_commitment_created",
+  "smart_refusal_detected",
+  "smart_declined",
+  "smart_reactivation_scheduled",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
@@ -76,6 +79,9 @@ export const TIMELINE_EVENT_LABELS: Record<TimelineEventType, string> = {
   smart_action_deferred: "Ação inteligente adiada",
   smart_handoff: "Smart Flow entregue a você",
   smart_commitment_created: "Compromisso registrado",
+  smart_refusal_detected: "Cliente sinalizou desinteresse",
+  smart_declined: "Acompanhamento declinado",
+  smart_reactivation_scheduled: "Reativação futura agendada",
 };
 
 export function timelineEventLabel(type: string): string {
