@@ -38,7 +38,6 @@ export const SCHEDULED_STATUS_LABELS: Record<ScheduledActionStatus, string> = {
   simulated: "Simulada (modo teste)",
   needs_approval: "Aguardando sua aprovação",
   stale: "Desatualizada pelo contexto",
-
 };
 
 export const STOP_REASON_LABELS: Record<string, string> = {

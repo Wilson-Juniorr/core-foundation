@@ -21,7 +21,20 @@ export const Route = createFileRoute("/api/public/hooks/followup-tick")({
         try {
           const { runDueActions } = await import("@/lib/followup/engine.server");
           const result = await runDueActions(25);
-          return Response.json({ ok: true, ...result });
+
+          /* Smart Flow: reavaliação dos acompanhamentos inteligentes no mesmo
+             ciclo. Uma falha aqui não impede o scheduler clássico. */
+          let smart: unknown = null;
+          try {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { evaluateDueSmartRuns } = await import("@/lib/smart/engine.server");
+            smart = await evaluateDueSmartRuns(supabaseAdmin, 20);
+          } catch (smartError) {
+            console.error("smart_tick_failed", smartError);
+            smart = { error: "smart_tick_failed" };
+          }
+
+          return Response.json({ ok: true, ...result, smart });
         } catch (error) {
           console.error("followup_tick_failed", error);
           return Response.json({ ok: false, error: "tick_failed" }, { status: 500 });

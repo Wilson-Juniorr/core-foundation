@@ -7,6 +7,8 @@ import { AppShell } from "@/components/app-shell";
 import { ChatWindow } from "@/components/whatsapp/chat-window";
 import { ConversationList } from "@/components/whatsapp/conversation-list";
 import { FollowupPanel } from "@/components/followup/followup-panel";
+import { SmartControlCard } from "@/components/smart/smart-control-card";
+
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { useWhatsAppRealtime } from "@/hooks/use-whatsapp-realtime";
 import { markConversationRead } from "@/lib/whatsapp.functions";
@@ -82,12 +84,13 @@ function ConversasPage() {
         )}
 
         {selectedId && detail.data?.conversation.contact_id && (
-          <div className="shrink-0">
+          <div className="shrink-0 space-y-3">
             <FollowupPanel
               contactId={detail.data.conversation.contact_id}
               conversationId={selectedId}
               compact
             />
+            <SmartControlCard conversationId={selectedId} />
           </div>
         )}
 

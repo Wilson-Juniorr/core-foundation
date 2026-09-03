@@ -11,7 +11,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { logEvent } from "@/lib/crm.server";
 import { writeAudit } from "@/lib/audit/log.server";
-import { computePressure, detectClosingSignal, detectIrritation, humanCooldownUntil } from "./rules";
+import {
+  computePressure,
+  detectClosingSignal,
+  detectIrritation,
+  humanCooldownUntil,
+} from "./rules";
 import type { ControlOwner, ControlState, NextResponsible } from "./types";
 
 type Admin = SupabaseClient<Database>;
@@ -365,7 +370,12 @@ export async function setOwner(
   await ensureControl(db, userId, conversationId);
   await patchControl(db, conversationId, {
     owner,
-    state: owner === "human" ? "human_controlled" : owner === "ai" ? "ai_controlled" : "waiting_customer",
+    state:
+      owner === "human"
+        ? "human_controlled"
+        : owner === "ai"
+          ? "ai_controlled"
+          : "waiting_customer",
     decision_reason: reason,
   });
   await writeAudit(db, userId, {

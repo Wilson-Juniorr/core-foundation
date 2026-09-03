@@ -88,6 +88,48 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                     conversationId: conversation.id,
                     repliedAt: event.message.timestamp,
                   });
+
+                  /* Smart Flow: quem está com a bola, compromissos assumidos,
+                     pressão e reavaliação. Falha aqui não derruba o webhook. */
+                  try {
+                    const { registerCustomerMessage } = await import("@/lib/smart/control.server");
+                    const { markStrategyReply } = await import("@/lib/smart/engine.server");
+                    const { data: message } = await supabaseAdmin
+                      .from("messages")
+                      .select("id")
+                      .eq("conversation_id", conversation.id)
+                      .eq("external_message_id", event.message.externalMessageId ?? "")
+                      .maybeSingle();
+
+                    await markStrategyReply(supabaseAdmin, conversation.id);
+                    await registerCustomerMessage(supabaseAdmin, {
+                      userId: connection.user_id,
+                      conversationId: conversation.id,
+                      contactId: conversation.contact_id,
+                      messageId: message?.id ?? null,
+                      text: event.message.text ?? null,
+                      messageType: event.message.type,
+                      at: event.message.timestamp,
+                    });
+
+                    // Áudio entra no contexto: transcrever ou marcar como desconhecido.
+                    if (event.message.type === "audio" && message?.id) {
+                      const { ingestAudioContext } = await import("@/lib/smart/audio.server");
+                      await ingestAudioContext(supabaseAdmin, {
+                        userId: connection.user_id,
+                        conversationId: conversation.id,
+                        contactId: conversation.contact_id,
+                        messageId: message.id,
+                        direction: "inbound",
+                      });
+                    }
+                  } catch (smartError) {
+                    waLog.error("smart_inbound_failed", {
+                      connection_id: connection.id,
+                      reason: smartError instanceof Error ? smartError.message : "unknown",
+                    });
+                  }
+
                   /* Análise de IA é apenas enfileirada: o webhook responde
                      rápido e nunca depende do modelo. */
                   if (conversation.contact_id) {
@@ -100,6 +142,52 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                   }
                 }
               }
+
+              /* Mensagem enviada pelo consultor direto do celular também é
+                 intervenção humana: o Smart Flow para de falar. */
+              if (outcome === "created" && event.message.direction === "outbound") {
+                try {
+                  const { data: conversation } = await supabaseAdmin
+                    .from("conversations")
+                    .select("id, contact_id")
+                    .eq("whatsapp_connection_id", connection.id)
+                    .eq("external_chat_id", event.message.externalChatId)
+                    .maybeSingle();
+                  const { data: message } = conversation
+                    ? await supabaseAdmin
+                        .from("messages")
+                        .select("id, metadata")
+                        .eq("conversation_id", conversation.id)
+                        .eq("external_message_id", event.message.externalMessageId ?? "")
+                        .maybeSingle()
+                    : { data: null };
+
+                  const source =
+                    message?.metadata && typeof message.metadata === "object"
+                      ? (message.metadata as { source?: string }).source
+                      : undefined;
+
+                  if (conversation && source !== "automation") {
+                    const { registerHumanIntervention } =
+                      await import("@/lib/smart/control.server");
+                    await registerHumanIntervention(supabaseAdmin, {
+                      userId: connection.user_id,
+                      conversationId: conversation.id,
+                      contactId: conversation.contact_id,
+                      messageId: message?.id ?? null,
+                      text: event.message.text ?? null,
+                      messageType: event.message.type,
+                      at: event.message.timestamp,
+                    });
+                  }
+                } catch (smartError) {
+                  waLog.error("smart_outbound_failed", {
+                    connection_id: connection.id,
+                    reason: smartError instanceof Error ? smartError.message : "unknown",
+                  });
+                }
+              }
+
               waLog.info("webhook_message", {
                 connection_id: connection.id,
                 direction: event.message.direction,

@@ -606,6 +606,51 @@ async function noteSendFailure(db: Client, connectionId: string, error: unknown)
     .eq("id", connectionId);
 }
 
+/**
+ * Mensagem manual do consultor: o Smart Flow transfere o controle da conversa
+ * para ele, invalida automações preparadas e passa a apenas observar.
+ * Nunca deixa o envio falhar por causa disso.
+ */
+async function noteHumanIntervention(
+  db: Client,
+  userId: string,
+  input: {
+    conversationId: string;
+    contactId: string | null;
+    messageId: string;
+    text: string | null;
+    messageType: string;
+  },
+): Promise<void> {
+  try {
+    const { registerHumanIntervention } = await import("@/lib/smart/control.server");
+    await registerHumanIntervention(db as never, {
+      userId,
+      conversationId: input.conversationId,
+      contactId: input.contactId,
+      messageId: input.messageId,
+      text: input.text,
+      messageType: input.messageType,
+    });
+
+    if (input.messageType === "audio") {
+      const { ingestAudioContext } = await import("@/lib/smart/audio.server");
+      await ingestAudioContext(db as never, {
+        userId,
+        conversationId: input.conversationId,
+        contactId: input.contactId,
+        messageId: input.messageId,
+        direction: "outbound",
+      });
+    }
+  } catch (error) {
+    waLog.error("smart_human_intervention_failed", {
+      conversation_id: input.conversationId,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+  }
+}
+
 export async function sendText(
   userId: string,
   input: { conversationId: string; text: string; source?: SendSource | undefined },
@@ -650,6 +695,16 @@ export async function sendText(
       preview: messagePreview("text", input.text, null),
       incrementUnread: false,
     });
+
+    if (source === "manual") {
+      await noteHumanIntervention(db, userId, {
+        conversationId: conversation.id,
+        contactId: conversation.contact_id,
+        messageId: pending.id,
+        text: input.text,
+        messageType: "text",
+      });
+    }
 
     waLog.info("message_sent", { connection_id: connection.id, type: "text", source });
     return { messageId: pending.id };
@@ -733,6 +788,16 @@ export async function sendMedia(
       preview: messagePreview(input.type, input.caption, input.filename),
       incrementUnread: false,
     });
+
+    if (source === "manual") {
+      await noteHumanIntervention(db, userId, {
+        conversationId: conversation.id,
+        contactId: conversation.contact_id,
+        messageId: pending.id,
+        text: input.caption,
+        messageType: input.type,
+      });
+    }
 
     waLog.info("message_sent", { connection_id: connection.id, type: input.type, source });
     return { messageId: pending.id };

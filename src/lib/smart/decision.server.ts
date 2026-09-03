@@ -44,7 +44,10 @@ const decisionSchema = {
     reason: { type: "string" },
     confidence: { type: "number" },
     wait_hours: { type: "number" },
-    next_responsible: { type: "string", enum: ["customer", "human", "system", "third_party", "none"] },
+    next_responsible: {
+      type: "string",
+      enum: ["customer", "human", "system", "third_party", "none"],
+    },
     message: { type: "string" },
   },
 } as const;
@@ -111,10 +114,7 @@ REGRAS ABSOLUTAS:
 
 Responda apenas o JSON pedido.`;
 
-export async function decideNextStep(
-  db: Admin,
-  input: SmartDecisionInput,
-): Promise<SmartDecision> {
+export async function decideNextStep(db: Admin, input: SmartDecisionInput): Promise<SmartDecision> {
   const allowed = (input.config.allowed_strategies as string[]).filter((item) =>
     (SMART_STRATEGIES as readonly string[]).includes(item),
   ) as SmartStrategy[];

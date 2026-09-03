@@ -105,7 +105,7 @@ export async function transcribeAudioMessage(
           {
             role: "system",
             content:
-              "Transcreva o áudio em português do Brasil. Responda em JSON com {\"transcript\": string, \"confidence\": number entre 0 e 1}. Se não conseguir entender, use transcript vazio e confidence 0.",
+              'Transcreva o áudio em português do Brasil. Responda em JSON com {"transcript": string, "confidence": number entre 0 e 1}. Se não conseguir entender, use transcript vazio e confidence 0.',
           },
           {
             role: "user",

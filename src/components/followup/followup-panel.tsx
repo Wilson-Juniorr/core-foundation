@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Pause, Play, Plus, Square, X } from "lucide-react";
+import { Brain, CalendarClock, Pause, Play, Plus, Square, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { ScheduleMessageDialog } from "@/components/followup/schedule-message-dialog";
 import { StartFollowupDialog } from "@/components/followup/start-followup-dialog";
+import { StartSmartFlowDialog } from "@/components/smart/start-smart-flow-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ export function FollowupPanel({
 }) {
   const queryClient = useQueryClient();
   const [starting, setStarting] = useState(false);
+  const [startingSmart, setStartingSmart] = useState(false);
   const [scheduling, setScheduling] = useState(false);
 
   const summary = useQuery(
@@ -95,6 +97,11 @@ export function FollowupPanel({
             <Plus className="mr-1 size-4" />
             {run ? "Trocar fluxo" : "Iniciar"}
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => setStartingSmart(true)}>
+            <Brain className="mr-1 size-4" />
+            Inteligente
+          </Button>
+
           {conversationId && (
             <Button size="sm" variant="ghost" onClick={() => setScheduling(true)}>
               <CalendarClock className="mr-1 size-4" />
@@ -203,9 +210,15 @@ export function FollowupPanel({
         contactId={contactId}
         conversationId={conversationId}
         contactPhone={contactPhone ?? null}
-
         opportunityId={opportunityId ?? null}
         hasActiveRun={Boolean(run)}
+      />
+      <StartSmartFlowDialog
+        open={startingSmart}
+        onOpenChange={setStartingSmart}
+        contactId={contactId}
+        conversationId={conversationId}
+        opportunityId={opportunityId ?? null}
       />
       {conversationId && (
         <ScheduleMessageDialog

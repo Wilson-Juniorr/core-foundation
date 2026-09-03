@@ -123,7 +123,6 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-
 export function AppShell({
   title,
   description,
@@ -200,6 +199,5 @@ export function AppShell({
         </footer>
       </div>
     </div>
-
   );
 }

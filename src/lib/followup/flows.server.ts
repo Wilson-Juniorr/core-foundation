@@ -41,9 +41,11 @@ function mapStep(row: Database["public"]["Tables"]["followup_flow_steps"]["Row"]
 }
 
 export async function listFlows(supabase: Client): Promise<Flow[]> {
+  // Fluxos inteligentes têm lista própria: aqui só o modo clássico com etapas.
   const { data, error } = await supabase
     .from("followup_flows")
     .select("*, followup_flow_steps(id), followup_runs(id, status)")
+    .eq("kind", "classic")
     .order("updated_at", { ascending: false });
   if (error) throw new Error(error.message);
 
