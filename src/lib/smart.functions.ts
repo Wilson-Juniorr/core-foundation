@@ -36,7 +36,7 @@ export const saveSmartFlowFn = createServerFn({ method: "POST" })
 
 export const setSmartFlowActiveFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(smartFlowIdSchema.extend(({}) as never).parse ?? smartFlowIdSchema.parse)
+  .inputValidator(smartFlowIdSchema.parse)
   .handler(async ({ context, data }) => {
     const { setSmartFlowActive } = await import("./smart/flows.server");
     const { getSmartFlow } = await import("./smart/view.server");
