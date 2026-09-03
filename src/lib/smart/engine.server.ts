@@ -839,6 +839,124 @@ export async function recordStrategyUsage(
     next_responsible: "customer",
     next_responsible_reason: "Aguardando resposta do cliente.",
   });
+
+  if (action.smart_strategy === "GRACEFUL_DECLINE") {
+    await finalizeDecline(db, action);
+  }
+}
+
+/**
+ * Declínio digno concluído: a oportunidade é marcada como perdida com o motivo
+ * classificado, o acompanhamento é encerrado e fica um lembrete de reativação
+ * para daqui a seis meses. Não aplicamos `do_not_contact`: o cliente recusou
+ * esta cotação, não o relacionamento.
+ */
+async function finalizeDecline(db: Admin, action: ActionRow): Promise<void> {
+  const { data: lastInbound } = await db
+    .from("messages")
+    .select("text_content")
+    .eq("conversation_id", action.conversation_id)
+    .eq("direction", "inbound")
+    .order("sent_at", { ascending: false })
+    .limit(3);
+
+  const reasonText = (lastInbound ?? [])
+    .map((item) => item.text_content ?? "")
+    .join(" ")
+    .trim();
+  const lossReason = classifyLossReason(reasonText);
+  const lossLabel = LOSS_REASON_LABELS[lossReason];
+
+  if (action.opportunity_id) {
+    const { data: opportunity } = await db
+      .from("opportunities")
+      .select("id, status, notes")
+      .eq("id", action.opportunity_id)
+      .maybeSingle();
+    if (opportunity && opportunity.status === "open") {
+      await db
+        .from("opportunities")
+        .update({
+          status: "lost",
+          next_action_at: null,
+          next_action_description: null,
+          notes: [opportunity.notes, `Perda registrada pelo acompanhamento — motivo: ${lossLabel}.`]
+            .filter(Boolean)
+            .join("\n"),
+        })
+        .eq("id", opportunity.id);
+      await logEvent(db, action.user_id, {
+        event_type: "opportunity_lost",
+        contact_id: action.contact_id,
+        opportunity_id: opportunity.id,
+        metadata: { loss_reason: lossReason, source: "smart_decline" },
+      });
+    }
+  }
+
+  if (action.flow_run_id) {
+    await db
+      .from("followup_runs")
+      .update({
+        status: "completed",
+        smart_state: "completed",
+        completed_at: new Date().toISOString(),
+        stop_reason: `Cliente recusou (${lossLabel}). Acompanhamento declinado com elegância.`,
+        next_evaluation_at: null,
+      })
+      .eq("id", action.flow_run_id);
+  }
+
+  await patchControl(db, action.conversation_id, {
+    owner: "none",
+    state: "completed",
+    next_responsible: "none",
+    next_responsible_reason: `Cliente recusou (${lossLabel}).`,
+    buying_stage: "lost",
+  });
+
+  // Lembrete de reativação em 6 meses (fica adormecido na Central de Atenção).
+  const reactivateAt = new Date(Date.now() + 180 * DAY_MS);
+  await db.from("attention_items").insert({
+    user_id: action.user_id,
+    contact_id: action.contact_id,
+    conversation_id: action.conversation_id,
+    opportunity_id: action.opportunity_id,
+    kind: "reactivation_due",
+    priority: "low",
+    priority_score: 10,
+    title: "Reativação sugerida",
+    summary: `Cliente recusou por ${lossLabel}. Vale um novo contato agora.`,
+    reason: "Seis meses desde o declínio do acompanhamento.",
+    suggested_action: "Refazer a cotação com condições atuais.",
+    suggested_action_source: "rule",
+    bucket: "later",
+    status: "snoozed",
+    snoozed_until: reactivateAt.toISOString(),
+    dedupe_key: `reactivation:${action.conversation_id}:${reactivateAt.toISOString().slice(0, 10)}`,
+    blocks_automation: false,
+    metadata: { loss_reason: lossReason },
+  });
+
+  await writeAudit(db, action.user_id, {
+    action: "smart_declined",
+    summary: `Acompanhamento declinado: ${lossLabel}. Reativação sugerida em 6 meses.`,
+    entityType: "conversation",
+    entityId: action.conversation_id,
+    actor: "system",
+    metadata: { loss_reason: lossReason },
+  });
+  await logEvent(db, action.user_id, {
+    event_type: "smart_declined",
+    contact_id: action.contact_id,
+    opportunity_id: action.opportunity_id,
+    metadata: { loss_reason: lossReason },
+  });
+  await logEvent(db, action.user_id, {
+    event_type: "smart_reactivation_scheduled",
+    contact_id: action.contact_id,
+    metadata: { at: reactivateAt.toISOString() },
+  });
 }
 
 /** Resposta do cliente marca a última estratégia como efetiva. */
