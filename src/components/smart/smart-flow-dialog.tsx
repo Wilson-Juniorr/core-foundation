@@ -163,10 +163,12 @@ export function SmartFlowDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{flowId ? "Editar fluxo inteligente" : "Novo fluxo inteligente"}</DialogTitle>
+          <DialogTitle>
+            {flowId ? "Editar fluxo inteligente" : "Novo fluxo inteligente"}
+          </DialogTitle>
           <DialogDescription>
-            Você define o objetivo e os limites. A automação decide quando falar, o que usar e quando
-            chamar você.
+            Você define o objetivo e os limites. A automação decide quando falar, o que usar e
+            quando chamar você.
           </DialogDescription>
         </DialogHeader>
 

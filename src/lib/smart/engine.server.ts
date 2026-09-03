@@ -13,7 +13,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { writeAudit } from "@/lib/audit/log.server";
 import { logEvent } from "@/lib/crm.server";
-import { mergeWindows, makeWindow, nextAllowedInstant, DEFAULT_TIMEZONE } from "@/lib/followup/time";
+import {
+  mergeWindows,
+  makeWindow,
+  nextAllowedInstant,
+  DEFAULT_TIMEZONE,
+} from "@/lib/followup/time";
 import { blockingDeadline, pendingCommitments } from "./commitments.server";
 import { ensureControl, loadControl, patchControl, refreshPressure } from "./control.server";
 import { decideNextStep } from "./decision.server";
@@ -86,7 +91,8 @@ export async function startSmartFlow(
   },
 ): Promise<{ runId: string; evaluateAt: string }> {
   const config = await loadConfig(db, input.flowId);
-  if (!config) throw new SmartFlowError("Este fluxo não tem configuração inteligente.", "no_config");
+  if (!config)
+    throw new SmartFlowError("Este fluxo não tem configuração inteligente.", "no_config");
 
   const { data: flow } = await db
     .from("followup_flows")
@@ -322,12 +328,9 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const humanCommitment = commitments.find((item) => item.responsible === "human");
 
   if (humanCommitment) {
-    await handoff(
-      db,
-      runRef,
-      `Você assumiu um retorno: ${humanCommitment.description}`,
-      { commitment_id: humanCommitment.id },
-    );
+    await handoff(db, runRef, `Você assumiu um retorno: ${humanCommitment.description}`, {
+      commitment_id: humanCommitment.id,
+    });
     return "human_commitment";
   }
 
@@ -603,10 +606,7 @@ export interface SmartPreSendResult {
  * depois do claim. Fecha a janela de race condition entre claim e envio.
  * Ações clássicas passam direto (comportamento preservado).
  */
-export async function smartPreSendCheck(
-  db: Admin,
-  action: ActionRow,
-): Promise<SmartPreSendResult> {
+export async function smartPreSendCheck(db: Admin, action: ActionRow): Promise<SmartPreSendResult> {
   if (!action.smart_strategy) {
     return { allowed: true, verdict: "send", reason: "Ação clássica.", deferUntil: null };
   }
@@ -735,7 +735,9 @@ export async function smartPreSendCheck(
       .from("followup_runs")
       .update({
         smart_state: decision.verdict === "approval" ? "waiting_approval" : "evaluating",
-        next_evaluation_at: (decision.deferUntil ?? new Date(now.getTime() + 6 * HOUR_MS)).toISOString(),
+        next_evaluation_at: (
+          decision.deferUntil ?? new Date(now.getTime() + 6 * HOUR_MS)
+        ).toISOString(),
       })
       .eq("id", action.flow_run_id);
   }

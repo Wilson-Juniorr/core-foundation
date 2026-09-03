@@ -19,7 +19,6 @@ import {
 import { followupKeys, followupSummaryQuery } from "@/lib/followup.queries";
 import { ACTION_TYPE_LABELS, RUN_STATUS_LABELS, stopReasonLabel } from "@/lib/followup/labels";
 
-
 /**
  * Painel de follow-up reutilizado na página do cliente e na conversa.
  * Mostra somente o estado real vindo do servidor — sem contagem local.
@@ -42,7 +41,6 @@ export function FollowupPanel({
   const [starting, setStarting] = useState(false);
   const [startingSmart, setStartingSmart] = useState(false);
   const [scheduling, setScheduling] = useState(false);
-
 
   const summary = useQuery(
     followupSummaryQuery(conversationId ? { conversationId } : { contactId }),
@@ -230,7 +228,6 @@ export function FollowupPanel({
           contactId={contactId}
         />
       )}
-
     </Card>
   );
 }

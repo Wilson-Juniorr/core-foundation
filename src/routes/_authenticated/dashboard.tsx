@@ -98,11 +98,19 @@ function DashboardPage() {
         <div className="space-y-6">
           {/* Faixa de telemetria: o estado da operação em uma leitura. */}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Telemetry label="Aguardando você" value={operational.data.waitingOnYou} tone="signal" />
+            <Telemetry
+              label="Aguardando você"
+              value={operational.data.waitingOnYou}
+              tone="signal"
+            />
             <Telemetry label="Atrasados" value={operational.data.overdue} tone="danger" />
             <Telemetry label="Em acompanhamento" value={operational.data.followingUp} />
             <Telemetry label="Automações agendadas" value={operational.data.scheduledAutomations} />
-            <Telemetry label="Sem próxima ação" value={operational.data.withoutNextAction} tone="danger" />
+            <Telemetry
+              label="Sem próxima ação"
+              value={operational.data.withoutNextAction}
+              tone="danger"
+            />
             <Telemetry label="Respostas 24h" value={operational.data.recentReplies} tone="signal" />
             <Telemetry label="Falhas de envio" value={operational.data.failures} tone="danger" />
             <Telemetry label="Clientes ativos" value={dashboard.data?.activeContacts ?? 0} />
@@ -142,9 +150,7 @@ function DashboardPage() {
               <div className="grid grid-cols-3 gap-2 pt-1">
                 <div className="bg-card border-signal border-l-2 p-3">
                   <p className="label-tech">Em curso</p>
-                  <p className="numeric text-lg font-bold">
-                    {pad(operational.data.followingUp)}
-                  </p>
+                  <p className="numeric text-lg font-bold">{pad(operational.data.followingUp)}</p>
                 </div>
                 <div className="bg-card border-l-2 border-[var(--warning)] p-3">
                   <p className="label-tech">Agendados</p>

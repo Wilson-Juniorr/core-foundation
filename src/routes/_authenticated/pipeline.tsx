@@ -44,7 +44,6 @@ const STAGE_COLORS = [
 ] as const;
 
 function PipelinePage() {
-
   const queryClient = useQueryClient();
   const stages = useQuery(pipelineStagesQuery());
   const opportunities = useQuery(opportunitiesQuery());
@@ -195,7 +194,6 @@ function PipelinePage() {
             );
           })}
         </div>
-
       )}
     </AppShell>
   );

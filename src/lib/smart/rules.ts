@@ -137,7 +137,10 @@ export function extractCommitments(input: {
 
   /* 1. Consulta a terceiro: "vou falar com meu marido". */
   const thirdParty = THIRD_PARTY_RE.exec(text);
-  if (thirdParty && /\b(vou|preciso|tenho que|quero)\s+(falar|conversar|ver|consultar)/i.test(lower)) {
+  if (
+    thirdParty &&
+    /\b(vou|preciso|tenho que|quero)\s+(falar|conversar|ver|consultar)/i.test(lower)
+  ) {
     push({
       commitment_type: "consult_third_party",
       responsible: "third_party",
@@ -153,13 +156,12 @@ export function extractCommitments(input: {
   for (const weekday of WEEKDAYS) {
     if (!weekday.re.test(lower)) continue;
     const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
-    const responsible: CommitmentResponsible = /\b(me\s+chama|me\s+liga|me\s+manda|me\s+avisa)\b/i.test(
-      lower,
-    )
-      ? input.direction === "inbound"
-        ? "human"
-        : "human"
-      : baseResponsible;
+    const responsible: CommitmentResponsible =
+      /\b(me\s+chama|me\s+liga|me\s+manda|me\s+avisa)\b/i.test(lower)
+        ? input.direction === "inbound"
+          ? "human"
+          : "human"
+        : baseResponsible;
     push({
       commitment_type: "callback_on_weekday",
       responsible,
@@ -175,11 +177,10 @@ export function extractCommitments(input: {
   /* 3. Amanhã / hoje mais tarde. */
   if (/\bamanh(ã|a)\b/i.test(lower)) {
     const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
-    const responsible: CommitmentResponsible = /\b(te\s+(retorno|respondo|falo|chamo|aviso)|volto\s+a\s+falar)\b/i.test(
-      lower,
-    )
-      ? baseResponsible
-      : baseResponsible;
+    const responsible: CommitmentResponsible =
+      /\b(te\s+(retorno|respondo|falo|chamo|aviso)|volto\s+a\s+falar)\b/i.test(lower)
+        ? baseResponsible
+        : baseResponsible;
     push({
       commitment_type: "callback_tomorrow",
       responsible,
@@ -325,8 +326,7 @@ export function computePressure(input: PressureInput): PressureResult {
 
   // Tempo dilui a pressão.
   const hours = input.hoursSinceLastOutbound;
-  factors["recency"] =
-    hours === null ? 0 : hours < 6 ? 15 : hours < 24 ? 8 : hours < 72 ? 0 : -10;
+  factors["recency"] = hours === null ? 0 : hours < 6 ? 15 : hours < 24 ? 8 : hours < 72 ? 0 : -10;
 
   const score = Object.values(factors).reduce((total, value) => total + value, 0);
   return { score: Math.max(0, Math.min(100, Math.round(score))), factors };
@@ -489,12 +489,19 @@ export function evaluatePreSend(snapshot: PreSendSnapshot): PreSendDecision {
     return deny("approval", "Este fluxo exige aprovação humana antes do envio.");
   }
 
-  return { verdict: "send", reason: "Contexto conferido imediatamente antes do envio.", deferUntil: null };
+  return {
+    verdict: "send",
+    reason: "Contexto conferido imediatamente antes do envio.",
+    deferUntil: null,
+  };
 }
 
 /** Intervalo de silêncio após uma mensagem manual do consultor. */
 export const HUMAN_INTERVENTION_COOLDOWN_HOURS = 24;
 
-export function humanCooldownUntil(lastHumanMessageAt: Date, hours = HUMAN_INTERVENTION_COOLDOWN_HOURS): Date {
+export function humanCooldownUntil(
+  lastHumanMessageAt: Date,
+  hours = HUMAN_INTERVENTION_COOLDOWN_HOURS,
+): Date {
   return new Date(lastHumanMessageAt.getTime() + hours * HOUR_MS);
 }

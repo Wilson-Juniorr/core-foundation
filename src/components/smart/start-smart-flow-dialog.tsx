@@ -48,7 +48,6 @@ export function StartSmartFlowDialog({
     if (open && !flowId && first) setFlowId(first.id);
   }, [open, flowId, active]);
 
-
   const start = useMutation({
     mutationFn: () =>
       startSmartFlowFn({

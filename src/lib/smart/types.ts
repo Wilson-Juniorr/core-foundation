@@ -292,7 +292,6 @@ export interface ConversationControlView {
   context_updated_at: string | null;
 }
 
-
 export interface SmartRunView {
   id: string;
   flow_id: string;

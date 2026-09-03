@@ -39,7 +39,6 @@ export const Route = createFileRoute("/api/public/hooks/followup-tick")({
           console.error("followup_tick_failed", error);
           return Response.json({ ok: false, error: "tick_failed" }, { status: 500 });
         }
-
       },
 
       GET: async () => new Response("ok"),

@@ -49,7 +49,6 @@ export async function listFlows(supabase: Client): Promise<Flow[]> {
     .order("updated_at", { ascending: false });
   if (error) throw new Error(error.message);
 
-
   return (data ?? []).map((row) => {
     const steps = (row as { followup_flow_steps: { id: string }[] }).followup_flow_steps ?? [];
     const runs = (row as { followup_runs: { status: string }[] }).followup_runs ?? [];

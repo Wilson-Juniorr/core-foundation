@@ -502,8 +502,8 @@ function SmartFlowsTab({ onEdit }: { onEdit: (flowId: string | null) => void }) 
               {flow.config.max_actions_per_week} ações/semana
             </p>
             <p className="text-muted-foreground">
-              {flow.config.allowed_strategies.length} estratégias permitidas ·{" "}
-              {flow.active_runs} acompanhamento(s) em andamento
+              {flow.config.allowed_strategies.length} estratégias permitidas · {flow.active_runs}{" "}
+              acompanhamento(s) em andamento
             </p>
             <Button size="sm" variant="outline" onClick={() => onEdit(flow.id)}>
               Editar
@@ -585,4 +585,3 @@ function FollowupsPage() {
     </AppShell>
   );
 }
-

@@ -94,7 +94,6 @@ function ConversasPage() {
           </div>
         )}
 
-
         {conversations.isLoading ? (
           <LoadingState />
         ) : conversations.isError ? (

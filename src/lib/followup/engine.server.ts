@@ -1194,7 +1194,6 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
       last_error: null,
     });
 
-
     await recordDecision(db, {
       ...auditBase,
       decision: "allowed",

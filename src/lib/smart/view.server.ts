@@ -17,7 +17,6 @@ import type {
   SmartRunView,
 } from "./types";
 
-
 type Client = SupabaseClient<Database>;
 
 export async function listSmartFlows(db: Client, userId: string): Promise<SmartFlowSummary[]> {
@@ -65,12 +64,10 @@ export async function listSmartFlows(db: Client, userId: string): Promise<SmartF
       is_active: flow.is_active,
       updated_at: flow.updated_at,
       config,
-      active_runs: (runs ?? []).filter(
-        (run) => run.flow_id === flow.id && run.status === "active",
-      ).length,
+      active_runs: (runs ?? []).filter((run) => run.flow_id === flow.id && run.status === "active")
+        .length,
     };
   });
-
 }
 
 export async function getSmartFlow(db: Client, userId: string, flowId: string) {
@@ -171,10 +168,10 @@ export async function getConversationSmartView(
 
   const runRow = (runs ?? [])[0];
   const configAutonomy = runRow
-    ? (Array.isArray(runRow.followup_flows.smart_flow_configs)
+    ? ((Array.isArray(runRow.followup_flows.smart_flow_configs)
         ? runRow.followup_flows.smart_flow_configs[0]?.autonomy
         : (runRow.followup_flows.smart_flow_configs as { autonomy?: string } | null)?.autonomy) ??
-      "assist"
+      "assist")
     : "assist";
 
   const run: SmartRunView | null = runRow
@@ -198,32 +195,28 @@ export async function getConversationSmartView(
   return {
     control: control ? toControlView(control) : null,
     run,
-    commitments: (commitments ?? []).map(
-      (item): Commitment => ({
-        id: item.id,
-        responsible: item.responsible as Commitment["responsible"],
-        commitment_type: item.commitment_type,
-        description: item.description,
-        due_at: item.due_at,
-        due_window_end: item.due_window_end,
-        is_ambiguous: item.is_ambiguous,
-        status: item.status as Commitment["status"],
-        confidence: Number(item.confidence),
-        created_at: item.created_at,
-      }),
-    ),
-    pending: (pending ?? []).map(
-      (item): SmartPendingAction => ({
-        id: item.id,
-        status: item.status,
-        smart_strategy: item.smart_strategy,
-        content: item.content,
-        scheduled_for: item.scheduled_for,
-        decision_reason: item.decision_reason,
-        requires_approval: Boolean(item.requires_approval),
-        is_stale: item.status === "stale",
-      }),
-    ),
+    commitments: (commitments ?? []).map((item): Commitment => ({
+      id: item.id,
+      responsible: item.responsible as Commitment["responsible"],
+      commitment_type: item.commitment_type,
+      description: item.description,
+      due_at: item.due_at,
+      due_window_end: item.due_window_end,
+      is_ambiguous: item.is_ambiguous,
+      status: item.status as Commitment["status"],
+      confidence: Number(item.confidence),
+      created_at: item.created_at,
+    })),
+    pending: (pending ?? []).map((item): SmartPendingAction => ({
+      id: item.id,
+      status: item.status,
+      smart_strategy: item.smart_strategy,
+      content: item.content,
+      scheduled_for: item.scheduled_for,
+      decision_reason: item.decision_reason,
+      requires_approval: Boolean(item.requires_approval),
+      is_stale: item.status === "stale",
+    })),
   };
 }
 

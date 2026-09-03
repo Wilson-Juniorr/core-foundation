@@ -168,9 +168,8 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                       : undefined;
 
                   if (conversation && source !== "automation") {
-                    const { registerHumanIntervention } = await import(
-                      "@/lib/smart/control.server"
-                    );
+                    const { registerHumanIntervention } =
+                      await import("@/lib/smart/control.server");
                     await registerHumanIntervention(supabaseAdmin, {
                       userId: connection.user_id,
                       conversationId: conversation.id,
