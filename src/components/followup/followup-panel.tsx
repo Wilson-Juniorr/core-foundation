@@ -99,6 +99,11 @@ export function FollowupPanel({
             <Plus className="mr-1 size-4" />
             {run ? "Trocar fluxo" : "Iniciar"}
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => setStartingSmart(true)}>
+            <Brain className="mr-1 size-4" />
+            Inteligente
+          </Button>
+
           {conversationId && (
             <Button size="sm" variant="ghost" onClick={() => setScheduling(true)}>
               <CalendarClock className="mr-1 size-4" />
