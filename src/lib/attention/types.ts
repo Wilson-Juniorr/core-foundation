@@ -22,6 +22,7 @@ export const ATTENTION_KINDS = [
   "unlinked_conversation",
   "whatsapp_disconnected",
   "own_promise_overdue",
+  "reactivation_due",
 ] as const;
 export type AttentionKind = (typeof ATTENTION_KINDS)[number];
 

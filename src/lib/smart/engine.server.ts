@@ -930,7 +930,7 @@ async function finalizeDecline(db: Admin, action: ActionRow): Promise<void> {
     reason: "Seis meses desde o declínio do acompanhamento.",
     suggested_action: "Refazer a cotação com condições atuais.",
     suggested_action_source: "rule",
-    bucket: "later",
+    bucket: "waiting",
     status: "snoozed",
     snoozed_until: reactivateAt.toISOString(),
     dedupe_key: `reactivation:${action.conversation_id}:${reactivateAt.toISOString().slice(0, 10)}`,
