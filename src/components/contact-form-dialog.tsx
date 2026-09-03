@@ -359,14 +359,29 @@ export function ContactFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_FLOW}>Não iniciar agora</SelectItem>
-                  {activeFlows.map((flow) => (
-                    <SelectItem key={flow.id} value={flow.id}>
-                      {flow.name} · {flow.step_count} etapa(s)
-                    </SelectItem>
-                  ))}
+                  {activeSmartFlows.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Inteligentes</SelectLabel>
+                      {activeSmartFlows.map((flow) => (
+                        <SelectItem key={flow.id} value={`smart:${flow.id}`}>
+                          {flow.name} · {AUTONOMY_LABELS[flow.config.autonomy]}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {activeFlows.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Clássicos</SelectLabel>
+                      {activeFlows.map((flow) => (
+                        <SelectItem key={flow.id} value={`classic:${flow.id}`}>
+                          {flow.name} · {flow.step_count} etapa(s)
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
-              {activeFlows.length === 0 ? (
+              {activeFlows.length === 0 && activeSmartFlows.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   Nenhum fluxo ativo. Ative um fluxo em Follow-ups para usar aqui.
                 </p>
@@ -376,12 +391,13 @@ export function ContactFormDialog({
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  As mensagens seguem as regras do fluxo (janela de envio, atrasos e parada na
-                  resposta do cliente).
+                  As mensagens seguem as regras do fluxo (janela de envio, atrasos, aprovação e
+                  parada na resposta do cliente).
                 </p>
               )}
             </div>
           )}
+
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
