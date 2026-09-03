@@ -370,7 +370,7 @@ export async function loadFollowupSummary(
   let scheduledQuery = supabase
     .from("scheduled_actions")
     .select(ACTION_COLUMNS)
-    .eq("status", "scheduled")
+    .in("status", [...PENDING_ACTION_STATUSES])
     .order("scheduled_for", { ascending: true })
     .limit(50);
   if (filter.conversationId)
