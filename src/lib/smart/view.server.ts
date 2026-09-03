@@ -141,8 +141,9 @@ export async function getConversationSmartView(
       db
         .from("followup_runs")
         .select(
-          "id, status, smart_state, deadline_at, next_evaluation_at, started_at, flow_id, followup_flows!inner(name, kind, smart_flow_configs(autonomy))",
+          "id, status, smart_state, deadline_at, next_evaluation_at, started_at, flow_id, contact_id, conversation_id, contacts(name), followup_flows!inner(name, kind, smart_flow_configs(autonomy))",
         )
+
         .eq("user_id", userId)
         .eq("conversation_id", conversationId)
         .eq("followup_flows.kind", "smart")
