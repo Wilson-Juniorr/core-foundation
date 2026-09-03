@@ -44,8 +44,10 @@ export function StartSmartFlowDialog({
   const active = (flows.data ?? []).filter((flow) => flow.is_active);
 
   useEffect(() => {
-    if (open && !flowId && active.length > 0) setFlowId(active[0].id);
+    const first = active[0];
+    if (open && !flowId && first) setFlowId(first.id);
   }, [open, flowId, active]);
+
 
   const start = useMutation({
     mutationFn: () =>
