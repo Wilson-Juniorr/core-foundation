@@ -28,6 +28,13 @@ export const TIMELINE_EVENT_TYPES = [
   "customer_opt_out",
   "automation_blocked",
   "automation_simulated",
+  "smart_flow_started",
+  "smart_flow_completed",
+  "smart_action_stale",
+  "smart_action_cancelled_by_context",
+  "smart_action_deferred",
+  "smart_handoff",
+  "smart_commitment_created",
 ] as const;
 
 export type TimelineEventType = (typeof TIMELINE_EVENT_TYPES)[number];
@@ -62,6 +69,13 @@ export const TIMELINE_EVENT_LABELS: Record<TimelineEventType, string> = {
   customer_opt_out: "Cliente pediu para não receber mensagens",
   automation_blocked: "Automação bloqueada por política",
   automation_simulated: "Automação simulada (modo teste)",
+  smart_flow_started: "Smart Flow iniciado",
+  smart_flow_completed: "Smart Flow encerrado",
+  smart_action_stale: "Ação inteligente desatualizada pelo contexto",
+  smart_action_cancelled_by_context: "Ação inteligente cancelada pelo contexto",
+  smart_action_deferred: "Ação inteligente adiada",
+  smart_handoff: "Smart Flow entregue a você",
+  smart_commitment_created: "Compromisso registrado",
 };
 
 export function timelineEventLabel(type: string): string {

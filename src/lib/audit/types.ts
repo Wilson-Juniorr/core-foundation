@@ -31,7 +31,27 @@ export type AuditAction =
   | "whatsapp_connected"
   | "whatsapp_disconnected"
   | "asset_archived"
-  | "strategy_archived";
+  | "strategy_archived"
+  | "smart_flow_created"
+  | "smart_flow_started"
+  | "smart_flow_paused"
+  | "smart_flow_resumed"
+  | "smart_flow_completed"
+  | "smart_owner_changed"
+  | "smart_next_responsible_changed"
+  | "smart_strategy_selected"
+  | "smart_action_cancelled_by_context"
+  | "smart_action_deferred"
+  | "smart_action_stale"
+  | "smart_human_intervention"
+  | "smart_commitment_created"
+  | "smart_commitment_fulfilled"
+  | "smart_low_confidence_handoff"
+  | "smart_audio_context_unknown"
+  | "smart_closing_detected"
+  | "smart_irritation_detected"
+  | "smart_action_approved"
+  | "smart_action_rejected";
 
 export type AuditSeverity = "info" | "warning" | "critical";
 
@@ -75,12 +95,33 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   whatsapp_disconnected: "WhatsApp desconectado",
   asset_archived: "Material arquivado",
   strategy_archived: "Estratégia arquivada",
+  smart_flow_created: "Smart Flow criado",
+  smart_flow_started: "Smart Flow iniciado",
+  smart_flow_paused: "Smart Flow pausado",
+  smart_flow_resumed: "Smart Flow retomado",
+  smart_flow_completed: "Smart Flow encerrado",
+  smart_owner_changed: "Controle da conversa alterado",
+  smart_next_responsible_changed: "Responsável pelo próximo passo alterado",
+  smart_strategy_selected: "Estratégia escolhida pela IA",
+  smart_action_cancelled_by_context: "Ação cancelada pelo contexto",
+  smart_action_deferred: "Ação adiada pelo contexto",
+  smart_action_stale: "Ação desatualizada pelo contexto",
+  smart_human_intervention: "Intervenção humana detectada",
+  smart_commitment_created: "Compromisso registrado",
+  smart_commitment_fulfilled: "Compromisso cumprido",
+  smart_low_confidence_handoff: "Entregue a você por baixa confiança",
+  smart_audio_context_unknown: "Áudio sem transcrição",
+  smart_closing_detected: "Sinal de fechamento detectado",
+  smart_irritation_detected: "Incômodo do cliente detectado",
+  smart_action_approved: "Ação inteligente aprovada",
+  smart_action_rejected: "Ação inteligente recusada",
 };
 
 export const AUDIT_FILTERS = [
   { value: "all", label: "Tudo" },
   { value: "settings", label: "Configurações" },
   { value: "automation", label: "Automação" },
+  { value: "smart", label: "Smart Flow" },
   { value: "recovery", label: "Reprocessamento" },
 ] as const;
 
@@ -108,6 +149,25 @@ export const AUDIT_FILTER_ACTIONS: Record<Exclude<AuditFilter, "all">, string[]>
     "opt_out_removed",
     "draft_approved",
     "draft_rejected",
+  ],
+  smart: [
+    "smart_flow_created",
+    "smart_flow_started",
+    "smart_flow_paused",
+    "smart_flow_resumed",
+    "smart_flow_completed",
+    "smart_owner_changed",
+    "smart_strategy_selected",
+    "smart_action_cancelled_by_context",
+    "smart_action_deferred",
+    "smart_action_stale",
+    "smart_human_intervention",
+    "smart_low_confidence_handoff",
+    "smart_audio_context_unknown",
+    "smart_closing_detected",
+    "smart_irritation_detected",
+    "smart_action_approved",
+    "smart_action_rejected",
   ],
   recovery: [
     "scheduled_action_cancelled",
