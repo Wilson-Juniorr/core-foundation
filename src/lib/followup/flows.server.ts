@@ -236,9 +236,22 @@ export function mapAction(row: ActionRowWithContact): ScheduledActionView {
 }
 
 type RunRowJoined = Database["public"]["Tables"]["followup_runs"]["Row"] & {
-  followup_flows: { name: string; followup_flow_steps: { id: string; position: number }[] } | null;
+  followup_flows: {
+    name: string;
+    kind: string;
+    followup_flow_steps: { id: string; position: number }[];
+  } | null;
   contacts: { name: string } | null;
 };
+
+/** Ações que ainda podem acontecer — inclui as que aguardam aprovação ou estão bloqueadas. */
+const PENDING_ACTION_STATUSES = [
+  "scheduled",
+  "needs_approval",
+  "blocked",
+  "stale",
+  "processing",
+] as const;
 
 async function mapRuns(supabase: Client, rows: RunRowJoined[]): Promise<FollowupRunView[]> {
   if (rows.length === 0) return [];
@@ -250,7 +263,7 @@ async function mapRuns(supabase: Client, rows: RunRowJoined[]): Promise<Followup
       "flow_run_id",
       rows.map((row) => row.id),
     )
-    .eq("status", "scheduled")
+    .in("status", [...PENDING_ACTION_STATUSES])
     .order("scheduled_for", { ascending: true });
 
   const nextByRun = new Map<string, ScheduledActionView>();
@@ -268,6 +281,7 @@ async function mapRuns(supabase: Client, rows: RunRowJoined[]): Promise<Followup
       id: row.id,
       flow_id: row.flow_id,
       flow_name: row.followup_flows?.name ?? "Fluxo",
+      flow_kind: row.followup_flows?.kind === "smart" ? "smart" : "classic",
       contact_id: row.contact_id,
       contact_name: row.contacts?.name ?? null,
       conversation_id: row.conversation_id,
@@ -282,12 +296,16 @@ async function mapRuns(supabase: Client, rows: RunRowJoined[]): Promise<Followup
       stopped_at: row.stopped_at,
       completed_at: row.completed_at,
       stop_reason: row.stop_reason,
+      smart_state: row.smart_state ?? null,
+      next_evaluation_at: row.next_evaluation_at ?? null,
       next_action: nextByRun.get(row.id) ?? null,
     };
   });
 }
 
-const RUN_SELECT = "*, followup_flows(name, followup_flow_steps(id, position)), contacts(name)";
+const RUN_SELECT =
+  "*, followup_flows(name, kind, followup_flow_steps(id, position)), contacts(name)";
+
 
 export async function listRuns(
   supabase: Client,
