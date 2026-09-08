@@ -549,8 +549,11 @@ function FollowupsPage() {
       <div className="space-y-6">
         <SettingsCard />
 
-        <Tabs defaultValue="flows">
+        <Tabs defaultValue={pendingApprovals > 0 ? "approvals" : "flows"}>
           <TabsList>
+            <TabsTrigger value="approvals">
+              Aprovações{pendingApprovals > 0 ? ` (${pendingApprovals})` : ""}
+            </TabsTrigger>
             <TabsTrigger value="flows">Fluxos</TabsTrigger>
             <TabsTrigger value="smart">Inteligentes</TabsTrigger>
             <TabsTrigger value="active">Ativos</TabsTrigger>
