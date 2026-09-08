@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { FlowBuilderDialog } from "@/components/followup/flow-builder-dialog";
 import { SmartFlowDialog } from "@/components/smart/smart-flow-dialog";
+import { SmartApprovalsList } from "@/components/smart/smart-approvals-list";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
-import { smartFlowsQuery } from "@/lib/smart.queries";
+import { smartApprovalsQuery, smartFlowsQuery } from "@/lib/smart.queries";
 import { AUTONOMY_LABELS } from "@/lib/smart/types";
 
 import {
@@ -520,6 +521,9 @@ function FollowupsPage() {
   const [editingFlowId, setEditingFlowId] = useState<string | null>(null);
   const [smartOpen, setSmartOpen] = useState(false);
   const [editingSmartId, setEditingSmartId] = useState<string | null>(null);
+  const approvals = useQuery(smartApprovalsQuery());
+  const pendingApprovals = (approvals.data ?? []).length;
+
 
   function openBuilder(flowId: string | null) {
     setEditingFlowId(flowId);
@@ -549,8 +553,11 @@ function FollowupsPage() {
       <div className="space-y-6">
         <SettingsCard />
 
-        <Tabs defaultValue="flows">
+        <Tabs defaultValue={pendingApprovals > 0 ? "approvals" : "flows"}>
           <TabsList>
+            <TabsTrigger value="approvals">
+              Aprovações{pendingApprovals > 0 ? ` (${pendingApprovals})` : ""}
+            </TabsTrigger>
             <TabsTrigger value="flows">Fluxos</TabsTrigger>
             <TabsTrigger value="smart">Inteligentes</TabsTrigger>
             <TabsTrigger value="active">Ativos</TabsTrigger>
@@ -559,6 +566,9 @@ function FollowupsPage() {
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="approvals" className="mt-4">
+            <SmartApprovalsList />
+          </TabsContent>
           <TabsContent value="flows" className="mt-4">
             <FlowsTab onEdit={openBuilder} />
           </TabsContent>
