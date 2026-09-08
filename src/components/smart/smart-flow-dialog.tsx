@@ -55,7 +55,7 @@ const DEFAULTS: FormState = {
   description: "",
   goal: "Levar o cliente à decisão depois da cotação enviada, sem pressionar.",
   max_duration_days: 30,
-  autonomy: "assist",
+  autonomy: "auto",
   allowed_strategies: [
     "LIGHT_FOLLOWUP",
     "QUESTION_DISCOVERY",
