@@ -34,7 +34,14 @@ export interface SmartDecisionInput {
   /** Fase do acompanhamento pós-cotação, quando aplicável. */
   phase?: "recovery" | "decline" | "reactivation" | null;
   attemptsThisWeek: number;
+  /** Desempenho histórico das estratégias (aprendizado por resultado). */
+  performanceNote?: string | null;
+  /** Estratégias permitidas já ordenadas pelo que costuma dar resposta. */
+  rankedStrategies?: string[];
+  /** Horário em que este cliente costuma interagir. */
+  timingNote?: string | null;
 }
+
 
 const decisionSchema = {
   type: "object",
