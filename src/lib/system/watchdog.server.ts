@@ -159,7 +159,7 @@ export async function runConnectionWatchdog(db: Admin): Promise<WatchdogResult> 
 
       if (wasDown) {
         result.recovered += 1;
-        await resolveAttention(db, connection);
+        await syncAttentionNow(db, connection.user_id);
         try {
           result.requeued += await requeueAfterRecovery(db, connection.user_id);
         } catch (error) {
@@ -205,7 +205,7 @@ export async function runConnectionWatchdog(db: Admin): Promise<WatchdogResult> 
       },
     );
 
-    await raiseAttention(db, connection, probe.reason, downSince);
+    await syncAttentionNow(db, connection.user_id);
 
     if (shouldAlert) {
       result.alerts += 1;
