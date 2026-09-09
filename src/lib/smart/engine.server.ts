@@ -22,8 +22,11 @@ import {
 import { blockingDeadline, pendingCommitments } from "./commitments.server";
 import { ensureControl, loadControl, patchControl, refreshPressure } from "./control.server";
 import { decideNextStep } from "./decision.server";
+import { describePerformance, rankStrategies, strategyPerformance } from "./learning.server";
+import { reviewMessage } from "./quality.server";
 import { classifyLossReason, evaluatePreSend, humanCooldownUntil } from "./rules";
 import type { PreSendDecision } from "./rules";
+import { alignToPreferredHour, learnContactTiming } from "./timing.server";
 import { LOSS_REASON_LABELS, SMART_STRATEGY_META } from "./types";
 import type { SmartStrategy } from "./types";
 
@@ -411,9 +414,18 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     return "weekly_cap";
   }
 
+  /* Ritmo por temperatura: cliente que interagiu há pouco merece cadência mais
+     curta (ficar em cima); cliente frio há semanas recebe espaçamento maior.
+     Os limites do fluxo continuam soberanos — só o intervalo mínimo varia. */
+  const lastInboundAt = control.last_inbound_at ? new Date(control.last_inbound_at) : null;
+  const inboundAgeDays = lastInboundAt ? (now.getTime() - lastInboundAt.getTime()) / DAY_MS : null;
+  const rhythmFactor =
+    inboundAgeDays === null ? 1.25 : inboundAgeDays <= 2 ? 0.6 : inboundAgeDays <= 7 ? 0.85 : 1.4;
+  const minHours = Math.max(6, Math.round(config.min_hours_between_actions * rhythmFactor));
+
   const lastUsedAt = usage[0]?.used_at ? new Date(usage[0].used_at) : null;
   if (lastUsedAt && !phase) {
-    const minNext = new Date(lastUsedAt.getTime() + config.min_hours_between_actions * HOUR_MS);
+    const minNext = new Date(lastUsedAt.getTime() + minHours * HOUR_MS);
     if (now < minNext) {
       await db
         .from("followup_runs")
@@ -455,6 +467,13 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     .eq("id", run.contact_id)
     .maybeSingle();
 
+  const settings = await loadSettings(db, run.user_id);
+
+  // Aprendizado por resultado + horário habitual do cliente.
+  const performance = await strategyPerformance(db, run.user_id);
+  const allowedStrategies = (config.allowed_strategies as string[]) ?? [];
+  const timing = await learnContactTiming(db, run.conversation_id, settings.timezone);
+
   const decision = await decideNextStep(db, {
     config,
     control,
@@ -479,6 +498,9 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     recentStrategies: usage,
     attemptsThisWeek: usage.length,
     phase,
+    performanceNote: describePerformance(allowedStrategies, performance),
+    rankedStrategies: rankStrategies(allowedStrategies, performance),
+    timingNote: timing.preferredHour !== null ? timing.reason : null,
   });
 
   await writeAudit(db, run.user_id, {
@@ -535,16 +557,46 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     return "waiting";
   }
 
+  /* ------------------- controle de qualidade da mensagem ------------------ */
+
+  const quality = reviewMessage({
+    message: decision.message ?? "",
+    contactName: contact?.name ?? null,
+    previousOutbound: (messages ?? [])
+      .filter((item) => item.direction === "outbound" && item.text_content)
+      .map((item) => item.text_content as string),
+    inboundTexts: (messages ?? [])
+      .filter((item) => item.direction === "inbound" && item.text_content)
+      .map((item) => item.text_content as string),
+    memorySummary: memory?.current_summary ?? null,
+    sensitivePhase: Boolean(phase),
+  });
+
+  if (quality.verdict === "reject") {
+    await handoff(db, runRef, `Mensagem reprovada na revisão: ${quality.reason}`, {
+      quality_reason: quality.reason,
+      similarity: quality.similarity,
+      strategy: decision.strategy,
+    });
+    return "quality_rejected";
+  }
+
   /* --------------------------- agendar a ação ---------------------------- */
 
-  const settings = await loadSettings(db, run.user_id);
   const window = mergeWindows(
     makeWindow(settings.windowStart, settings.windowEnd),
     makeWindow(run.followup_flows.window_start, run.followup_flows.window_end),
   );
 
   const target = new Date(now.getTime() + Math.max(0, decision.waitHours) * HOUR_MS);
-  const scheduledFor = nextAllowedInstant(target, window, settings.timezone);
+  // Horário inteligente: dentro da janela, preferimos a hora em que este
+  // cliente costuma interagir.
+  const scheduledFor = alignToPreferredHour({
+    target,
+    preferredHour: timing.preferredHour,
+    window,
+    timezone: settings.timezone,
+  });
 
   const forcedStrategy: SmartStrategy | null =
     phase === "recovery"
@@ -554,10 +606,12 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
         : null;
   const strategy = forcedStrategy ?? decision.strategy;
 
-  // Recuperação de objeção e declínio nunca saem sem você ver.
+  // Recuperação de objeção, declínio e mensagens de qualidade duvidosa
+  // nunca saem sem você ver.
   const needsApproval =
     Boolean(forcedStrategy) ||
     config.autonomy !== "auto" ||
+    quality.verdict === "review" ||
     decision.confidence < Number(config.confidence_min);
 
   const { data: action, error } = await db
@@ -578,7 +632,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       smart_strategy: strategy,
       context_version: control.context_version,
       generated_at: now.toISOString(),
-      decision_reason: decision.reason,
+      decision_reason:
+        quality.verdict === "review"
+          ? `${decision.reason} | Revisão: ${quality.reason}`
+          : decision.reason,
+
       requires_approval: needsApproval,
     })
     .select("id")
@@ -600,9 +658,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
         : needsApproval
           ? "waiting_approval"
           : "acting",
-      next_evaluation_at: new Date(
-        scheduledFor.getTime() + config.min_hours_between_actions * HOUR_MS,
-      ).toISOString(),
+      next_evaluation_at: new Date(scheduledFor.getTime() + minHours * HOUR_MS).toISOString(),
     })
     .eq("id", run.id);
 
