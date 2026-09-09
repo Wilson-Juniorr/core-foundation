@@ -455,6 +455,13 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     .eq("id", run.contact_id)
     .maybeSingle();
 
+  const settings = await loadSettings(db, run.user_id);
+
+  // Aprendizado por resultado + horário habitual do cliente.
+  const performance = await strategyPerformance(db, run.user_id);
+  const allowedStrategies = (config.allowed_strategies as string[]) ?? [];
+  const timing = await learnContactTiming(db, run.conversation_id, settings.timezone);
+
   const decision = await decideNextStep(db, {
     config,
     control,
@@ -479,7 +486,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     recentStrategies: usage,
     attemptsThisWeek: usage.length,
     phase,
+    performanceNote: describePerformance(allowedStrategies, performance),
+    rankedStrategies: rankStrategies(allowedStrategies, performance),
+    timingNote: timing.preferredHour !== null ? timing.reason : null,
   });
+
 
   await writeAudit(db, run.user_id, {
     action: "smart_strategy_selected",
