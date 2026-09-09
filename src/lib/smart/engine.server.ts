@@ -415,9 +415,20 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     return "weekly_cap";
   }
 
+  /* Ritmo por temperatura: cliente que interagiu há pouco merece cadência mais
+     curta (ficar em cima); cliente frio há semanas recebe espaçamento maior.
+     Os limites do fluxo continuam soberanos — só o intervalo mínimo varia. */
+  const lastInboundAt = control.last_inbound_at ? new Date(control.last_inbound_at) : null;
+  const inboundAgeDays = lastInboundAt
+    ? (now.getTime() - lastInboundAt.getTime()) / DAY_MS
+    : null;
+  const rhythmFactor =
+    inboundAgeDays === null ? 1.25 : inboundAgeDays <= 2 ? 0.6 : inboundAgeDays <= 7 ? 0.85 : 1.4;
+  const minHours = Math.max(6, Math.round(config.min_hours_between_actions * rhythmFactor));
+
   const lastUsedAt = usage[0]?.used_at ? new Date(usage[0].used_at) : null;
   if (lastUsedAt && !phase) {
-    const minNext = new Date(lastUsedAt.getTime() + config.min_hours_between_actions * HOUR_MS);
+    const minNext = new Date(lastUsedAt.getTime() + minHours * HOUR_MS);
     if (now < minNext) {
       await db
         .from("followup_runs")
@@ -426,6 +437,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       return "min_interval";
     }
   }
+
 
   if (pressure.score > config.max_pressure && !phase) {
     await db
