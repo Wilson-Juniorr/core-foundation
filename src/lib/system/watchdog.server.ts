@@ -85,78 +85,20 @@ async function probeConnection(
   }
 }
 
-/** Abre/renova o alerta na Central de Atenção. */
-async function raiseAttention(
-  db: Admin,
-  connection: ConnectionRow,
-  reason: string | null,
-  downSince: string,
-): Promise<void> {
-  const dedupeKey = `whatsapp_offline:${connection.id}`;
-  const now = new Date().toISOString();
-  const title = `WhatsApp ${connectionLabel(connection)} caiu`;
-  const summary =
-    "Enquanto estiver desconectado nenhum follow-up sai. As ações ficam guardadas e voltam a sair sozinhas quando reconectar.";
-
-  const { data: existing } = await db
-    .from("attention_items")
-    .select("id, occurrences")
-    .eq("user_id", connection.user_id)
-    .eq("dedupe_key", dedupeKey)
-    .maybeSingle();
-
-  const metadata = {
-    connection_id: connection.id,
-    reason: reason ?? "desconectado",
-    down_since: downSince,
-  } as unknown as Json;
-
-  if (existing) {
-    await db
-      .from("attention_items")
-      .update({
-        status: "open",
-        snoozed_until: null,
-        resolved_at: null,
-        last_detected_at: now,
-        occurrences: (existing.occurrences ?? 1) + 1,
-        title,
-        summary,
-        metadata,
-      })
-      .eq("id", existing.id);
-    return;
+/**
+ * A Central de Atenção já tem a regra de "WhatsApp desconectado". Depois de
+ * gravar o novo estado da conexão, sincronizamos na hora para que o alerta
+ * apareça no mesmo minuto da queda — e desapareça sozinho ao reconectar.
+ */
+async function syncAttentionNow(db: Admin, userId: string): Promise<void> {
+  try {
+    const { syncAttention } = await import("@/lib/attention/store.server");
+    await syncAttention(db, userId);
+  } catch (error) {
+    waLog.warn("watchdog_attention_sync_failed", {
+      reason: error instanceof Error ? error.message : "unknown",
+    });
   }
-
-  await db.from("attention_items").insert({
-    user_id: connection.user_id,
-    dedupe_key: dedupeKey,
-    kind: "whatsapp_offline",
-    bucket: "sistema",
-    priority: "critical",
-    priority_score: 100,
-    status: "open",
-    title,
-    summary,
-    reason: reason ?? "Conexão do WhatsApp indisponível.",
-    suggested_action: "Reconecte lendo o QR Code em Configurações › WhatsApp.",
-    suggested_action_kind: "reconnect_whatsapp",
-    blocks_automation: false,
-    metadata,
-  });
-}
-
-async function resolveAttention(db: Admin, connection: ConnectionRow): Promise<void> {
-  await db
-    .from("attention_items")
-    .update({
-      status: "resolved",
-      resolved_at: new Date().toISOString(),
-      resolution_note: "WhatsApp reconectado.",
-    })
-    .eq("user_id", connection.user_id)
-    .eq("dedupe_key", `whatsapp_offline:${connection.id}`)
-    .in("status", ["open", "snoozed"]);
 }
 
 /**
