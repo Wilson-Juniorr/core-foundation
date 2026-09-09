@@ -66,24 +66,29 @@ export async function learnContactTiming(
 
   const now = Date.now();
   const weights = new Array<number>(24).fill(0);
+  const bump = (hour: number, amount: number) => {
+    const index = ((hour % 24) + 24) % 24;
+    weights[index] = (weights[index] ?? 0) + amount;
+  };
   for (const row of rows) {
     const at = new Date(row.sent_at);
     const ageDays = Math.max(0, (now - at.getTime()) / DAY_MS);
     // Recência: metade do peso a cada 45 dias.
     const weight = Math.pow(0.5, ageDays / 45);
     const hour = zonedParts(at, timezone).hour;
-    weights[hour] += weight;
-    weights[(hour + 23) % 24] += weight * 0.35;
-    weights[(hour + 1) % 24] += weight * 0.35;
+    bump(hour, weight);
+    bump(hour - 1, weight * 0.35);
+    bump(hour + 1, weight * 0.35);
   }
 
   let bestHour = 0;
   for (let hour = 1; hour < 24; hour += 1) {
-    if (weights[hour] > weights[bestHour]) bestHour = hour;
+    if ((weights[hour] ?? 0) > (weights[bestHour] ?? 0)) bestHour = hour;
   }
 
   const total = weights.reduce((sum, value) => sum + value, 0);
-  const share = total > 0 ? weights[bestHour] / total : 0;
+  const share = total > 0 ? (weights[bestHour] ?? 0) / total : 0;
+
   // Sinal fraco: preferimos não forçar horário nenhum.
   if (share < 0.12) {
     return {
