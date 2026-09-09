@@ -19,6 +19,19 @@ export const Route = createFileRoute("/api/public/hooks/followup-tick")({
         if (denied) return denied;
 
         try {
+          /* Vigia de conexão: roda antes do envio para que uma queda seja
+             detectada e avisada na hora, e para que a volta da conexão
+             recoloque na fila tudo que ficou parado. */
+          let watchdog: unknown = null;
+          try {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { runConnectionWatchdog } = await import("@/lib/system/watchdog.server");
+            watchdog = await runConnectionWatchdog(supabaseAdmin);
+          } catch (watchdogError) {
+            console.error("watchdog_failed", watchdogError);
+            watchdog = { error: "watchdog_failed" };
+          }
+
           const { runDueActions } = await import("@/lib/followup/engine.server");
           const result = await runDueActions(25);
 
