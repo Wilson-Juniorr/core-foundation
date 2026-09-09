@@ -42,7 +42,6 @@ export interface SmartDecisionInput {
   timingNote?: string | null;
 }
 
-
 const decisionSchema = {
   type: "object",
   additionalProperties: false,
@@ -169,7 +168,6 @@ export async function decideNextStep(db: Admin, input: SmartDecisionInput): Prom
 
   const fatigued = fatiguedStrategies(input.recentStrategies, new Date());
 
-
   try {
     const { data: raw } = await completeStructured<{
       action: "send" | "wait" | "handoff" | "complete";
@@ -194,7 +192,6 @@ export async function decideNextStep(db: Admin, input: SmartDecisionInput): Prom
       allowed: ranked.length > 0 ? ranked : allowed,
       fatigued,
     });
-
 
     if (action === "send" && (!strategy || !(raw.message ?? "").trim())) {
       // IA sugeriu envio sem estratégia válida ou sem texto: nunca improvisamos.

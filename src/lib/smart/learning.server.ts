@@ -62,14 +62,9 @@ export async function strategyPerformance(
  * trouxeram resposta. Estratégias sem histórico ficam no meio: merecem chance,
  * mas não passam à frente de algo comprovadamente eficaz.
  */
-export function rankStrategies(
-  allowed: string[],
-  performance: StrategyPerformance[],
-): string[] {
+export function rankStrategies(allowed: string[], performance: StrategyPerformance[]): string[] {
   const scores = new Map(performance.map((item) => [item.strategy, item.score]));
-  return allowed
-    .slice()
-    .sort((a, b) => (scores.get(b) ?? 0.4) - (scores.get(a) ?? 0.4));
+  return allowed.slice().sort((a, b) => (scores.get(b) ?? 0.4) - (scores.get(a) ?? 0.4));
 }
 
 /** Linhas legíveis para o prompt da IA. */

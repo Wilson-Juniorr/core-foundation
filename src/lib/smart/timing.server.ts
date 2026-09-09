@@ -123,8 +123,7 @@ export function alignToPreferredHour(input: {
   const wantedMinutes = input.preferredHour * 60;
 
   // Só empurramos para frente: nunca enviar antes do que a decisão pediu.
-  const deltaMinutes =
-    (((wantedMinutes - currentMinutes) % (24 * 60)) + 24 * 60) % (24 * 60);
+  const deltaMinutes = (((wantedMinutes - currentMinutes) % (24 * 60)) + 24 * 60) % (24 * 60);
   if (deltaMinutes === 0) return base;
 
   const candidate = new Date(base.getTime() + deltaMinutes * MINUTE_MS);

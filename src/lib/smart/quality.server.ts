@@ -50,7 +50,11 @@ function normalize(text: string): string {
 }
 
 function tokens(text: string): Set<string> {
-  return new Set(normalize(text).split(" ").filter((word) => word.length > 3));
+  return new Set(
+    normalize(text)
+      .split(" ")
+      .filter((word) => word.length > 3),
+  );
 }
 
 /** Similaridade de Jaccard entre duas mensagens. */

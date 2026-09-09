@@ -30,7 +30,6 @@ import { alignToPreferredHour, learnContactTiming } from "./timing.server";
 import { LOSS_REASON_LABELS, SMART_STRATEGY_META } from "./types";
 import type { SmartStrategy } from "./types";
 
-
 type Admin = SupabaseClient<Database>;
 type ActionRow = Database["public"]["Tables"]["scheduled_actions"]["Row"];
 
@@ -419,9 +418,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
      curta (ficar em cima); cliente frio há semanas recebe espaçamento maior.
      Os limites do fluxo continuam soberanos — só o intervalo mínimo varia. */
   const lastInboundAt = control.last_inbound_at ? new Date(control.last_inbound_at) : null;
-  const inboundAgeDays = lastInboundAt
-    ? (now.getTime() - lastInboundAt.getTime()) / DAY_MS
-    : null;
+  const inboundAgeDays = lastInboundAt ? (now.getTime() - lastInboundAt.getTime()) / DAY_MS : null;
   const rhythmFactor =
     inboundAgeDays === null ? 1.25 : inboundAgeDays <= 2 ? 0.6 : inboundAgeDays <= 7 ? 0.85 : 1.4;
   const minHours = Math.max(6, Math.round(config.min_hours_between_actions * rhythmFactor));
@@ -437,7 +434,6 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       return "min_interval";
     }
   }
-
 
   if (pressure.score > config.max_pressure && !phase) {
     await db
@@ -506,7 +502,6 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     rankedStrategies: rankStrategies(allowedStrategies, performance),
     timingNote: timing.preferredHour !== null ? timing.reason : null,
   });
-
 
   await writeAudit(db, run.user_id, {
     action: "smart_strategy_selected",
@@ -619,7 +614,6 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     quality.verdict === "review" ||
     decision.confidence < Number(config.confidence_min);
 
-
   const { data: action, error } = await db
     .from("scheduled_actions")
     .insert({
@@ -665,7 +659,6 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
           ? "waiting_approval"
           : "acting",
       next_evaluation_at: new Date(scheduledFor.getTime() + minHours * HOUR_MS).toISOString(),
-
     })
     .eq("id", run.id);
 
