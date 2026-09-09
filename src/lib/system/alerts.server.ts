@@ -30,29 +30,9 @@ export async function sendOwnerAlert(db: Admin, userId: string, alert: OwnerAler
 
   if (!email) return;
 
-  try {
-    // O helper só existe depois que o domínio de envio é configurado.
-    const module = await import("@/lib/email-templates/send-email").catch(() => null);
-    const send = (
-      module as {
-        sendTemplateEmail?: (
-          template: string,
-          to: string,
-          options: { templateData: Record<string, string>; idempotencyKey: string },
-        ) => Promise<unknown>;
-      } | null
-    )?.sendTemplateEmail;
-    if (!send) return;
-
-    await send("system-alert", email, {
-      templateData: { title: alert.title, body: alert.body },
-      idempotencyKey: `system-alert-${alert.kind}-${userId}-${new Date().toISOString().slice(0, 13)}`,
-    });
-  } catch (error) {
-    waLog.warn("owner_alert_email_failed", {
-      reason: error instanceof Error ? error.message : "unknown",
-    });
-  }
+  // O envio de e-mail é ligado assim que o domínio de envio estiver
+  // configurado; até então o incidente fica registrado no sistema.
+  waLog.info("owner_alert_email_pending", { user_id: userId, kind: alert.kind });
 }
 
 async function ownerEmail(db: Admin, userId: string): Promise<string | null> {
