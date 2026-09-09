@@ -550,16 +550,46 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     return "waiting";
   }
 
+  /* ------------------- controle de qualidade da mensagem ------------------ */
+
+  const quality = reviewMessage({
+    message: decision.message ?? "",
+    contactName: contact?.name ?? null,
+    previousOutbound: (messages ?? [])
+      .filter((item) => item.direction === "outbound" && item.text_content)
+      .map((item) => item.text_content as string),
+    inboundTexts: (messages ?? [])
+      .filter((item) => item.direction === "inbound" && item.text_content)
+      .map((item) => item.text_content as string),
+    memorySummary: memory?.current_summary ?? null,
+    sensitivePhase: Boolean(phase),
+  });
+
+  if (quality.verdict === "reject") {
+    await handoff(db, runRef, `Mensagem reprovada na revisão: ${quality.reason}`, {
+      quality_reason: quality.reason,
+      similarity: quality.similarity,
+      strategy: decision.strategy,
+    });
+    return "quality_rejected";
+  }
+
   /* --------------------------- agendar a ação ---------------------------- */
 
-  const settings = await loadSettings(db, run.user_id);
   const window = mergeWindows(
     makeWindow(settings.windowStart, settings.windowEnd),
     makeWindow(run.followup_flows.window_start, run.followup_flows.window_end),
   );
 
   const target = new Date(now.getTime() + Math.max(0, decision.waitHours) * HOUR_MS);
-  const scheduledFor = nextAllowedInstant(target, window, settings.timezone);
+  // Horário inteligente: dentro da janela, preferimos a hora em que este
+  // cliente costuma interagir.
+  const scheduledFor = alignToPreferredHour({
+    target,
+    preferredHour: timing.preferredHour,
+    window,
+    timezone: settings.timezone,
+  });
 
   const forcedStrategy: SmartStrategy | null =
     phase === "recovery"
@@ -569,11 +599,14 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
         : null;
   const strategy = forcedStrategy ?? decision.strategy;
 
-  // Recuperação de objeção e declínio nunca saem sem você ver.
+  // Recuperação de objeção, declínio e mensagens de qualidade duvidosa
+  // nunca saem sem você ver.
   const needsApproval =
     Boolean(forcedStrategy) ||
     config.autonomy !== "auto" ||
+    quality.verdict === "review" ||
     decision.confidence < Number(config.confidence_min);
+
 
   const { data: action, error } = await db
     .from("scheduled_actions")
