@@ -664,9 +664,8 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
         : needsApproval
           ? "waiting_approval"
           : "acting",
-      next_evaluation_at: new Date(
-        scheduledFor.getTime() + config.min_hours_between_actions * HOUR_MS,
-      ).toISOString(),
+      next_evaluation_at: new Date(scheduledFor.getTime() + minHours * HOUR_MS).toISOString(),
+
     })
     .eq("id", run.id);
 
