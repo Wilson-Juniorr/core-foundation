@@ -191,9 +191,10 @@ export async function decideNextStep(db: Admin, input: SmartDecisionInput): Prom
     let action = raw.action;
     let strategy = pickAllowedStrategy({
       preferred: raw.strategy,
-      allowed,
+      allowed: ranked.length > 0 ? ranked : allowed,
       fatigued,
     });
+
 
     if (action === "send" && (!strategy || !(raw.message ?? "").trim())) {
       // IA sugeriu envio sem estratégia válida ou sem texto: nunca improvisamos.
