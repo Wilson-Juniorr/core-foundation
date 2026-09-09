@@ -626,7 +626,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       smart_strategy: strategy,
       context_version: control.context_version,
       generated_at: now.toISOString(),
-      decision_reason: decision.reason,
+      decision_reason:
+        quality.verdict === "review"
+          ? `${decision.reason} | Revisão: ${quality.reason}`
+          : decision.reason,
+
       requires_approval: needsApproval,
     })
     .select("id")
