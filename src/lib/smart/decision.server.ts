@@ -116,6 +116,11 @@ function buildPrompt(input: SmartDecisionInput): string {
           .map((item) => `${item.strategy}${item.got_reply ? " (teve resposta)" : ""}`)
           .join(", ")}`
       : "Nenhuma estratégia usada ainda.",
+    input.performanceNote
+      ? `Desempenho histórico das estratégias com este consultor: ${input.performanceNote}. Prefira as que geram resposta e evite as marcadas como não funcionando.`
+      : "",
+    input.timingNote ? `Hábito de horário do cliente: ${input.timingNote}` : "",
+
     "",
     "Últimas mensagens (mais antiga primeiro):",
     ...(input.recentMessages.length === 0
@@ -158,7 +163,12 @@ export async function decideNextStep(db: Admin, input: SmartDecisionInput): Prom
     (SMART_STRATEGIES as readonly string[]).includes(item),
   ) as SmartStrategy[];
 
+  const ranked = (input.rankedStrategies ?? allowed).filter((item) =>
+    allowed.includes(item as SmartStrategy),
+  );
+
   const fatigued = fatiguedStrategies(input.recentStrategies, new Date());
+
 
   try {
     const { data: raw } = await completeStructured<{
