@@ -429,17 +429,31 @@ export const uazapiProvider: WhatsAppProvider = {
     }
 
     const media: OutboundMedia = input.media;
-    const response = asRecord(
-      await request<unknown>(creds, ENDPOINTS.sendMedia, {
-        method: "POST",
-        body: {
+
+    // Áudio precisa chegar como mensagem de voz (bolinha do WhatsApp), não como
+    // arquivo/encaminhado: o provedor usa o tipo "ptt" para isso e o áudio deve
+    // ir sem nome de arquivo e sem legenda, exatamente como uma gravação.
+    const isVoice = media.type === "audio";
+    const body: Record<string, unknown> = isVoice
+      ? {
+          number,
+          type: "ptt",
+          file: media.base64,
+          mimetype: media.mimeType || "audio/ogg; codecs=opus",
+        }
+      : {
           number,
           type: media.type,
           file: media.base64,
           mimetype: media.mimeType,
           docName: media.filename,
           text: input.caption ?? "",
-        },
+        };
+
+    const response = asRecord(
+      await request<unknown>(creds, ENDPOINTS.sendMedia, {
+        method: "POST",
+        body,
       }),
     );
 
