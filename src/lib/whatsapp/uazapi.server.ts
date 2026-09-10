@@ -457,7 +457,6 @@ export const uazapiProvider: WhatsAppProvider = {
       }),
     );
 
-
     return {
       externalMessageId:
         pickString(response, ["messageid", "messageId", "id"]) ??
