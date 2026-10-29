@@ -312,16 +312,35 @@ export async function evaluatePolicy(
   rules.push(pass("manual_reply_cooldown"));
 
   // 6. Intervalo mínimo entre automações na mesma conversa.
+  const { continuesCurrentTouch, countTouches } = await import("@/lib/automation/touches");
+  const dayStart = minutesAgo(now, 24 * 60);
+  const { data: runSentRows } = request.flowRunId
+    ? await db
+        .from("scheduled_actions")
+        .select("executed_at")
+        .eq("flow_run_id", request.flowRunId)
+        .eq("status", "sent")
+        .gte("executed_at", dayStart)
+    : { data: [] as { executed_at: string | null }[] };
+  const runSentAt = (runSentRows ?? [])
+    .map((row) => row.executed_at)
+    .filter((value): value is string => Boolean(value));
+  // Continuação de uma mensagem do mesmo fluxo (ex.: 1 minuto depois):
+  // faz parte do mesmo toque e não espera o intervalo entre automações.
+  const isContinuation = continuesCurrentTouch(runSentAt, now);
+
   const cooldownSince = minutesAgo(now, settings.conversation_cooldown_minutes);
-  const { data: recentAutomation } = await db
-    .from("scheduled_actions")
-    .select("id, executed_at")
-    .eq("conversation_id", request.conversationId)
-    .eq("status", "sent")
-    .gte("executed_at", cooldownSince)
-    .order("executed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: recentAutomation } = isContinuation
+    ? { data: null }
+    : await db
+        .from("scheduled_actions")
+        .select("id, executed_at")
+        .eq("conversation_id", request.conversationId)
+        .eq("status", "sent")
+        .gte("executed_at", cooldownSince)
+        .order("executed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
   if (recentAutomation) {
     return block(
       "conversation_cooldown",
@@ -330,47 +349,58 @@ export async function evaluatePolicy(
       untilAfter(now, recentAutomation.executed_at, settings.conversation_cooldown_minutes),
     );
   }
-  rules.push(pass("conversation_cooldown"));
+  rules.push(
+    pass(
+      "conversation_cooldown",
+      isContinuation ? "Continuação da mensagem anterior (mesmo toque)" : undefined,
+    ),
+  );
 
-  // 7. Limites diários (contato e fluxo).
-  const dayStart = minutesAgo(now, 24 * 60);
-  const contactCap = preferences?.max_automations_per_day ?? settings.max_automations_per_day;
-  const { count: contactSent } = await db
-    .from("scheduled_actions")
-    .select("id", { count: "exact", head: true })
-    .eq("conversation_id", request.conversationId)
-    .eq("status", "sent")
-    .gte("executed_at", dayStart);
-  if ((contactSent ?? 0) >= contactCap) {
-    return block(
-      "daily_contact_cap",
-      `Limite de ${contactCap} automações por dia para este cliente já foi atingido.`,
-      "deferred",
-      inMinutes(now, 12 * 60),
-    );
-  }
-  rules.push(pass("daily_contact_cap", `${contactSent ?? 0}/${contactCap} hoje`));
-
-  if (request.flowRunId) {
-    const { count: flowSent } = await db
+  // 7. Limites diários (contato e fluxo), contados em toques: mensagem e sua
+  // continuação contam como um só contato com o cliente.
+  if (!isContinuation) {
+    const contactCap = preferences?.max_automations_per_day ?? settings.max_automations_per_day;
+    const { data: contactSentRows } = await db
       .from("scheduled_actions")
-      .select("id", { count: "exact", head: true })
-      .eq("flow_run_id", request.flowRunId)
+      .select("executed_at")
+      .eq("conversation_id", request.conversationId)
       .eq("status", "sent")
-      .gte("executed_at", dayStart);
-    if ((flowSent ?? 0) >= settings.max_flow_automations_per_day) {
+      .gte("executed_at", dayStart)
+      .limit(200);
+    const contactTouches = countTouches(
+      (contactSentRows ?? [])
+        .map((row) => row.executed_at)
+        .filter((value): value is string => Boolean(value)),
+    );
+    if (contactTouches >= contactCap) {
       return block(
-        "daily_flow_cap",
-        `Limite de ${settings.max_flow_automations_per_day} etapas por dia neste fluxo já foi atingido.`,
+        "daily_contact_cap",
+        `Limite de ${contactCap} automações por dia para este cliente já foi atingido.`,
         "deferred",
         inMinutes(now, 12 * 60),
       );
     }
-    rules.push(
-      pass("daily_flow_cap", `${flowSent ?? 0}/${settings.max_flow_automations_per_day} hoje`),
-    );
+    rules.push(pass("daily_contact_cap", `${contactTouches}/${contactCap} hoje`));
+
+    if (request.flowRunId) {
+      const flowTouches = countTouches(runSentAt);
+      if (flowTouches >= settings.max_flow_automations_per_day) {
+        return block(
+          "daily_flow_cap",
+          `Limite de ${settings.max_flow_automations_per_day} etapas por dia neste fluxo já foi atingido.`,
+          "deferred",
+          inMinutes(now, 12 * 60),
+        );
+      }
+      rules.push(
+        pass("daily_flow_cap", `${flowTouches}/${settings.max_flow_automations_per_day} hoje`),
+      );
+    } else {
+      rules.push(pass("daily_flow_cap"));
+    }
   } else {
-    rules.push(pass("daily_flow_cap"));
+    rules.push(pass("daily_contact_cap", "Continuação do mesmo toque"));
+    rules.push(pass("daily_flow_cap", "Continuação do mesmo toque"));
   }
 
   // 8. Modo teste: nada sai para o cliente, exceto números da lista de teste.

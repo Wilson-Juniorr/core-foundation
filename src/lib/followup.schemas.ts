@@ -106,8 +106,9 @@ export const flowStepInputSchema = z
     }
   });
 
-/** Proteção básica contra automação excessiva (frequência mínima entre etapas). */
-const MIN_GAP_MINUTES = 5;
+/** Proteção básica contra automação excessiva (frequência mínima entre etapas).
+ *  1 minuto permite a "continuação" de uma mensagem (mesmo toque). */
+const MIN_GAP_MINUTES = 1;
 
 function stepGapMinutes(step: { delay_value: number; delay_unit: string }): number {
   if (step.delay_unit === "minutes") return step.delay_value;
@@ -137,7 +138,7 @@ export const flowInputSchema = z.object({
         if (index > 0 && stepGapMinutes(step) < MIN_GAP_MINUTES) {
           ctx.addIssue({
             code: "custom",
-            message: `A partir da segunda etapa o intervalo mínimo é de ${MIN_GAP_MINUTES} minutos`,
+            message: `A partir da segunda etapa o intervalo mínimo é de ${MIN_GAP_MINUTES} minuto`,
             path: [index, "delay_value"],
           });
         }
