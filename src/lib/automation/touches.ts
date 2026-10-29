@@ -17,7 +17,8 @@ export function groupTouches(sentAtIso: string[], gapMinutes = TOUCH_GROUP_MINUT
   const groups: number[][] = [];
   for (const t of times) {
     const last = groups[groups.length - 1];
-    if (last && t - last[last.length - 1] <= gapMinutes * 60_000) last.push(t);
+    const prev = last?.[last.length - 1];
+    if (last && prev !== undefined && t - prev <= gapMinutes * 60_000) last.push(t);
     else groups.push([t]);
   }
   return groups;
@@ -36,6 +37,7 @@ export function continuesCurrentTouch(sentAtIso: string[], now: Date): boolean {
   const last = groups[groups.length - 1];
   if (!last) return false;
   const lastAt = last[last.length - 1];
+  if (lastAt === undefined) return false;
   if (now.getTime() - lastAt > TOUCH_GROUP_MINUTES * 60_000) return false;
   return last.length < MAX_MESSAGES_PER_TOUCH;
 }
