@@ -154,19 +154,25 @@ export function FlowBuilderDialog({
     mutationFn: async (input: { index: number; file: File }) => {
       if (input.file.size > MAX_UPLOAD_BYTES) throw new Error("Arquivo maior que 8 MB.");
       const base64 = await fileToBase64(input.file);
+      // O seletor de arquivos marca .webm/.mp4 como vídeo; numa etapa de áudio
+      // o arquivo é áudio, e o tipo errado faria o envio sair como vídeo.
+      let mimeType = input.file.type || "application/octet-stream";
+      if (steps[input.index]?.action_type === "audio" && mimeType.startsWith("video/")) {
+        mimeType = mimeType.replace(/^video\//, "audio/");
+      }
       const result = await uploadFollowupMedia({
         data: {
           base64,
-          mimeType: input.file.type || "application/octet-stream",
+          mimeType,
           filename: input.file.name,
         },
       });
-      return { index: input.index, file: input.file, reference: result.reference };
+      return { index: input.index, file: input.file, mimeType, reference: result.reference };
     },
-    onSuccess: ({ index, file, reference }) => {
+    onSuccess: ({ index, file, mimeType, reference }) => {
       updateStep(index, {
         media_reference: reference,
-        media_mime_type: file.type || "application/octet-stream",
+        media_mime_type: mimeType,
         media_filename: file.name,
       });
       toast.success("Arquivo anexado à etapa.");
