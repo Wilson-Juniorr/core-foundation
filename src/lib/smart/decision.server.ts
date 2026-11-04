@@ -40,6 +40,8 @@ export interface SmartDecisionInput {
   rankedStrategies?: string[];
   /** Horário em que este cliente costuma interagir. */
   timingNote?: string | null;
+  /** Condições comerciais ativas cadastradas pelo consultor (única fonte de descontos). */
+  activeConditions?: string[];
 }
 
 const decisionSchema = {
@@ -119,6 +121,9 @@ function buildPrompt(input: SmartDecisionInput): string {
       ? `Desempenho histórico das estratégias com este consultor: ${input.performanceNote}. Prefira as que geram resposta e evite as marcadas como não funcionando.`
       : "",
     input.timingNote ? `Hábito de horário do cliente: ${input.timingNote}` : "",
+    input.activeConditions && input.activeConditions.length > 0
+      ? `Condições comerciais ATIVAS (use com estratégia, citando a validade e o prazo de emissão para criar urgência real; NUNCA ofereça desconto fora desta lista nem de outra operadora que não a cotada, a menos que o consultor já tenha oferecido na conversa):\n${input.activeConditions.map((c) => `- ${c}`).join("\n")}`
+      : "Nenhuma condição comercial cadastrada: NÃO ofereça descontos; defenda o valor do plano (rede, carências, coparticipação). Se o consultor já ofereceu uma condição na conversa, você pode reforçá-la.",
 
     "",
     "Últimas mensagens (mais antiga primeiro):",

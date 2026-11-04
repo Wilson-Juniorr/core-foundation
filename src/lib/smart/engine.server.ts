@@ -474,7 +474,29 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const allowedStrategies = (config.allowed_strategies as string[]) ?? [];
   const timing = await learnContactTiming(db, run.conversation_id, settings.timezone);
 
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const { data: conditionRows } = await db
+    .from("commercial_conditions")
+    .select("operator, title, discount_percent, audience, valid_until, issuance_days, notes")
+    .eq("user_id", run.user_id)
+    .eq("is_active", true)
+    .or(`valid_until.is.null,valid_until.gte.${today}`)
+    .limit(20);
+  const activeConditions = (conditionRows ?? []).map((c) =>
+    [
+      `${c.operator}: ${c.title}`,
+      c.discount_percent != null ? `${c.discount_percent}% de desconto` : null,
+      c.audience ? `válida para ${c.audience}` : null,
+      c.valid_until ? `até ${c.valid_until.split("-").reverse().join("/")}` : null,
+      c.issuance_days != null ? `emissão leva ${c.issuance_days} dia(s)` : null,
+      c.notes,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  );
+
   const decision = await decideNextStep(db, {
+    activeConditions,
     config,
     control,
     contactName: contact?.name ?? null,
