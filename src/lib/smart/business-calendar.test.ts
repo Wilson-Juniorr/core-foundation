@@ -7,8 +7,12 @@ const localDate = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Americ
 
 describe("calendário comercial", () => {
   it("quinta + 'me chama daqui 3 dias' cai na segunda", () => {
-    const [c] = extractCommitments({ text: "me chama daqui 3 dias", direction: "inbound", now: sp("2026-11-05T10:00:00") });
-    expect(localDate(new Date(c.due_at!))).toBe("2026-11-09");
+    const [c] = extractCommitments({
+      text: "me chama daqui 3 dias",
+      direction: "inbound",
+      now: sp("2026-11-05T10:00:00"),
+    });
+    expect(localDate(new Date(c!.due_at!))).toBe("2026-11-09");
   });
   it("feriado nacional não é dia útil (20/11/2026, sexta)", () => {
     expect(isBusinessDay(sp("2026-11-20T10:00:00"))).toBe(false);

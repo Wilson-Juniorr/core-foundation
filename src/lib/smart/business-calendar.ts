@@ -81,8 +81,22 @@ export function addBusinessDays(
 }
 
 const NUMBER_WORDS: Record<string, number> = {
-  um: 1, uma: 1, dois: 2, duas: 2, tres: 3, "três": 3, quatro: 4, cinco: 5,
-  seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, quinze: 15, vinte: 20, trinta: 30,
+  um: 1,
+  uma: 1,
+  dois: 2,
+  duas: 2,
+  tres: 3,
+  três: 3,
+  quatro: 4,
+  cinco: 5,
+  seis: 6,
+  sete: 7,
+  oito: 8,
+  nove: 9,
+  dez: 10,
+  quinze: 15,
+  vinte: 20,
+  trinta: 30,
 };
 
 /** Lê "daqui 3 dias", "em dois dias", "daqui a uma semana", "daqui 15 dias". */
