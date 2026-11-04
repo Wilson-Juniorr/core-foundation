@@ -193,7 +193,6 @@ export function mapMessageStatus(raw: string | null, fallback: MessageStatus): M
 // A leitura do status da conexão vive em ./connection-state (testada):
 // "disconnected" contém "connected" e já fez o sistema achar que estava online.
 
-
 function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null {
   const message = asRecord(raw);
   const key = asRecord(message["key"]);
@@ -374,7 +373,10 @@ export const uazapiProvider: WhatsAppProvider = {
 
     return {
       // As flags booleanas da sessão valem mais que o texto do status.
-      status: sessionFlagsSayOffline(response) && textStatus === "connected" ? "disconnected" : textStatus,
+      status:
+        sessionFlagsSayOffline(response) && textStatus === "connected"
+          ? "disconnected"
+          : textStatus,
       phoneNumber: normalizePhone(
         pickString(instance, ["owner", "phone", "number", "wid"]) ??
           pickString(response, ["owner", "phone", "number"]),

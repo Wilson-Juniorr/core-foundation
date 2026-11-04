@@ -36,7 +36,9 @@ describe("status da conexão do WhatsApp", () => {
   it("a mensagem de desconexão é reconhecida pelo motor", () => {
     expect(isDisconnectedMessage(DISCONNECTED_USER_MESSAGE)).toBe(true);
     expect(
-      isDisconnectedMessage("O provedor de WhatsApp respondeu com erro. Tente novamente em instantes."),
+      isDisconnectedMessage(
+        "O provedor de WhatsApp respondeu com erro. Tente novamente em instantes.",
+      ),
     ).toBe(false);
   });
 });
