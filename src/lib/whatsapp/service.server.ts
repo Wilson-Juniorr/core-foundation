@@ -595,8 +595,19 @@ export type SendSource = "manual" | "automation";
  * o motor de follow-up reagende as ações em vez de queimar tentativas.
  */
 async function noteSendFailure(db: Client, connectionId: string, error: unknown): Promise<void> {
-  const status = error instanceof ProviderError ? error.statusCode : null;
-  if (status !== 401 && status !== 403) return;
+  if (!(error instanceof ProviderError)) return;
+
+  // Sessão do WhatsApp fora: marca na hora, para o motor segurar as próximas
+  // mensagens e a Central de Atenção avisar — sem esperar o vigia.
+  if (error.disconnected) {
+    await db
+      .from("whatsapp_connections")
+      .update({ status: "disconnected", last_error: error.userMessage })
+      .eq("id", connectionId);
+    return;
+  }
+
+  if (error.statusCode !== 401 && error.statusCode !== 403) return;
   await db
     .from("whatsapp_connections")
     .update({

@@ -1,5 +1,11 @@
 import { normalizePhone, phoneFromChatId, toProviderNumber } from "@/lib/domain/phone";
 import { ProviderError, waLog } from "./log.server";
+import {
+  DISCONNECTED_USER_MESSAGE,
+  isDisconnectedReply,
+  mapConnectionStatus,
+  sessionFlagsSayOffline,
+} from "./connection-state";
 import type {
   OutboundMedia,
   ProviderCredentials,
@@ -7,7 +13,6 @@ import type {
   WhatsAppProvider,
 } from "./provider.server";
 import type {
-  ConnectionStatus,
   MessageStatus,
   MessageType,
   NormalizedChatSummary,
@@ -72,6 +77,7 @@ async function request<T>(
     const parsed: unknown = text === "" ? {} : safeJson(text);
 
     if (!response.ok) {
+      const disconnected = isDisconnectedReply(response.status, text);
       waLog.error("provider_request_failed", {
         path,
         status: response.status,
@@ -81,11 +87,14 @@ async function request<T>(
         body: text.slice(0, 200),
       });
       throw new ProviderError(
-        `UAZAPI ${path} respondeu ${response.status}`,
-        response.status === 401 || response.status === 403
-          ? "Credenciais da UAZAPI recusadas. Revise a URL base e o token."
-          : "O provedor de WhatsApp respondeu com erro. Tente novamente em instantes.",
+        `UAZAPI ${path} respondeu ${response.status}: ${text.slice(0, 160)}`,
+        disconnected
+          ? DISCONNECTED_USER_MESSAGE
+          : response.status === 401 || response.status === 403
+            ? "Credenciais da UAZAPI recusadas. Revise a URL base e o token."
+            : `O provedor de WhatsApp respondeu com erro (${response.status}). Tente novamente em instantes.`,
         response.status,
+        disconnected,
       );
     }
 
@@ -181,20 +190,8 @@ export function mapMessageStatus(raw: string | null, fallback: MessageStatus): M
   return fallback;
 }
 
-function mapConnectionStatus(raw: string | null): ConnectionStatus {
-  const value = (raw ?? "").toLowerCase();
-  if (value.includes("connected") || value.includes("open") || value.includes("authenticated")) {
-    return "connected";
-  }
-  if (value.includes("qr") || value.includes("connecting") || value.includes("pairing")) {
-    return "connecting";
-  }
-  if (value.includes("error") || value.includes("banned")) return "error";
-  if (value.includes("disconnect") || value.includes("close") || value.includes("logout")) {
-    return "disconnected";
-  }
-  return "disconnected";
-}
+// A leitura do status da conexão vive em ./connection-state (testada):
+// "disconnected" contém "connected" e já fez o sistema achar que estava online.
 
 function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null {
   const message = asRecord(raw);
@@ -369,11 +366,17 @@ export const uazapiProvider: WhatsAppProvider = {
     );
     const instance = asRecord(response["instance"] ?? response);
 
+    const textStatus = mapConnectionStatus(
+      pickString(instance, ["status", "state", "connectionStatus"]) ??
+        pickString(response, ["status", "state"]),
+    );
+
     return {
-      status: mapConnectionStatus(
-        pickString(instance, ["status", "state", "connectionStatus"]) ??
-          pickString(response, ["status", "state"]),
-      ),
+      // As flags booleanas da sessão valem mais que o texto do status.
+      status:
+        sessionFlagsSayOffline(response) && textStatus === "connected"
+          ? "disconnected"
+          : textStatus,
       phoneNumber: normalizePhone(
         pickString(instance, ["owner", "phone", "number", "wid"]) ??
           pickString(response, ["owner", "phone", "number"]),

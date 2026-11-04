@@ -1232,6 +1232,24 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha desconhecida";
 
+    /* WhatsApp desconectado não é culpa da etapa: a mensagem fica guardada,
+       sem consumir tentativa, e sai assim que o número for reconectado
+       (o vigia recoloca na fila ao detectar a volta). Nunca mata o fluxo. */
+    const { isDisconnectedMessage } = await import("@/lib/whatsapp/connection-state");
+    if (isDisconnectedMessage(message)) {
+      const retryAt = nextAllowedInstant(
+        new Date(now.getTime() + DISCONNECTED_RETRY_MINUTES * 60_000),
+        window,
+        settings.timezone,
+      );
+      await releaseAction(db, action, {
+        status: "scheduled",
+        last_error: "whatsapp_disconnected",
+        scheduled_for: retryAt.toISOString(),
+      });
+      return "rescheduled";
+    }
+
     /* Credencial recusada não é culpa da etapa: a conexão já foi marcada como
        `error` pela camada de WhatsApp. A ação volta para a fila sem consumir
        tentativa, para não matar o fluxo por um token expirado. */
