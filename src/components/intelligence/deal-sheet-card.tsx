@@ -263,7 +263,12 @@ export function DealSheetCard({ contactId }: { contactId: string }) {
         ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Item label="Quem decide" value={sheet.decision_maker} memory={memory} field="decision_maker" />
+          <Item
+            label="Quem decide"
+            value={sheet.decision_maker}
+            memory={memory}
+            field="decision_maker"
+          />
           <Item label="Plano cotado" value={plan} memory={memory} field="quoted_plan" />
           <Item
             label="Valor mensal"
