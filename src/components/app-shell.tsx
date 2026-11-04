@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import {
   BellRing,
   BarChart3,
+  BadgePercent,
   BookOpen,
   CalendarDays,
   LayoutDashboard,
@@ -61,6 +62,7 @@ const ACTIVE_ITEMS = [
   { to: "/conversas", label: "Conversas", icon: MessagesSquare },
   { to: "/followups", label: "Follow-ups", icon: Repeat },
   { to: "/biblioteca", label: "Biblioteca", icon: BookOpen },
+  { to: "/condicoes", label: "Condições", icon: BadgePercent },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/automacao", label: "Orquestrador", icon: ShieldCheck },
   { to: "/configuracoes", label: "Configurações", icon: Settings },

@@ -16,6 +16,7 @@ import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAtencaoRouteImport } from './routes/_authenticated/atencao'
 import { Route as AuthenticatedAutomacaoRouteImport } from './routes/_authenticated/automacao'
 import { Route as AuthenticatedBibliotecaRouteImport } from './routes/_authenticated/biblioteca'
+import { Route as AuthenticatedCondicoesRouteImport } from './routes/_authenticated/condicoes'
 import { Route as AuthenticatedConversasRouteImport } from './routes/_authenticated/conversas'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedFollowupsRouteImport } from './routes/_authenticated/followups'
@@ -62,6 +63,11 @@ const AuthenticatedAutomacaoRoute = AuthenticatedAutomacaoRouteImport.update({
 const AuthenticatedBibliotecaRoute = AuthenticatedBibliotecaRouteImport.update({
   id: '/biblioteca',
   path: '/biblioteca',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCondicoesRoute = AuthenticatedCondicoesRouteImport.update({
+  id: '/condicoes',
+  path: '/condicoes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedConversasRoute = AuthenticatedConversasRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/atencao': typeof AuthenticatedAtencaoRoute
   '/automacao': typeof AuthenticatedAutomacaoRoute
   '/biblioteca': typeof AuthenticatedBibliotecaRoute
+  '/condicoes': typeof AuthenticatedCondicoesRoute
   '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/followups': typeof AuthenticatedFollowupsRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/atencao': typeof AuthenticatedAtencaoRoute
   '/automacao': typeof AuthenticatedAutomacaoRoute
   '/biblioteca': typeof AuthenticatedBibliotecaRoute
+  '/condicoes': typeof AuthenticatedCondicoesRoute
   '/conversas': typeof AuthenticatedConversasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/followups': typeof AuthenticatedFollowupsRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/_authenticated/atencao': typeof AuthenticatedAtencaoRoute
   '/_authenticated/automacao': typeof AuthenticatedAutomacaoRoute
   '/_authenticated/biblioteca': typeof AuthenticatedBibliotecaRoute
+  '/_authenticated/condicoes': typeof AuthenticatedCondicoesRoute
   '/_authenticated/conversas': typeof AuthenticatedConversasRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/followups': typeof AuthenticatedFollowupsRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/atencao'
     | '/automacao'
     | '/biblioteca'
+    | '/condicoes'
     | '/conversas'
     | '/dashboard'
     | '/followups'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/atencao'
     | '/automacao'
     | '/biblioteca'
+    | '/condicoes'
     | '/conversas'
     | '/dashboard'
     | '/followups'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/_authenticated/atencao'
     | '/_authenticated/automacao'
     | '/_authenticated/biblioteca'
+    | '/_authenticated/condicoes'
     | '/_authenticated/conversas'
     | '/_authenticated/dashboard'
     | '/_authenticated/followups'
@@ -329,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/biblioteca'
       fullPath: '/biblioteca'
       preLoaderRoute: typeof AuthenticatedBibliotecaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/condicoes': {
+      id: '/_authenticated/condicoes'
+      path: '/condicoes'
+      fullPath: '/condicoes'
+      preLoaderRoute: typeof AuthenticatedCondicoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/conversas': {
@@ -430,6 +449,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAtencaoRoute: typeof AuthenticatedAtencaoRoute
   AuthenticatedAutomacaoRoute: typeof AuthenticatedAutomacaoRoute
   AuthenticatedBibliotecaRoute: typeof AuthenticatedBibliotecaRoute
+  AuthenticatedCondicoesRoute: typeof AuthenticatedCondicoesRoute
   AuthenticatedConversasRoute: typeof AuthenticatedConversasRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFollowupsRoute: typeof AuthenticatedFollowupsRoute
@@ -446,6 +466,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAtencaoRoute: AuthenticatedAtencaoRoute,
   AuthenticatedAutomacaoRoute: AuthenticatedAutomacaoRoute,
   AuthenticatedBibliotecaRoute: AuthenticatedBibliotecaRoute,
+  AuthenticatedCondicoesRoute: AuthenticatedCondicoesRoute,
   AuthenticatedConversasRoute: AuthenticatedConversasRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFollowupsRoute: AuthenticatedFollowupsRoute,

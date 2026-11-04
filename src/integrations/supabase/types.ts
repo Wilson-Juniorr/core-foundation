@@ -406,6 +406,51 @@ export type Database = {
           },
         ]
       }
+      commercial_conditions: {
+        Row: {
+          audience: string | null
+          created_at: string
+          discount_percent: number | null
+          id: string
+          is_active: boolean
+          issuance_days: number | null
+          notes: string | null
+          operator: string
+          title: string
+          updated_at: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          audience?: string | null
+          created_at?: string
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean
+          issuance_days?: number | null
+          notes?: string | null
+          operator: string
+          title: string
+          updated_at?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Update: {
+          audience?: string | null
+          created_at?: string
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean
+          issuance_days?: number | null
+          notes?: string | null
+          operator?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       commitments: {
         Row: {
           commitment_type: string
