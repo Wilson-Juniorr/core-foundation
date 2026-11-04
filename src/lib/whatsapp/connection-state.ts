@@ -23,7 +23,7 @@ export function mapConnectionStatus(raw: string | null): ConnectionStatus {
   if (value.includes("qr") || value.includes("connecting") || value.includes("pairing")) {
     return "connecting";
   }
-  if (value === "connected" || value.includes("open") || value.includes("authenticated")) {
+  if (value.includes("connected") || value.includes("open") || value.includes("authenticated")) {
     return "connected";
   }
   return "disconnected";
