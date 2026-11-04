@@ -48,11 +48,19 @@ export function userFacingProviderError(error: unknown): string {
 export class ProviderError extends Error {
   readonly userMessage: string;
   readonly statusCode: number | null;
+  /** O provedor disse que o WhatsApp está desconectado (sessão fora). */
+  readonly disconnected: boolean;
 
-  constructor(message: string, userMessage: string, statusCode: number | null = null) {
+  constructor(
+    message: string,
+    userMessage: string,
+    statusCode: number | null = null,
+    disconnected = false,
+  ) {
     super(message);
     this.name = "ProviderError";
     this.userMessage = userMessage;
     this.statusCode = statusCode;
+    this.disconnected = disconnected;
   }
 }
