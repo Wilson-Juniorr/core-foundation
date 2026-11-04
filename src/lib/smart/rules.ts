@@ -6,6 +6,7 @@
  */
 
 import { DEFAULT_TIMEZONE, zonedParts } from "@/lib/followup/time";
+import { addBusinessDays, parseRelativeDays, toBusinessDay } from "./business-calendar";
 import type { CommitmentResponsible, SmartStrategy, LossReason } from "./types";
 
 const MINUTE_MS = 60_000;
@@ -146,7 +147,7 @@ export function extractCommitments(input: {
       responsible: "third_party",
       description: `Vai conversar com ${thirdParty[0]} antes de decidir`,
       due_at: null,
-      due_window_end: atLocalHour(now, 2, 18, timezone).toISOString(),
+      due_window_end: atLocalHour(addBusinessDays(now, 2, timezone), 0, 18, timezone).toISOString(),
       is_ambiguous: true,
       confidence: 0.7,
     });
@@ -204,6 +205,21 @@ export function extractCommitments(input: {
       due_window_end: null,
       is_ambiguous: !partOfDay,
       confidence: 0.65,
+    });
+  }
+
+  /* 3b. Relativo: "me chama daqui 3 dias" → cai em dia útil. */
+  const relDays = parseRelativeDays(lower);
+  if (relDays) {
+    const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
+    push({
+      commitment_type: "callback_in_days",
+      responsible: baseResponsible,
+      description: `Retomar o contato daqui ${relDays} dia(s)`,
+      due_at: atLocalHour(now, relDays, partOfDay?.hour ?? 10, timezone).toISOString(),
+      due_window_end: null,
+      is_ambiguous: false,
+      confidence: 0.8,
     });
   }
 
@@ -273,7 +289,14 @@ export function extractCommitments(input: {
     });
   }
 
-  return results;
+  // Retornos nunca caem em fim de semana ou feriado nacional.
+  return results.map((item) => ({
+    ...item,
+    due_at: item.due_at ? toBusinessDay(new Date(item.due_at), timezone).toISOString() : null,
+    due_window_end: item.due_window_end
+      ? toBusinessDay(new Date(item.due_window_end), timezone).toISOString()
+      : null,
+  }));
 }
 
 /* ------------------------------ sinais críticos ---------------------------- */
