@@ -5,6 +5,8 @@
  * timestamp e, quando aplicável, confiança.
  */
 
+import type { DealSheet } from "./deal-sheet";
+
 export const MEMORY_SOURCES = ["ai", "human", "system"] as const;
 export type MemorySource = (typeof MEMORY_SOURCES)[number];
 
@@ -111,6 +113,8 @@ export interface CustomerMemory {
   decision_factors: MemoryItem[];
   competitors: MemoryItem[];
   next_step_detected: string | null;
+  /** Ficha viva do pós-cotação. */
+  sheet: DealSheet;
   do_not_contact: boolean;
   confidence: number;
   last_analyzed_message_id: string | null;

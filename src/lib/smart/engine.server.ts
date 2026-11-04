@@ -21,6 +21,7 @@ import {
 } from "@/lib/followup/time";
 import { blockingDeadline, pendingCommitments } from "./commitments.server";
 import { ensureControl, loadControl, patchControl, refreshPressure } from "./control.server";
+import { describeDealSheet, toDealSheet } from "@/lib/ai/deal-sheet";
 import { decideNextStep } from "./decision.server";
 import { describePerformance, rankStrategies, strategyPerformance } from "./learning.server";
 import { reviewMessage } from "./quality.server";
@@ -457,8 +458,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
 
   const { data: memory } = await db
     .from("customer_memory")
-    .select("current_summary, confidence, last_analyzed_at")
+    .select(
+      "current_summary, confidence, last_analyzed_at, deal_stage, decision_maker, quoted_operator, quoted_plan, quoted_value, quoted_lives, temperature, temperature_reason",
+    )
     .eq("contact_id", run.contact_id)
+    .is("opportunity_id", null)
     .maybeSingle();
 
   const { data: contact } = await db
@@ -512,6 +516,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
         at: item.sent_at,
       })),
     memorySummary: memory?.current_summary ?? null,
+    dealSheet: memory ? describeDealSheet(toDealSheet(memory as Record<string, unknown>)) : [],
     pendingCommitments: commitments.map((item) => ({
       responsible: item.responsible,
       description: item.description,

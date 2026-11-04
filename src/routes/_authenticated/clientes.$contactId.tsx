@@ -12,6 +12,7 @@ import { SmartControlCard } from "@/components/smart/smart-control-card";
 
 import { MessageGeneratorCard } from "@/components/library/message-generator-card";
 import { ContactPreferencesCard } from "@/components/automation/contact-preferences-card";
+import { DealSheetCard } from "@/components/intelligence/deal-sheet-card";
 import { IntelligenceCard } from "@/components/intelligence/intelligence-card";
 import { NextActionBadge } from "@/components/next-action-badge";
 import { NextActionDialog } from "@/components/next-action-dialog";
@@ -182,6 +183,8 @@ function ContactDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        <DealSheetCard contactId={contactId} />
 
         <ContactPreferencesCard contactId={contactId} />
 

@@ -19,7 +19,7 @@ type ConfigRow = Database["public"]["Tables"]["smart_flow_configs"]["Row"];
 type ControlRow = Database["public"]["Tables"]["conversation_control"]["Row"];
 
 export const SMART_DECISION_MODEL = "google/gemini-3.7-flash";
-export const SMART_DECISION_PROMPT_VERSION = "smart-flow-decision@1";
+export const SMART_DECISION_PROMPT_VERSION = "smart-flow-decision@2";
 
 export interface SmartDecisionInput {
   config: ConfigRow;
@@ -29,6 +29,8 @@ export interface SmartDecisionInput {
   deadlineAt: string | null;
   recentMessages: { direction: string; type: string; text: string | null; at: string }[];
   memorySummary: string | null;
+  /** Ficha viva do pós-cotação (etapa, decisor, plano, temperatura). */
+  dealSheet?: string[];
   pendingCommitments: { responsible: string; description: string; due_at: string | null }[];
   recentStrategies: { strategy: string; used_at: string; got_reply: boolean }[];
   /** Fase do acompanhamento pós-cotação, quando aplicável. */
@@ -104,6 +106,9 @@ function buildPrompt(input: SmartDecisionInput): string {
       ? "ATENÇÃO: existe áudio na conversa que não foi possível transcrever."
       : "",
     input.memorySummary ? `Memória do cliente: ${input.memorySummary}` : "",
+    input.dealSheet && input.dealSheet.length > 0
+      ? `Ficha do cliente:\n${input.dealSheet.map((line) => `- ${line}`).join("\n")}\nUse a ficha para adaptar o tom: com quem decide em jogo, ofereça ajuda para a conversa com essa pessoa; cliente frio pede mensagem mais leve e espaçada; etapa "Pronto para fechar" vai para o consultor (handoff); etapa "Achou caro" também vai para o consultor, a menos que exista uma condição comercial ativa que responda à objeção.`
+      : "",
     input.pendingCommitments.length > 0
       ? `Compromissos pendentes:\n${input.pendingCommitments
           .map(

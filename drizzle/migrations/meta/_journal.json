@@ -8,6 +8,13 @@
       "when": 1793801137460,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793807052049,
+      "tag": "0001_deal_sheet_on_customer_memory",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { adminClient } from "@/lib/followup/engine.server";
 import { AiGatewayError, completeStructured, estimateCost } from "./gateway.server";
+import { describeDealSheet, mergeDealSheet, toDealSheet } from "./deal-sheet";
 import { clamp01, ensureMemory, isHumanLocked, loadMemory, mergeLists } from "./memory.server";
 import {
   ANALYSIS_JSON_SCHEMA,
@@ -37,6 +38,7 @@ interface AiPayload {
   do_not_contact: boolean;
   confidence: number;
   lists: Record<string, { value: string; confidence: number; due: string }[]>;
+  sheet?: Record<string, unknown>;
   insights: { type: string; content: string; confidence: number; due_date: string }[];
 }
 
@@ -140,6 +142,7 @@ function renderPreviousMemory(memory: CustomerMemory | null): string {
     `sentiment: ${memory.sentiment}`,
     `next_step_detected: ${memory.next_step_detected ?? "—"}`,
     `do_not_contact: ${memory.do_not_contact}`,
+    ...describeDealSheet(memory.sheet),
     ...lists,
     confirmed.length
       ? `campos confirmados pelo usuário (não contestar): ${confirmed.join(", ")}`
@@ -268,6 +271,15 @@ export async function analyzeContact(
     }
     // Pedido de não contato só liga, nunca desliga automaticamente.
     if (payload.do_not_contact === true) patch["do_not_contact"] = true;
+
+    if (payload.sheet) {
+      Object.assign(
+        patch,
+        mergeDealSheet(memory.sheet, toDealSheet(payload.sheet), (field) =>
+          isHumanLocked(memory, field),
+        ),
+      );
+    }
 
     for (const field of MEMORY_LIST_FIELDS) {
       if (isHumanLocked(memory, field)) continue;
