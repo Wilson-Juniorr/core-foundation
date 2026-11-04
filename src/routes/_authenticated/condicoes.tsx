@@ -77,7 +77,7 @@ function ConditionsPage() {
       const q = supabase.from("commercial_conditions");
       const { error } = v.remove
         ? await q.delete().eq("id", v.id)
-        : await q.update({ is_active: v.is_active }).eq("id", v.id);
+        : await q.update({ is_active: v.is_active ?? true }).eq("id", v.id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),

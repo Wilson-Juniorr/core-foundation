@@ -35,9 +35,9 @@ export function nationalHolidays(year: number): Set<string> {
   const hit = cache.get(year);
   if (hit) return hit;
   const set = new Set<string>(
-    [
-      [1, 1], [4, 21], [5, 1], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25],
-    ].map(([m, d]) => key(year, m, d)),
+    ["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "11-20", "12-25"].map(
+      (md) => `${year}-${md}`,
+    ),
   );
   const e = easter(year);
   const base = Date.UTC(year, e.month - 1, e.day);
@@ -92,9 +92,11 @@ export function parseRelativeDays(text: string | null): number | null {
     /\b(?:daqui\s+(?:a\s+)?|em\s+|dentro\s+de\s+)(\d{1,2}|[a-zçãê]+)\s+(dias?|semanas?)\b/i.exec(
       lower,
     );
-  if (!m) return null;
-  const n = /^\d+$/.test(m[1]) ? Number(m[1]) : NUMBER_WORDS[m[1]];
+  const qty = m?.[1];
+  const unit = m?.[2];
+  if (!qty || !unit) return null;
+  const n = /^\d+$/.test(qty) ? Number(qty) : NUMBER_WORDS[qty];
   if (!n || n <= 0) return null;
-  const days = m[2].startsWith("semana") ? n * 7 : n;
+  const days = unit.startsWith("semana") ? n * 7 : n;
   return days > 120 ? null : days;
 }
