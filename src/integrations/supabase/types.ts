@@ -937,7 +937,9 @@ export type Database = {
           current_summary: string | null
           customer_commitments: Json
           customer_intent: string
+          deal_stage: string
           decision_factors: Json
+          decision_maker: string | null
           do_not_contact: boolean
           field_sources: Json
           id: string
@@ -953,9 +955,15 @@ export type Database = {
           pending_information: Json
           products_or_services: Json
           prompt_version: string | null
+          quoted_lives: number | null
+          quoted_operator: string | null
+          quoted_plan: string | null
+          quoted_value: number | null
           relevant_values: Json
           seller_commitments: Json
           sentiment: string
+          temperature: string
+          temperature_reason: string | null
           updated_at: string
           user_id: string
         }
@@ -968,7 +976,9 @@ export type Database = {
           current_summary?: string | null
           customer_commitments?: Json
           customer_intent?: string
+          deal_stage?: string
           decision_factors?: Json
+          decision_maker?: string | null
           do_not_contact?: boolean
           field_sources?: Json
           id?: string
@@ -984,9 +994,15 @@ export type Database = {
           pending_information?: Json
           products_or_services?: Json
           prompt_version?: string | null
+          quoted_lives?: number | null
+          quoted_operator?: string | null
+          quoted_plan?: string | null
+          quoted_value?: number | null
           relevant_values?: Json
           seller_commitments?: Json
           sentiment?: string
+          temperature?: string
+          temperature_reason?: string | null
           updated_at?: string
           user_id: string
         }
@@ -999,7 +1015,9 @@ export type Database = {
           current_summary?: string | null
           customer_commitments?: Json
           customer_intent?: string
+          deal_stage?: string
           decision_factors?: Json
+          decision_maker?: string | null
           do_not_contact?: boolean
           field_sources?: Json
           id?: string
@@ -1015,9 +1033,15 @@ export type Database = {
           pending_information?: Json
           products_or_services?: Json
           prompt_version?: string | null
+          quoted_lives?: number | null
+          quoted_operator?: string | null
+          quoted_plan?: string | null
+          quoted_value?: number | null
           relevant_values?: Json
           seller_commitments?: Json
           sentiment?: string
+          temperature?: string
+          temperature_reason?: string | null
           updated_at?: string
           user_id?: string
         }
