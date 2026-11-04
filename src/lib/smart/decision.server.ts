@@ -107,7 +107,7 @@ function buildPrompt(input: SmartDecisionInput): string {
       : "",
     input.memorySummary ? `Memória do cliente: ${input.memorySummary}` : "",
     input.dealSheet && input.dealSheet.length > 0
-      ? `Ficha do cliente:\n${input.dealSheet.map((line) => `- ${line}`).join("\n")}\nUse a ficha para adaptar o tom: com quem decide em jogo, ofereça ajuda para a conversa com essa pessoa; cliente frio pede mensagem mais leve e espaçada; etapa "Achou caro" ou "Pronto para fechar" vai para o consultor (handoff).`
+      ? `Ficha do cliente:\n${input.dealSheet.map((line) => `- ${line}`).join("\n")}\nUse a ficha para adaptar o tom: com quem decide em jogo, ofereça ajuda para a conversa com essa pessoa; cliente frio pede mensagem mais leve e espaçada; etapa "Pronto para fechar" vai para o consultor (handoff); etapa "Achou caro" também vai para o consultor, a menos que exista uma condição comercial ativa que responda à objeção.`
       : "",
     input.pendingCommitments.length > 0
       ? `Compromissos pendentes:\n${input.pendingCommitments

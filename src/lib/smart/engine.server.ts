@@ -21,6 +21,7 @@ import {
 } from "@/lib/followup/time";
 import { blockingDeadline, pendingCommitments } from "./commitments.server";
 import { ensureControl, loadControl, patchControl, refreshPressure } from "./control.server";
+import { describeDealSheet, toDealSheet } from "@/lib/ai/deal-sheet";
 import { decideNextStep } from "./decision.server";
 import { describePerformance, rankStrategies, strategyPerformance } from "./learning.server";
 import { reviewMessage } from "./quality.server";
