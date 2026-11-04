@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { DEAL_STAGES, TEMPERATURES } from "./ai/deal-sheet";
 import { CUSTOMER_INTENTS, INTEREST_LEVELS, MEMORY_LIST_FIELDS, SENTIMENTS } from "./ai/types";
 
 export const contactIdSchema = z.object({ contactId: z.string().uuid() });
@@ -35,6 +36,14 @@ export const updateMemorySchema = z.object({
       relevant_values: z.array(listItemSchema).max(20).optional(),
       decision_factors: z.array(listItemSchema).max(20).optional(),
       competitors: z.array(listItemSchema).max(20).optional(),
+      deal_stage: z.enum(DEAL_STAGES).optional(),
+      decision_maker: z.string().trim().max(200).nullish(),
+      quoted_operator: z.string().trim().max(120).nullish(),
+      quoted_plan: z.string().trim().max(200).nullish(),
+      quoted_value: z.number().positive().max(1_000_000).nullish(),
+      quoted_lives: z.number().int().positive().max(1000).nullish(),
+      temperature: z.enum(TEMPERATURES).optional(),
+      temperature_reason: z.string().trim().max(300).nullish(),
     })
     .refine((value) => Object.keys(value).length > 0, "Nada para atualizar."),
 });

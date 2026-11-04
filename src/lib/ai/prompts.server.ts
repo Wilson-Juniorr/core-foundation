@@ -6,10 +6,11 @@
  * para permitir auditoria do que gerou cada memória.
  */
 
+import { DEAL_STAGES, TEMPERATURES } from "./deal-sheet";
 import { CUSTOMER_INTENTS, INSIGHT_TYPES, INTEREST_LEVELS, SENTIMENTS } from "./types";
 
 export const ANALYSIS_MODEL = "google/gemini-3.7-flash";
-export const ANALYSIS_PROMPT_VERSION = "conversation-memory@1";
+export const ANALYSIS_PROMPT_VERSION = "conversation-memory@2";
 
 export const ANALYSIS_SYSTEM_PROMPT = `Você é um analista comercial que mantém a memória estruturada de um cliente a partir de conversas de WhatsApp.
 
@@ -30,6 +31,17 @@ CLASSIFICAÇÕES
 - sentiment: ${SENTIMENTS.join(" | ")}
 - customer_intent: ${CUSTOMER_INTENTS.join(" | ")}
 
+FICHA DO PÓS-COTAÇÃO (sheet) — o produto é plano de saúde
+- deal_stage: ${DEAL_STAGES.join(" | ")}
+  quote_sent = cotação enviada e ainda sem retorno; analyzing = cliente disse que está olhando; consulting_decider = vai conversar com esposa/marido/sócio/família; price_objection = achou caro ou pediu desconto; comparing = está vendo outra operadora/corretor; postponed = pediu para chamar depois; ready_to_close = quer fechar, pediu documentos/contrato; closed = fechou; lost = recusou de forma clara.
+- decision_maker: quem decide além do cliente, com as palavras dele (ex.: "cliente + esposa"). Vazio se não foi dito.
+- quoted_operator / quoted_plan: operadora e plano cotados, apenas se citados na conversa.
+- quoted_value: valor mensal em reais (número), apenas se citado. 0 se não houver.
+- quoted_lives: quantidade de vidas (pessoas) no plano, apenas se citado. 0 se não houver.
+- temperature: ${TEMPERATURES.join(" | ")} — hot = responde rápido e fala em fechar; warm = engajado mas sem data; cold = some, responde seco ou adia sem data. Use unknown sem conversa suficiente.
+- temperature_reason: uma frase curta explicando a temperatura com base na conversa.
+Strings vazias quando não souber. Nunca chute operadora, plano ou valor.
+
 INSIGHTS
 Registre em "insights" cada informação identificada individualmente, com tipo entre: ${INSIGHT_TYPES.join(", ")}.
 Inclua datas e promessas ("me chama sexta", "falo semana que vem", "mando o documento amanhã") como insights com o texto original citado e a data interpretada em due_date (ISO ou vazio quando incerto). Não agende nada.
@@ -48,6 +60,7 @@ export const ANALYSIS_JSON_SCHEMA = {
     "do_not_contact",
     "confidence",
     "lists",
+    "sheet",
     "insights",
   ],
   properties: {
@@ -100,6 +113,30 @@ export const ANALYSIS_JSON_SCHEMA = {
           },
         ]),
       ),
+    },
+    sheet: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "deal_stage",
+        "decision_maker",
+        "quoted_operator",
+        "quoted_plan",
+        "quoted_value",
+        "quoted_lives",
+        "temperature",
+        "temperature_reason",
+      ],
+      properties: {
+        deal_stage: { type: "string", enum: [...DEAL_STAGES] },
+        decision_maker: { type: "string" },
+        quoted_operator: { type: "string" },
+        quoted_plan: { type: "string" },
+        quoted_value: { type: "number" },
+        quoted_lives: { type: "number" },
+        temperature: { type: "string", enum: [...TEMPERATURES] },
+        temperature_reason: { type: "string" },
+      },
     },
     insights: {
       type: "array",

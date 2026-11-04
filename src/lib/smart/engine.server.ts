@@ -457,8 +457,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
 
   const { data: memory } = await db
     .from("customer_memory")
-    .select("current_summary, confidence, last_analyzed_at")
+    .select(
+      "current_summary, confidence, last_analyzed_at, deal_stage, decision_maker, quoted_operator, quoted_plan, quoted_value, quoted_lives, temperature, temperature_reason",
+    )
     .eq("contact_id", run.contact_id)
+    .is("opportunity_id", null)
     .maybeSingle();
 
   const { data: contact } = await db
@@ -512,6 +515,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
         at: item.sent_at,
       })),
     memorySummary: memory?.current_summary ?? null,
+    dealSheet: memory ? describeDealSheet(toDealSheet(memory as Record<string, unknown>)) : [],
     pendingCommitments: commitments.map((item) => ({
       responsible: item.responsible,
       description: item.description,

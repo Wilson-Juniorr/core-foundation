@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
+import { toDealSheet } from "./deal-sheet";
 import {
   CUSTOMER_INTENTS,
   INTEREST_LEVELS,
@@ -67,6 +68,7 @@ export function mapMemory(row: MemoryRow): CustomerMemory {
     sentiment: oneOf(SENTIMENTS, row.sentiment, "unknown"),
     ...lists,
     next_step_detected: row.next_step_detected,
+    sheet: toDealSheet(row as unknown as Record<string, unknown>),
     do_not_contact: row.do_not_contact,
     confidence: Number(row.confidence ?? 0),
     last_analyzed_message_id: row.last_analyzed_message_id,
