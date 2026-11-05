@@ -164,6 +164,16 @@ export async function startSmartFlow(
     state: "waiting_customer",
     next_responsible: "system",
     next_responsible_reason: "Acompanhamento inteligente iniciado.",
+    handoff_kind: null,
+    handoff_at: null,
+    handoff_reason: null,
+    sensitive_since_handoff: false,
+    return_check_at: null,
+    return_mode: null,
+    return_at: null,
+    return_reason: null,
+    return_source: null,
+    force_approval_next: false,
   });
   await refreshPressure(db, userId, input.conversationId);
 
