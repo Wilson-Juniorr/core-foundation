@@ -12,7 +12,7 @@ export function WaitingForYouList() {
   const list = useQuery(waitingForYouQuery());
 
   if (list.isLoading) return <LoadingState />;
-  if (list.isError) return <ErrorState error={list.error} onRetry={() => list.refetch()} />;
+  if (list.isError) return <ErrorState onRetry={() => void list.refetch()} />;
   const items = list.data ?? [];
   if (items.length === 0) {
     return (

@@ -9,6 +9,7 @@ import { AppShell } from "@/components/app-shell";
 import { ContactFormDialog } from "@/components/contact-form-dialog";
 import { FollowupPanel } from "@/components/followup/followup-panel";
 import { SmartControlCard } from "@/components/smart/smart-control-card";
+import { AgentHandoffCard } from "@/components/smart/agent-handoff-card";
 
 import { MessageGeneratorCard } from "@/components/library/message-generator-card";
 import { ContactPreferencesCard } from "@/components/automation/contact-preferences-card";
@@ -185,6 +186,8 @@ function ContactDetailPage() {
         </Card>
 
         <DealSheetCard contactId={contactId} />
+
+        <AgentHandoffCard conversationId={conversation.data?.id ?? null} />
 
         <ContactPreferencesCard contactId={contactId} />
 
