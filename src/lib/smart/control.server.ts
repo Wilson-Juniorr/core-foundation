@@ -354,6 +354,72 @@ export async function registerCustomerMessage(
     .in("status", ["active", "paused"])
     .eq("followup_flows.kind", "smart");
 
+  /* Saída do agente: preço, pergunta técnica, fechamento e incômodo são seus.
+     Se a conversa já está com você, o agente segura até você responder. */
+  try {
+    const { detectPriceTalk, detectTechnicalQuestion } = await import("./handoff");
+    const { holdForCustomer, markHandoff, pauseSmartRuns } = await import("./return.server");
+    const price = detectPriceTalk(input.text ?? null);
+    const technical = detectTechnicalQuestion(input.text ?? null);
+    const kind = irritated
+      ? "irritation"
+      : closing
+        ? "closing"
+        : price
+          ? "price"
+          : technical
+            ? "technical"
+            : null;
+
+    const current = await loadControl(db, input.conversationId);
+    const hasSmart = (runs ?? []).length > 0;
+
+    if (current?.owner === "human" && current.handoff_at) {
+      if (kind) {
+        await db
+          .from("conversation_control")
+          .update({ sensitive_since_handoff: true })
+          .eq("conversation_id", input.conversationId);
+      }
+      await holdForCustomer(db, input.conversationId);
+    } else if (kind && hasSmart && (price || technical) && !refused) {
+      await pauseSmartRuns(
+        db,
+        input.conversationId,
+        price ? "Cliente falou de preço: com você." : "Pergunta técnica do cliente: com você.",
+      );
+      await markHandoff(db, {
+        conversationId: input.conversationId,
+        kind,
+        reason: price ? "Cliente falou de preço." : "Cliente fez uma pergunta técnica.",
+        at: input.at,
+      });
+      await holdForCustomer(db, input.conversationId);
+      await writeAudit(db, input.userId, {
+        action: "smart_handoff",
+        summary: price
+          ? "Cliente falou de preço: o agente saiu e a conversa é sua."
+          : "Pergunta técnica do cliente: o agente saiu e a conversa é sua.",
+        entityType: "conversation",
+        entityId: input.conversationId,
+        actor: "system",
+        severity: "warning",
+        metadata: { kind },
+      });
+      return;
+    } else if ((closing || irritated) && hasSmart) {
+      await markHandoff(db, {
+        conversationId: input.conversationId,
+        kind: kind!,
+        reason: closing ? "Cliente quer fechar." : "Cliente demonstrou incômodo.",
+        at: input.at,
+      });
+      await holdForCustomer(db, input.conversationId);
+    }
+  } catch (error) {
+    console.error("smart_customer_handoff_failed", error);
+  }
+
   const criticalNow = closing || irritated || refused;
   const nextEval = new Date(Date.now() + (criticalNow ? 0 : 3 * 60_000)).toISOString();
 
