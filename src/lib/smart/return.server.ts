@@ -56,7 +56,7 @@ export async function markHandoff(
   const at = input.at ?? new Date().toISOString();
   const { data: control } = await db
     .from("conversation_control")
-    .select("owner, handoff_at, handoff_kind, sensitive_since_handoff")
+    .select("owner, handoff_at, handoff_kind, handoff_reason, sensitive_since_handoff")
     .eq("conversation_id", input.conversationId)
     .maybeSingle();
 
@@ -70,7 +70,7 @@ export async function markHandoff(
       owner: "human",
       handoff_kind: keepKind ? control!.handoff_kind : input.kind,
       handoff_at: already ? control!.handoff_at : at,
-      handoff_reason: keepKind ? undefined : input.reason,
+      handoff_reason: keepKind ? (control?.handoff_reason ?? input.reason) : input.reason,
       sensitive_since_handoff:
         (already && Boolean(control?.sensitive_since_handoff)) || isSensitiveKind(input.kind),
       return_check_at: new Date(Date.now() + RETURN_CHECK_DEBOUNCE_MIN * 60_000).toISOString(),
