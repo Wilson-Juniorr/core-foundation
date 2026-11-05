@@ -375,7 +375,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
 
   /* Conversa com você: o agente não prepara nada. Quem decide a volta é a
      análise de retorno (return.server), nunca este ciclo. */
-  if (control.owner === "human") {
+  if (control.owner === "human" && config.autonomy !== "observe") {
     await db
       .from("followup_runs")
       .update({
