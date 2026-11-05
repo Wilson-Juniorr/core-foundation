@@ -44,6 +44,8 @@ export interface SmartDecisionInput {
   timingNote?: string | null;
   /** Condições comerciais ativas cadastradas pelo consultor (única fonte de descontos). */
   activeConditions?: string[];
+  /** Instruções do consultor para este cliente (prioridade máxima). */
+  consultantNotes?: string[];
 }
 
 const decisionSchema = {
@@ -105,6 +107,9 @@ function buildPrompt(input: SmartDecisionInput): string {
     input.control.audio_context_unknown
       ? "ATENÇÃO: existe áudio na conversa que não foi possível transcrever."
       : "",
+    input.consultantNotes && input.consultantNotes.length > 0
+      ? `INSTRUÇÕES DO CONSULTOR PARA ESTE CLIENTE (prioridade máxima, mais recente primeiro):\n${input.consultantNotes.map((n) => `- ${n}`).join("\n")}`
+      : "",
     input.memorySummary ? `Memória do cliente: ${input.memorySummary}` : "",
     input.dealSheet && input.dealSheet.length > 0
       ? `Ficha do cliente:\n${input.dealSheet.map((line) => `- ${line}`).join("\n")}\nUse a ficha para adaptar o tom: com quem decide em jogo, ofereça ajuda para a conversa com essa pessoa; cliente frio pede mensagem mais leve e espaçada; etapa "Pronto para fechar" vai para o consultor (handoff); etapa "Achou caro" também vai para o consultor, a menos que exista uma condição comercial ativa que responda à objeção.`
@@ -161,6 +166,8 @@ REGRAS ABSOLUTAS:
 - Só use action="send" quando houver silêncio do cliente sem compromisso pendente e a mensagem fizer sentido no contexto atual.
 - A estratégia escolhida deve estar na lista de estratégias permitidas e não deve repetir uma estratégia recém-usada.
 - Se a conversa tem áudio não transcrito e a decisão é de risco, prefira handoff.
+- O que o CONSULTOR disse na conversa é a verdade: nunca repita o que ele já disse, nunca contradiga, e nunca cite valor, plano ou condição diferente do que ele passou.
+- Preço, desconto, negociação e dúvidas técnicas (carência, rede, coparticipação, reembolso) são sempre do consultor: use action="handoff".
 - confidence entre 0 e 1 reflete o quanto o contexto sustenta a decisão. Seja conservador.
 - "message" é uma mensagem curta em português do Brasil, tom humano, sem emoji excessivo, sem prometer nada. Preencha apenas quando action="send".
 - wait_hours é quantas horas esperar antes de reavaliar (use 0 quando não se aplica).
