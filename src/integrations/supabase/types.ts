@@ -745,6 +745,7 @@ export type Database = {
           context_updated_at: string | null
           context_version: number
           conversation_id: string
+          cooldown_waived_at: string | null
           created_at: string
           decision_reason: string | null
           force_approval_next: boolean
@@ -783,6 +784,7 @@ export type Database = {
           context_updated_at?: string | null
           context_version?: number
           conversation_id: string
+          cooldown_waived_at?: string | null
           created_at?: string
           decision_reason?: string | null
           force_approval_next?: boolean
@@ -821,6 +823,7 @@ export type Database = {
           context_updated_at?: string | null
           context_version?: number
           conversation_id?: string
+          cooldown_waived_at?: string | null
           created_at?: string
           decision_reason?: string | null
           force_approval_next?: boolean
