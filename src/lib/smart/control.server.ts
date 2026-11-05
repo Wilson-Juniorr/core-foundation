@@ -228,6 +228,41 @@ export async function registerHumanIntervention(
 
   await refreshPressure(db, input.userId, input.conversationId);
 
+  /* Saída do agente com motivo + promessas suas ("te mando amanhã").
+     Só para conversas com acompanhamento inteligente que possa voltar. */
+  try {
+    const { RESUMABLE_SMART_STATES, markHandoff } = await import("./return.server");
+    const { data: smartRuns } = await db
+      .from("followup_runs")
+      .select("id, status, smart_state, followup_flows!inner(kind)")
+      .eq("conversation_id", input.conversationId)
+      .in("status", ["active", "paused"])
+      .eq("followup_flows.kind", "smart");
+    const resumable = (smartRuns ?? []).filter(
+      (run) => run.status === "active" || RESUMABLE_SMART_STATES.includes(run.smart_state ?? ""),
+    );
+    if (resumable.length > 0) {
+      const { extractAndStoreCommitments } = await import("./commitments.server");
+      const promises = await extractAndStoreCommitments(db, {
+        userId: input.userId,
+        conversationId: input.conversationId,
+        contactId: input.contactId ?? null,
+        messageId: input.messageId ?? null,
+        text: input.text ?? null,
+        direction: "outbound",
+      });
+      const promise = promises.find((item) => item.responsible === "human");
+      await markHandoff(db, {
+        conversationId: input.conversationId,
+        kind: promise ? "human_promise" : "manual",
+        reason: promise ? `Você prometeu: ${promise.description}` : "Você conversou com o cliente.",
+        at,
+      });
+    }
+  } catch (error) {
+    console.error("smart_handoff_mark_failed", error);
+  }
+
   await writeAudit(db, input.userId, {
     action: "smart_human_intervention",
     summary: "Mensagem manual detectada: automação inteligente suspensa nesta conversa.",
