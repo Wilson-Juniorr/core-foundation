@@ -555,7 +555,7 @@ function FollowupsPage() {
         <SettingsCard />
 
         <Tabs defaultValue={pendingApprovals > 0 ? "approvals" : "flows"}>
-          <TabsList>
+          <TabsList className="h-auto flex-wrap justify-start">
             <TabsTrigger value="approvals">
               Aprovações{pendingApprovals > 0 ? ` (${pendingApprovals})` : ""}
             </TabsTrigger>
