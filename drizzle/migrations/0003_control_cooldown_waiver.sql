@@ -1,0 +1,1 @@
+ALTER TABLE public.conversation_control ADD COLUMN IF NOT EXISTS cooldown_waived_at timestamptz;

@@ -167,7 +167,39 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                       ? (message.metadata as { source?: string }).source
                       : undefined;
 
+                  /* Eco do próprio envio automático: o aviso do WhatsApp pode chegar
+                     antes de o sistema registrar o envio. Sem esta conferência, o
+                     agente acharia que você assumiu e se calaria. */
+                  let echo = false;
                   if (conversation && source !== "automation") {
+                    const at = new Date(event.message.timestamp);
+                    const { data: recent } = await supabaseAdmin
+                      .from("messages")
+                      .select("message_type, text_content, created_at, metadata")
+                      .eq("conversation_id", conversation.id)
+                      .eq("direction", "outbound")
+                      .gte("created_at", new Date(at.getTime() - 3 * 60_000).toISOString())
+                      .limit(20);
+                    const { isAutomationEcho } = await import("@/lib/smart/handoff");
+                    echo = isAutomationEcho(
+                      { type: event.message.type, text: event.message.text ?? null, at },
+                      (recent ?? [])
+                        .filter(
+                          (row) =>
+                            (row.metadata as { source?: string } | null)?.source === "automation",
+                        )
+                        .map((row) => ({
+                          type: row.message_type,
+                          text: row.text_content,
+                          at: new Date(row.created_at),
+                        })),
+                    );
+                    if (echo) {
+                      waLog.info("automation_echo_ignored", { connection_id: connection.id });
+                    }
+                  }
+
+                  if (conversation && source !== "automation" && !echo) {
                     const { registerHumanIntervention } =
                       await import("@/lib/smart/control.server");
                     await registerHumanIntervention(supabaseAdmin, {

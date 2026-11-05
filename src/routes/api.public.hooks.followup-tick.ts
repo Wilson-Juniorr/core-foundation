@@ -47,7 +47,25 @@ export const Route = createFileRoute("/api/public/hooks/followup-tick")({
             smart = { error: "smart_tick_failed" };
           }
 
-          return Response.json({ ok: true, ...result, smart, watchdog });
+          /* Volta do agente e avisos no WhatsApp pessoal. Isolados: uma falha
+             aqui não derruba o envio dos follow-ups. */
+          let handoff: unknown = null;
+          try {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { processReturns } = await import("@/lib/smart/return.server");
+            const { dispatchOwnerAlerts, queueStuckAlerts, queueWaitingAlerts } =
+              await import("@/lib/smart/owner-alerts.server");
+            const returns = await processReturns(supabaseAdmin, 20);
+            const waiting = await queueWaitingAlerts(supabaseAdmin);
+            const stuck = await queueStuckAlerts(supabaseAdmin);
+            const alerts = await dispatchOwnerAlerts(supabaseAdmin);
+            handoff = { ...returns, waiting, stuck, alerts };
+          } catch (handoffError) {
+            console.error("handoff_tick_failed", handoffError);
+            handoff = { error: "handoff_tick_failed" };
+          }
+
+          return Response.json({ ok: true, ...result, smart, watchdog, handoff });
         } catch (error) {
           console.error("followup_tick_failed", error);
           return Response.json({ ok: false, error: "tick_failed" }, { status: 500 });

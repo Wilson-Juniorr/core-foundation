@@ -54,7 +54,11 @@ export type AuditAction =
   | "smart_action_rejected"
   | "smart_refusal_detected"
   | "smart_loss_reason_captured"
-  | "smart_declined";
+  | "smart_declined"
+  | "smart_handoff"
+  | "smart_return_planned"
+  | "smart_agent_returned"
+  | "smart_instruction_saved";
 
 export type AuditSeverity = "info" | "warning" | "critical";
 
@@ -121,6 +125,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   smart_refusal_detected: "Cliente sinalizou desinteresse",
   smart_loss_reason_captured: "Motivo da recusa registrado",
   smart_declined: "Acompanhamento declinado com elegância",
+  smart_handoff: "Agente passou a conversa para você",
+  smart_return_planned: "Volta do agente planejada",
+  smart_agent_returned: "Agente voltou à conversa",
+  smart_instruction_saved: "Instrução para o agente",
 };
 
 export const AUDIT_FILTERS = [
@@ -174,6 +182,10 @@ export const AUDIT_FILTER_ACTIONS: Record<Exclude<AuditFilter, "all">, string[]>
     "smart_irritation_detected",
     "smart_action_approved",
     "smart_action_rejected",
+    "smart_handoff",
+    "smart_return_planned",
+    "smart_agent_returned",
+    "smart_instruction_saved",
   ],
   recovery: [
     "scheduled_action_cancelled",

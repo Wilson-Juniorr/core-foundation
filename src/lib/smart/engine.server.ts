@@ -164,6 +164,16 @@ export async function startSmartFlow(
     state: "waiting_customer",
     next_responsible: "system",
     next_responsible_reason: "Acompanhamento inteligente iniciado.",
+    handoff_kind: null,
+    handoff_at: null,
+    handoff_reason: null,
+    sensitive_since_handoff: false,
+    return_check_at: null,
+    return_mode: null,
+    return_at: null,
+    return_reason: null,
+    return_source: null,
+    force_approval_next: false,
   });
   await refreshPressure(db, userId, input.conversationId);
 
@@ -218,6 +228,18 @@ async function completeRun(
   });
 }
 
+/** Silêncio após sua mensagem; dispensado quando você mesmo mandou o agente voltar. */
+function effectiveCooldown(control: {
+  last_human_message_at: string | null;
+  cooldown_waived_at: string | null;
+}): Date | null {
+  if (!control.last_human_message_at) return null;
+  if (control.cooldown_waived_at && control.cooldown_waived_at >= control.last_human_message_at) {
+    return null;
+  }
+  return humanCooldownUntil(new Date(control.last_human_message_at));
+}
+
 async function handoff(
   db: Admin,
   run: {
@@ -247,6 +269,17 @@ async function handoff(
     next_responsible_reason: reason,
     decision_reason: reason,
   });
+
+  try {
+    const { markHandoff } = await import("./return.server");
+    await markHandoff(db, {
+      conversationId: run.conversation_id,
+      kind: extra?.["commitment_id"] ? "human_promise" : "low_confidence",
+      reason,
+    });
+  } catch (error) {
+    console.error("smart_handoff_mark_failed", error);
+  }
 
   await writeAudit(db, run.user_id, {
     action: "smart_low_confidence_handoff",
@@ -350,10 +383,35 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const control = (await ensureControl(db, run.user_id, run.conversation_id))!;
   const pressure = await refreshPressure(db, run.user_id, run.conversation_id);
 
+  /* Conversa com você: o agente não prepara nada. Quem decide a volta é a
+     análise de retorno (return.server), nunca este ciclo. */
+  if (control.owner === "human" && config.autonomy !== "observe") {
+    await db
+      .from("followup_runs")
+      .update({
+        smart_state: "human_active",
+        next_evaluation_at:
+          control.return_at ?? new Date(now.getTime() + 12 * HOUR_MS).toISOString(),
+      })
+      .eq("id", run.id);
+    if (!control.handoff_at && !control.return_check_at) {
+      await db
+        .from("conversation_control")
+        .update({
+          handoff_kind: "manual",
+          handoff_at: control.last_human_message_at ?? now.toISOString(),
+          handoff_reason: "Você conversou com o cliente.",
+          return_check_at: now.toISOString(),
+        })
+        .eq("conversation_id", run.conversation_id);
+    }
+    return "owner_human";
+  }
+
   // Cooldown após intervenção humana: a IA observa, não fala.
-  if (control.last_human_message_at) {
-    const cooldown = humanCooldownUntil(new Date(control.last_human_message_at));
-    if (now < cooldown) {
+  {
+    const cooldown = effectiveCooldown(control);
+    if (cooldown && now < cooldown) {
       await db
         .from("followup_runs")
         .update({ smart_state: "human_active", next_evaluation_at: cooldown.toISOString() })
@@ -499,7 +557,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       .join(" · "),
   );
 
+  const { consultantNotes } = await import("./return.server");
+  const notes = await consultantNotes(db, run.conversation_id);
+
   const decision = await decideNextStep(db, {
+    consultantNotes: notes,
     activeConditions,
     config,
     control,
@@ -637,6 +699,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   // nunca saem sem você ver.
   const needsApproval =
     Boolean(forcedStrategy) ||
+    control.force_approval_next ||
     config.autonomy !== "auto" ||
     quality.verdict === "review" ||
     decision.confidence < Number(config.confidence_min);
@@ -671,6 +734,29 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
 
   if (error && error.code !== "23505") {
     throw new SmartFlowError(error.message, "schedule_failed");
+  }
+
+  /* Volta "avisa e espera seu ok": a mensagem fica em Aprovações e você
+     recebe um aviso no celular com o texto que ele mandaria. */
+  if (action && control.force_approval_next) {
+    await db
+      .from("conversation_control")
+      .update({ force_approval_next: false })
+      .eq("conversation_id", run.conversation_id);
+    try {
+      const { queueOwnerAlert } = await import("./owner-alerts.server");
+      await queueOwnerAlert(db, {
+        userId: run.user_id,
+        kind: "approval",
+        conversationId: run.conversation_id,
+        contactId: run.contact_id,
+        title: `${contact?.name ?? "Cliente"}: agente quer voltar, precisa do seu ok`,
+        body: `🤖 O agente quer voltar a falar com *${contact?.name ?? "o cliente"}* e precisa do seu ok:\n\n"${decision.message ?? ""}"\n\nAprove ou recuse em Follow-ups → Aprovações:\nhttps://engage-flow-89.lovable.app/followups`,
+        dedupeKey: `approval:${action.id}`,
+      });
+    } catch (alertError) {
+      console.error("approval_alert_failed", alertError);
+    }
   }
 
   await db
@@ -807,9 +893,7 @@ export async function smartPreSendCheck(db: Admin, action: ActionRow): Promise<S
       ? new Date(control.last_human_message_at)
       : null,
     lastInboundAt: control?.last_inbound_at ? new Date(control.last_inbound_at) : null,
-    humanCooldownUntil: control?.last_human_message_at
-      ? humanCooldownUntil(new Date(control.last_human_message_at))
-      : null,
+    humanCooldownUntil: control ? effectiveCooldown(control) : null,
     pressureScore: control?.pressure_score ?? 0,
     maxPressure: config?.max_pressure ?? 70,
     audioContextUnknown: Boolean(control?.audio_context_unknown),

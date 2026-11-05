@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
+import { AlertPhoneCard } from "@/components/smart/alert-phone-card";
 import { ErrorState, LoadingState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -154,6 +155,8 @@ function WhatsAppSettingsPage() {
   return (
     <AppShell title="WhatsApp" description="Conexão via UAZAPI e importação de histórico">
       <div className="grid gap-6 lg:grid-cols-2">
+        <AlertPhoneCard className="lg:col-span-2" />
+
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Criar instância automaticamente</CardTitle>

@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_instructions: {
+        Row: {
+          agent_reply: string | null
+          applied_at: string | null
+          contact_id: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          kind: string
+          note: string | null
+          return_at: string | null
+          return_mode: string | null
+          status: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          agent_reply?: string | null
+          applied_at?: string | null
+          contact_id?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          return_at?: string | null
+          return_mode?: string | null
+          status?: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          agent_reply?: string | null
+          applied_at?: string | null
+          contact_id?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          return_at?: string | null
+          return_mode?: string | null
+          status?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_analysis_jobs: {
         Row: {
           attempts: number
@@ -697,13 +745,20 @@ export type Database = {
           context_updated_at: string | null
           context_version: number
           conversation_id: string
+          cooldown_waived_at: string | null
           created_at: string
           decision_reason: string | null
+          force_approval_next: boolean
+          handoff_at: string | null
+          handoff_kind: string | null
+          handoff_reason: string | null
           interest_score: number | null
+          last_alerted_inbound_at: string | null
           last_analyzed_message_id: string | null
           last_automation_at: string | null
           last_human_message_at: string | null
           last_inbound_at: string | null
+          last_stuck_alert_at: string | null
           next_responsible: string
           next_responsible_at: string | null
           next_responsible_reason: string | null
@@ -712,6 +767,12 @@ export type Database = {
           pressure_score: number
           primary_objection: string | null
           response_probability: number | null
+          return_at: string | null
+          return_check_at: string | null
+          return_mode: string | null
+          return_reason: string | null
+          return_source: string | null
+          sensitive_since_handoff: boolean
           state: string
           updated_at: string
           user_id: string
@@ -723,13 +784,20 @@ export type Database = {
           context_updated_at?: string | null
           context_version?: number
           conversation_id: string
+          cooldown_waived_at?: string | null
           created_at?: string
           decision_reason?: string | null
+          force_approval_next?: boolean
+          handoff_at?: string | null
+          handoff_kind?: string | null
+          handoff_reason?: string | null
           interest_score?: number | null
+          last_alerted_inbound_at?: string | null
           last_analyzed_message_id?: string | null
           last_automation_at?: string | null
           last_human_message_at?: string | null
           last_inbound_at?: string | null
+          last_stuck_alert_at?: string | null
           next_responsible?: string
           next_responsible_at?: string | null
           next_responsible_reason?: string | null
@@ -738,6 +806,12 @@ export type Database = {
           pressure_score?: number
           primary_objection?: string | null
           response_probability?: number | null
+          return_at?: string | null
+          return_check_at?: string | null
+          return_mode?: string | null
+          return_reason?: string | null
+          return_source?: string | null
+          sensitive_since_handoff?: boolean
           state?: string
           updated_at?: string
           user_id: string
@@ -749,13 +823,20 @@ export type Database = {
           context_updated_at?: string | null
           context_version?: number
           conversation_id?: string
+          cooldown_waived_at?: string | null
           created_at?: string
           decision_reason?: string | null
+          force_approval_next?: boolean
+          handoff_at?: string | null
+          handoff_kind?: string | null
+          handoff_reason?: string | null
           interest_score?: number | null
+          last_alerted_inbound_at?: string | null
           last_analyzed_message_id?: string | null
           last_automation_at?: string | null
           last_human_message_at?: string | null
           last_inbound_at?: string | null
+          last_stuck_alert_at?: string | null
           next_responsible?: string
           next_responsible_at?: string | null
           next_responsible_reason?: string | null
@@ -764,6 +845,12 @@ export type Database = {
           pressure_score?: number
           primary_objection?: string | null
           response_probability?: number | null
+          return_at?: string | null
+          return_check_at?: string | null
+          return_mode?: string | null
+          return_reason?: string | null
+          return_source?: string | null
+          sensitive_since_handoff?: boolean
           state?: string
           updated_at?: string
           user_id?: string
@@ -1635,6 +1722,57 @@ export type Database = {
           },
         ]
       }
+      owner_alerts: {
+        Row: {
+          attempts: number
+          body: string
+          contact_id: string | null
+          conversation_id: string | null
+          created_at: string
+          dedupe_key: string
+          id: string
+          kind: string
+          last_error: string | null
+          send_after: string
+          sent_at: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key: string
+          id?: string
+          kind: string
+          last_error?: string | null
+          send_after?: string
+          sent_at?: string | null
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          contact_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          dedupe_key?: string
+          id?: string
+          kind?: string
+          last_error?: string | null
+          send_after?: string
+          sent_at?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pipeline_stages: {
         Row: {
           created_at: string
@@ -2057,6 +2195,8 @@ export type Database = {
       user_settings: {
         Row: {
           active_conversation_minutes: number
+          alert_phone: string | null
+          alert_waiting_minutes: number
           automation_paused: boolean
           automation_paused_at: string | null
           confidence_approval_min: number
@@ -2082,6 +2222,8 @@ export type Database = {
         }
         Insert: {
           active_conversation_minutes?: number
+          alert_phone?: string | null
+          alert_waiting_minutes?: number
           automation_paused?: boolean
           automation_paused_at?: string | null
           confidence_approval_min?: number
@@ -2107,6 +2249,8 @@ export type Database = {
         }
         Update: {
           active_conversation_minutes?: number
+          alert_phone?: string | null
+          alert_waiting_minutes?: number
           automation_paused?: boolean
           automation_paused_at?: string | null
           confidence_approval_min?: number

@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { FlowBuilderDialog } from "@/components/followup/flow-builder-dialog";
 import { SmartFlowDialog } from "@/components/smart/smart-flow-dialog";
 import { SmartApprovalsList } from "@/components/smart/smart-approvals-list";
+import { WaitingForYouList } from "@/components/smart/waiting-for-you-list";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { smartApprovalsQuery, smartFlowsQuery } from "@/lib/smart.queries";
 import { AUTONOMY_LABELS } from "@/lib/smart/types";
@@ -524,7 +525,6 @@ function FollowupsPage() {
   const approvals = useQuery(smartApprovalsQuery());
   const pendingApprovals = (approvals.data ?? []).length;
 
-
   function openBuilder(flowId: string | null) {
     setEditingFlowId(flowId);
     setBuilderOpen(true);
@@ -554,10 +554,11 @@ function FollowupsPage() {
         <SettingsCard />
 
         <Tabs defaultValue={pendingApprovals > 0 ? "approvals" : "flows"}>
-          <TabsList>
+          <TabsList className="h-auto flex-wrap justify-start">
             <TabsTrigger value="approvals">
               Aprovações{pendingApprovals > 0 ? ` (${pendingApprovals})` : ""}
             </TabsTrigger>
+            <TabsTrigger value="waiting">Esperando você</TabsTrigger>
             <TabsTrigger value="flows">Fluxos</TabsTrigger>
             <TabsTrigger value="smart">Inteligentes</TabsTrigger>
             <TabsTrigger value="active">Ativos</TabsTrigger>
@@ -568,6 +569,9 @@ function FollowupsPage() {
 
           <TabsContent value="approvals" className="mt-4">
             <SmartApprovalsList />
+          </TabsContent>
+          <TabsContent value="waiting" className="mt-4">
+            <WaitingForYouList />
           </TabsContent>
           <TabsContent value="flows" className="mt-4">
             <FlowsTab onEdit={openBuilder} />

@@ -591,6 +591,22 @@ async function conversationForSend(userId: string, conversationId: string) {
 export type SendSource = "manual" | "automation";
 
 /**
+ * Aviso interno para o celular pessoal do consultor. Não cria conversa nem
+ * mensagem de cliente e nunca passa pelo motor de follow-up.
+ */
+export async function sendOwnerNotice(
+  userId: string,
+  input: { phoneNumber: string; text: string },
+): Promise<void> {
+  const { connection, creds } = await requireConnection(userId);
+  if (connection.status !== "connected") {
+    throw new Error("WhatsApp desconectado: o aviso fica guardado até reconectar.");
+  }
+  const provider = await getWhatsAppProvider(connection.provider);
+  await provider.sendTextMessage(creds, { phoneNumber: input.phoneNumber, text: input.text });
+}
+
+/**
  * Credencial recusada pelo provedor: a conexão é marcada como `error` para que
  * o motor de follow-up reagende as ações em vez de queimar tentativas.
  */
