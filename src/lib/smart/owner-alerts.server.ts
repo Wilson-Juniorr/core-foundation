@@ -208,6 +208,17 @@ export async function queueStuckAlerts(db: Admin, now = new Date()): Promise<num
       .pop() as string;
     if (addBusinessDays(new Date(lastActivity), 2) > now) continue;
 
+    // Só conversas com acompanhamento inteligente que o agente poderia retomar.
+    const { data: smartRun } = await db
+      .from("followup_runs")
+      .select("id, followup_flows!inner(kind)")
+      .eq("conversation_id", row.conversation_id)
+      .in("status", ["active", "paused"])
+      .in("smart_state", ["human_active", "needs_human", "closing"])
+      .eq("followup_flows.kind", "smart")
+      .limit(1);
+    if ((smartRun ?? []).length === 0) continue;
+
     const { data: conversation } = await db
       .from("conversations")
       .select("contact_id")
@@ -303,8 +314,10 @@ export async function dispatchOwnerAlerts(
       sent += alerts.length;
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 300) : "falha no envio";
+      // WhatsApp fora do ar não gasta tentativa: o aviso sai quando reconectar.
+      const disconnected = /desconectad/i.test(message);
       for (const alert of alerts) {
-        const attempts = alert.attempts + 1;
+        const attempts = disconnected ? alert.attempts : alert.attempts + 1;
         await db
           .from("owner_alerts")
           .update({
