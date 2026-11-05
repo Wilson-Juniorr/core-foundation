@@ -390,7 +390,8 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       .from("followup_runs")
       .update({
         smart_state: "human_active",
-        next_evaluation_at: control.return_at ?? new Date(now.getTime() + 12 * HOUR_MS).toISOString(),
+        next_evaluation_at:
+          control.return_at ?? new Date(now.getTime() + 12 * HOUR_MS).toISOString(),
       })
       .eq("id", run.id);
     if (!control.handoff_at && !control.return_check_at) {

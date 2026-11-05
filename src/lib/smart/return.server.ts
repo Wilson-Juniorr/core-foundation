@@ -131,7 +131,9 @@ export async function pauseSmartRuns(
 async function resumableRuns(db: Admin, conversationId: string) {
   const { data } = await db
     .from("followup_runs")
-    .select("id, user_id, contact_id, opportunity_id, status, smart_state, followup_flows!inner(kind)")
+    .select(
+      "id, user_id, contact_id, opportunity_id, status, smart_state, followup_flows!inner(kind)",
+    )
     .eq("conversation_id", conversationId)
     .in("status", ["active", "paused"])
     .in("smart_state", RESUMABLE_SMART_STATES)
@@ -306,7 +308,10 @@ export async function computeReturnPlan(db: Admin, control: ControlRow, now = ne
     lastInboundAt: control.last_inbound_at ? new Date(control.last_inbound_at) : null,
     lastHumanAt: control.last_human_message_at ? new Date(control.last_human_message_at) : null,
     pendingHumanPromise: promise
-      ? { description: promise.description, dueAt: promise.due_at ? new Date(promise.due_at) : null }
+      ? {
+          description: promise.description,
+          dueAt: promise.due_at ? new Date(promise.due_at) : null,
+        }
       : null,
     instruction: instruction
       ? {
@@ -342,7 +347,11 @@ export async function computeReturnPlan(db: Admin, control: ControlRow, now = ne
     entityType: "conversation",
     entityId: control.conversation_id,
     actor: "system",
-    metadata: { mode: decision.mode, at: decision.at?.toISOString() ?? null, source: decision.source },
+    metadata: {
+      mode: decision.mode,
+      at: decision.at?.toISOString() ?? null,
+      source: decision.source,
+    },
   });
 
   return `planned_${decision.mode}`;
@@ -572,8 +581,7 @@ export async function interpretInstruction(
 
   const mode: "auto" | "confirm" = data.mode === "confirm" ? "confirm" : "auto";
   const hour = Math.max(9, Math.min(18, Math.round(Number(data.hour) || 10)));
-  const target =
-    /^\d{4}-\d{2}-\d{2}$/.test(data.date ?? "") ? zonedDateTime(data.date, hour) : now;
+  const target = /^\d{4}-\d{2}-\d{2}$/.test(data.date ?? "") ? zonedDateTime(data.date, hour) : now;
   const at = alignToBusinessWindow(target > now ? target : now);
   const soon = at.getTime() - now.getTime() < 10 * 60_000;
   return {
@@ -686,6 +694,7 @@ export async function consultantNotes(db: Admin, conversationId: string): Promis
     .order("created_at", { ascending: false })
     .limit(8);
   return (data ?? []).map(
-    (row) => `${row.created_at.slice(0, 10)}: ${row.note ? `${row.note} (“${row.text}”)` : row.text}`,
+    (row) =>
+      `${row.created_at.slice(0, 10)}: ${row.note ? `${row.note} (“${row.text}”)` : row.text}`,
   );
 }

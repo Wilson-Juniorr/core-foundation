@@ -13,7 +13,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { DEFAULT_TIMEZONE } from "@/lib/followup/time";
 import { addBusinessDays } from "./business-calendar";
-import { alertSendAfter, customerWaitingTooLong, HANDOFF_KIND_LABELS, type HandoffKind } from "./handoff";
+import {
+  alertSendAfter,
+  customerWaitingTooLong,
+  HANDOFF_KIND_LABELS,
+  type HandoffKind,
+} from "./handoff";
 
 type Admin = SupabaseClient<Database>;
 
@@ -109,7 +114,9 @@ export async function queueWaitingAlerts(db: Admin, now = new Date()): Promise<n
       now,
       lastInboundAt: row.last_inbound_at ? new Date(row.last_inbound_at) : null,
       lastOutboundAt: latestOutbound ? new Date(latestOutbound) : null,
-      lastAlertedInboundAt: row.last_alerted_inbound_at ? new Date(row.last_alerted_inbound_at) : null,
+      lastAlertedInboundAt: row.last_alerted_inbound_at
+        ? new Date(row.last_alerted_inbound_at)
+        : null,
       thresholdMinutes: threshold,
     });
     if (!waiting) continue;
@@ -300,9 +307,7 @@ export async function dispatchOwnerAlerts(
         : [
             `📋 *Resumo: ${alerts.length} clientes precisam de você*`,
             "",
-            ...alerts.map(
-              (alert) => `• ${alert.title}\n  ${clientLink(alert.contact_id)}`,
-            ),
+            ...alerts.map((alert) => `• ${alert.title}\n  ${clientLink(alert.contact_id)}`),
           ].join("\n");
 
     try {

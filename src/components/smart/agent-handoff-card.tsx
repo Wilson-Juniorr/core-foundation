@@ -245,7 +245,8 @@ export function AgentHandoffCard({ conversationId }: { conversationId: string | 
                         <p className="text-xs text-muted-foreground">{item.reply}</p>
                       ) : null}
                       <p className="text-[11px] text-muted-foreground">
-                        {formatDateTime(item.createdAt)} · {STATUS_LABEL[item.status] ?? item.status}
+                        {formatDateTime(item.createdAt)} ·{" "}
+                        {STATUS_LABEL[item.status] ?? item.status}
                       </p>
                     </div>
                     {item.status === "active" ? (

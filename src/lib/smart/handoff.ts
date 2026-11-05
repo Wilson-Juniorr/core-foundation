@@ -224,7 +224,8 @@ export function decideReturn(input: ReturnInput): ReturnDecision {
       return { mode: "hold", at: null, reason, source: "ai" };
     }
     const mode: ReturnMode = sensitive ? "confirm" : input.aiProposal.mode;
-    const wanted = input.aiProposal.at && input.aiProposal.at > earliest ? input.aiProposal.at : earliest;
+    const wanted =
+      input.aiProposal.at && input.aiProposal.at > earliest ? input.aiProposal.at : earliest;
     return {
       mode,
       at: alignToBusinessWindow(wanted, tz),

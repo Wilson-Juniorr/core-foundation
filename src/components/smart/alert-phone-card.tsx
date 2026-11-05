@@ -49,9 +49,9 @@ export function AlertPhoneCard({ className }: { className?: string }) {
           <BellRing className="size-4" /> Avisos no seu WhatsApp pessoal
         </CardTitle>
         <CardDescription>
-          O número da empresa te avisa quando um cliente fica esperando resposta, quando alguém
-          fica parado com você e quando o agente precisa do seu ok. Fora do horário útil (dia útil,
-          8h às 20h), os avisos chegam juntos num resumo às 8h.
+          O número da empresa te avisa quando um cliente fica esperando resposta, quando alguém fica
+          parado com você e quando o agente precisa do seu ok. Fora do horário útil (dia útil, 8h às
+          20h), os avisos chegam juntos num resumo às 8h.
         </CardDescription>
       </CardHeader>
       <CardContent>

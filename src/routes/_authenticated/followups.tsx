@@ -525,7 +525,6 @@ function FollowupsPage() {
   const approvals = useQuery(smartApprovalsQuery());
   const pendingApprovals = (approvals.data ?? []).length;
 
-
   function openBuilder(flowId: string | null) {
     setEditingFlowId(flowId);
     setBuilderOpen(true);

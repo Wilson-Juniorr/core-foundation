@@ -108,10 +108,7 @@ export const cancelInstructionFn = createServerFn({ method: "POST" })
     if (!row) throw new Error("Instrução não encontrada.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("agent_instructions")
-      .update({ status: "cancelled" })
-      .eq("id", row.id);
+    await supabaseAdmin.from("agent_instructions").update({ status: "cancelled" }).eq("id", row.id);
 
     // Sem a instrução, o agente reanalisa a conversa para decidir a volta.
     if (row.status === "active" && (row.kind === "return" || row.kind === "hold")) {
