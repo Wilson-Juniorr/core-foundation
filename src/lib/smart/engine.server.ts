@@ -373,6 +373,30 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const control = (await ensureControl(db, run.user_id, run.conversation_id))!;
   const pressure = await refreshPressure(db, run.user_id, run.conversation_id);
 
+  /* Conversa com você: o agente não prepara nada. Quem decide a volta é a
+     análise de retorno (return.server), nunca este ciclo. */
+  if (control.owner === "human") {
+    await db
+      .from("followup_runs")
+      .update({
+        smart_state: "human_active",
+        next_evaluation_at: control.return_at ?? new Date(now.getTime() + 12 * HOUR_MS).toISOString(),
+      })
+      .eq("id", run.id);
+    if (!control.handoff_at && !control.return_check_at) {
+      await db
+        .from("conversation_control")
+        .update({
+          handoff_kind: "manual",
+          handoff_at: control.last_human_message_at ?? now.toISOString(),
+          handoff_reason: "Você conversou com o cliente.",
+          return_check_at: now.toISOString(),
+        })
+        .eq("conversation_id", run.conversation_id);
+    }
+    return "owner_human";
+  }
+
   // Cooldown após intervenção humana: a IA observa, não fala.
   {
     const cooldown = effectiveCooldown(control);
