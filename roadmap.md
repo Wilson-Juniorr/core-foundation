@@ -2,9 +2,11 @@
 - [x] Agenda em dias úteis/feriados + "daqui N dias"
 - [x] Condições e campanhas (tela + uso pelo agente)
 - [x] Ficha viva: etapa, decisor, plano cotado e temperatura por cliente
-- [ ] Desenho de saída/volta do agente (regras + falhas) — aguardando decisões do usuário
-- [ ] Devolver ao agente automaticamente após intervenção humana
-- [ ] Nenhum cliente sem dono: lista "Esperando você" + alerta de pausados esquecidos (8 pós-cotação parados desde setembro)
-- [ ] Evitar que o agente confunda a própria mensagem com a do consultor
+- [x] Desenho de saída/volta do agente (regras + falhas)
+- [x] Devolver ao agente após intervenção humana (análise + instruções + travas)
+- [x] Lista "Esperando você" + alerta de parados há 2 dias úteis
+- [x] Evitar que o agente confunda a própria mensagem com a do consultor
+- [x] Alerta de 10 min no WhatsApp pessoal
+- [ ] Usuário cadastrar o número pessoal em Configurações → WhatsApp e publicar
 - [ ] Painel por etapa
 - [ ] Ajuste de tom (aguarda exemplos reais de conversa do usuário)
