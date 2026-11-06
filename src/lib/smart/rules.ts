@@ -335,7 +335,8 @@ export function extractCommitments(input: {
   }
 
   const dated = results.filter(
-    (item) => item.commitment_type !== "consult_third_party" && (item.due_at || item.due_window_end),
+    (item) =>
+      item.commitment_type !== "consult_third_party" && (item.due_at || item.due_window_end),
   );
   // Pedido de retorno/prazo sem data reconhecível: não chutamos, pedimos revisão.
   if (dated.length === 0 && (callbackRequested || deadlinePromise)) {

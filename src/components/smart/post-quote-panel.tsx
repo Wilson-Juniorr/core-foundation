@@ -16,6 +16,7 @@ import {
   activatePostQuoteFn,
   controlPostQuoteFn,
   postQuoteViewFn,
+  resolvePostQuoteFn,
 } from "@/lib/post-quote.functions";
 import { formatDateTime } from "@/lib/domain/datetime";
 import { localInstant } from "@/lib/smart/post-quote-cadence";
@@ -29,7 +30,9 @@ export function PostQuotePanel({
   const client = useQueryClient();
   const view = useServerFn(postQuoteViewFn),
     activate = useServerFn(activatePostQuoteFn),
-    control = useServerFn(controlPostQuoteFn);
+    control = useServerFn(controlPostQuoteFn),
+    resolve = useServerFn(resolvePostQuoteFn);
+  const [evidence, setEvidence] = useState("");
   const query = useQuery({
     queryKey: ["post-quote", contactId],
     queryFn: () => view({ data: { contactId } }),
@@ -84,6 +87,26 @@ export function PostQuotePanel({
     },
     onError: (e) => toast.error(e.message),
   });
+  const settle = useMutation({
+    mutationFn: (
+      input:
+        | { kind: "uncertain"; actionId: string; outcome: "delivered" | "not_delivered" }
+        | { kind: "date_review"; commitmentId: string },
+    ) =>
+      resolve({
+        data:
+          input.kind === "uncertain"
+            ? { ...input, evidence }
+            : { ...input, note: evidence || "Revisado" },
+      }),
+    onSuccess: () => {
+      invalidate();
+      setEvidence("");
+      toast.success("Resolução registrada.");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const reviews = query.data?.reviews ?? [];
   const live = run && ["active", "paused"].includes(run.status);
   const status =
     run?.status === "active"
@@ -160,6 +183,68 @@ export function PostQuotePanel({
           {action?.content && (
             <p className="whitespace-pre-wrap border-l-2 pl-3 sm:col-span-2">{action.content}</p>
           )}
+        </div>
+      )}
+      {reviews.map((r) => (
+        <div
+          key={r.id}
+          role="alert"
+          className="space-y-2 border-l-2 border-destructive pl-3 text-sm"
+        >
+          <p className="font-medium">Bloqueado · revisão de data</p>
+          <p>{r.description}</p>
+          <p className="text-muted-foreground">
+            Nada será enviado até você revisar. Depois, use Reagendar para definir o próximo
+            contato.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={settle.isPending}
+            onClick={() => settle.mutate({ kind: "date_review", commitmentId: r.id })}
+          >
+            Marcar como revisado
+          </Button>
+        </div>
+      ))}
+      {action?.send_state === "uncertain" && (
+        <div role="alert" className="space-y-2 border-l-2 border-destructive pl-3 text-sm">
+          <p className="font-medium">Envio sem confirmação · reenvio suspenso</p>
+          <p className="text-muted-foreground">
+            Abra o WhatsApp do número conectado, entre na conversa deste cliente e confira se a
+            mensagem acima aparece como enviada
+            {action.send_started_at
+              ? ` por volta de ${formatDateTime(action.send_started_at)}`
+              : ""}
+            . Descreva o que você viu; sem isso a tentativa continua bloqueada.
+          </p>
+          <Input
+            aria-label="O que você verificou"
+            placeholder="Ex.: vi a mensagem com dois tiques às 10h02"
+            value={evidence}
+            onChange={(e) => setEvidence(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              disabled={settle.isPending}
+              onClick={() =>
+                settle.mutate({ kind: "uncertain", actionId: action.id, outcome: "delivered" })
+              }
+            >
+              Chegou ao cliente
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={settle.isPending}
+              onClick={() =>
+                settle.mutate({ kind: "uncertain", actionId: action.id, outcome: "not_delivered" })
+              }
+            >
+              Não chegou
+            </Button>
+          </div>
         </div>
       )}
       {live && (

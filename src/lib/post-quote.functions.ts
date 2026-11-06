@@ -19,13 +19,23 @@ export const postQuoteViewFn = createServerFn({ method: "GET" })
     const { data: actions } = run
       ? await context.supabase
           .from("scheduled_actions")
-          .select("id,status,scheduled_for,content,last_error,send_state,decision_reason")
+          .select(
+            "id,status,scheduled_for,content,last_error,send_state,decision_reason,send_started_at",
+          )
           .eq("flow_run_id", run.id)
           .in("status", ["scheduled", "blocked", "needs_approval", "processing"])
           .order("scheduled_for")
           .limit(1)
       : { data: [] };
-    return { run, action: actions?.[0] ?? null };
+    const { data: reviews } = run
+      ? await context.supabase
+          .from("commitments")
+          .select("id,description,created_at")
+          .eq("conversation_id", run.conversation_id)
+          .eq("commitment_type", "date_review")
+          .eq("status", "pending")
+      : { data: [] };
+    return { run, action: actions?.[0] ?? null, reviews: reviews ?? [] };
   });
 export const activatePostQuoteFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -62,5 +72,39 @@ export const controlPostQuoteFn = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { controlPostQuote } = await import("./smart/post-quote-runtime.server");
     await controlPostQuote(supabaseAdmin, context.userId, data);
+    return { ok: true };
+  });
+export const resolvePostQuoteFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.discriminatedUnion("kind", [
+      z.object({
+        kind: z.literal("uncertain"),
+        actionId: z.string().uuid(),
+        outcome: z.enum(["delivered", "not_delivered"]),
+        evidence: z.string().max(500),
+      }),
+      z.object({
+        kind: z.literal("date_review"),
+        commitmentId: z.string().uuid(),
+        note: z.string().max(500),
+      }),
+    ]).parse,
+  )
+  .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const runtime = await import("./smart/post-quote-runtime.server");
+    if (data.kind === "uncertain") {
+      const { data: own } = await context.supabase
+        .from("scheduled_actions")
+        .select("id")
+        .eq("id", data.actionId)
+        .eq("user_id", context.userId)
+        .single();
+      if (!own) throw new Error("Tentativa não encontrada.");
+      await runtime.resolveUncertainSend(supabaseAdmin, context.userId, data);
+    } else {
+      await runtime.resolveDateReview(supabaseAdmin, context.userId, data);
+    }
     return { ok: true };
   });

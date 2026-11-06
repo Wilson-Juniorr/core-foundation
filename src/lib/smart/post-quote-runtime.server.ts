@@ -243,7 +243,9 @@ export async function resolveUncertainSend(
 ) {
   const evidence = input.evidence.trim();
   if (evidence.length < 15)
-    throw new Error(`Confirmação insuficiente; a tentativa segue bloqueada. ${UNCERTAIN_CHECKLIST}`);
+    throw new Error(
+      `Confirmação insuficiente; a tentativa segue bloqueada. ${UNCERTAIN_CHECKLIST}`,
+    );
   const { data: action } = await db
     .from("scheduled_actions")
     .select("*")
