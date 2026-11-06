@@ -363,7 +363,7 @@ describe("Stage A closing round (isolated, fake clock + provider)", () => {
     const { resolveDateReview } = await import("./post-quote-runtime.server");
     const c = (
       await fixture.pg.query(
-        "INSERT INTO commitments(user_id,conversation_id,contact_id,commitment_type,responsible,description,is_ambiguous)VALUES($1,$2,$3,'date_review','human','Revise a data: data inexistente',true) RETURNING id",
+        "INSERT INTO commitments(user_id,conversation_id,contact_id,commitment_type,responsible,description,is_ambiguous,status)VALUES($1,$2,$3,'date_review','human','Revise a data: data inexistente',true,'pending') RETURNING id",
         [user, conv, contact],
       )
     ).rows[0] as { id: string };
