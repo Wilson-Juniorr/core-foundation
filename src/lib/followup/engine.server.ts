@@ -532,6 +532,10 @@ export async function resumeRun(userId: string, runId: string): Promise<void> {
     throw new FollowupError("Este acompanhamento não está pausado.", "invalid_state");
   }
 
+  if(run.policy_key==="post_quote_v1") {
+    const {controlPostQuote}=await import("@/lib/smart/post-quote-runtime.server");
+    await controlPostQuote(db,userId,{runId,command:"resume"}); return;
+  }
   const now = new Date();
   const settings = await loadUserSettings(db, userId);
   const { data: flow } = await db
@@ -890,7 +894,7 @@ async function releaseAction(
   await db.from("scheduled_actions").update(patch).eq("id", action.id).eq("status", "processing");
 }
 
-async function executeClaimedAction(db: Admin, action: ActionRow): Promise<ExecutionOutcome> {
+export async function executeClaimedAction(db: Admin, action: ActionRow): Promise<ExecutionOutcome> {
   const settings = await loadUserSettings(db, action.user_id);
   const now = new Date();
 
@@ -929,7 +933,7 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
 
   /* Última verificação de resposta imediatamente antes do envio: fecha a
      corrida entre "cliente respondeu às 09:59:59" e "executor às 10:00". */
-  if (action.cancel_on_reply) {
+  if (action.cancel_on_reply && !action.smart_strategy) {
     const since = run ? run.started_at : action.created_at;
     const repliedAt = await hasInboundReplyAfter(db, action.conversation_id, since);
     if (repliedAt) {
@@ -949,6 +953,14 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
         .data
     : null;
   const window = windowFor(settings, flow, step ?? null);
+  if(window && window.startMinutes===window.endMinutes) {
+    await releaseAction(db,action,{status:"blocked",last_error:"window_conflict",decision_reason:"Janelas de envio sem horário em comum."});
+    return "skipped";
+  }
+  if(action.send_state==="uncertain" || action.send_state==="started") {
+    await releaseAction(db,action,{status:"blocked",last_error:"send_result_uncertain"});
+    return "skipped";
+  }
   if (!isWithinWindow(now, window, settings.timezone)) {
     const next = nextAllowedInstant(now, window, settings.timezone);
     await releaseAction(db, action, {
@@ -1155,7 +1167,8 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
       opportunity_id: action.opportunity_id,
       metadata: { scheduled_action_id: action.id, preview: text },
     });
-    if (run && flow) await advanceRun(db, run, flow, settings);
+    if (run && flow && flow.kind !== "smart") await advanceRun(db, run, flow, settings);
+    else if(run) await db.from("followup_runs").update({status:"paused",smart_state:"simulated",next_evaluation_at:null,next_contact_reason:"Simulação concluída; nenhum contato realizado."}).eq("id",run.id);
     return "skipped";
   }
 
@@ -1181,6 +1194,10 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
 
   try {
     const sendResult = await deliverAction(db, effectiveAction, text);
+    if(action.logical_contact) {
+      const {recordPostQuoteAccepted}=await import("@/lib/smart/post-quote-runtime.server");
+      await recordPostQuoteAccepted(db,effectiveAction,sendResult.messageId);
+    }
 
     if (action.smart_strategy) {
       const { recordStrategyUsage } = await import("@/lib/smart/engine.server");
@@ -1227,10 +1244,16 @@ async function executeClaimedAction(db: Admin, action: ActionRow): Promise<Execu
       metadata: { conversation_id: action.conversation_id, action_type: action.action_type },
     });
 
-    if (run && flow) await advanceRun(db, run, flow, settings);
+    if (run && flow && flow.kind !== "smart") await advanceRun(db, run, flow, settings);
+    else if(run && !action.logical_contact) await db.from("followup_runs").update({status:"active",smart_state:"waiting_customer",next_evaluation_at:new Date(Date.now()+36*3_600_000).toISOString()}).eq("id",run.id);
     return "sent";
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha desconhecida";
+    const {data:attempt}=await db.from("scheduled_actions").select("send_state,message_id").eq("id",action.id).single();
+    if(attempt?.send_state==="uncertain" || attempt?.send_state==="started" || attempt?.send_state==="accepted") {
+      await releaseAction(db,action,{status:"blocked",send_state:attempt.send_state==="accepted"?"accepted":"uncertain",last_error:"send_result_uncertain",decision_reason:"Envio pode ter sido aceito. Confirmação pendente; reenvio automático bloqueado."});
+      return "skipped";
+    }
 
     /* WhatsApp desconectado não é culpa da etapa: a mensagem fica guardada,
        sem consumir tentativa, e sai assim que o número for reconectado
@@ -1331,6 +1354,7 @@ async function deliverAction(
       conversationId: action.conversation_id,
       text,
       source: "automation",
+      scheduledActionId: action.id,
     });
   }
 

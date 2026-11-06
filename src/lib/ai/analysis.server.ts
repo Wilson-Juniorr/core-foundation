@@ -80,20 +80,17 @@ async function loadMessages(
   contactId: string,
   afterId: string | null,
 ) {
-  const { data: all, error } = await admin
-    .from("messages")
-    .select("id, direction, message_type, text_content, sent_at")
-    .eq("user_id", userId)
-    .eq("contact_id", contactId)
-    .order("sent_at", { ascending: true })
-    .limit(400);
-  if (error) throw new Error(error.message);
-
-  const rows = all ?? [];
-  const cut = afterId ? rows.findIndex((row) => row.id === afterId) : -1;
-  const fresh = rows.slice(cut + 1);
-  const context = rows.slice(Math.max(0, cut + 1 - CONTEXT_MESSAGE_LIMIT), cut + 1);
-  return { fresh: fresh.slice(-NEW_MESSAGE_LIMIT), context, total: rows.length };
+  const {data:memory}=await admin.from("customer_memory").select("message_cursor_at,message_cursor_id").eq("user_id",userId).eq("contact_id",contactId).is("opportunity_id",null).maybeSingle();
+  const oldCursor=afterId ? (await admin.from("messages").select("id,sent_at").eq("id",afterId).eq("user_id",userId).maybeSingle()).data : null;
+  const cursorAt=memory?.message_cursor_at ?? oldCursor?.sent_at;
+  const cursorId=memory?.message_cursor_id ?? oldCursor?.id;
+  let query=admin.from("messages").select("id,direction,message_type,text_content,sent_at").eq("user_id",userId).eq("contact_id",contactId).order("sent_at",{ascending:true}).order("id",{ascending:true}).limit(NEW_MESSAGE_LIMIT+1);
+  if(cursorAt && cursorId) query=query.or(`sent_at.gt.${cursorAt},and(sent_at.eq.${cursorAt},id.gt.${cursorId})`);
+  const {data,error}=await query;
+  if(error) throw new Error(error.message);
+  const fresh=(data ?? []).slice(0,NEW_MESSAGE_LIMIT);
+  const {data:context}=cursorAt && cursorId ? await admin.from("messages").select("id,direction,message_type,text_content,sent_at").eq("user_id",userId).eq("contact_id",contactId).or(`sent_at.lt.${cursorAt},and(sent_at.eq.${cursorAt},id.lte.${cursorId})`).order("sent_at",{ascending:false}).order("id",{ascending:false}).limit(CONTEXT_MESSAGE_LIMIT) : {data:[]};
+  return {fresh,context:(context ?? []).reverse(),total:fresh.length+(context?.length ?? 0),hasMore:(data?.length ?? 0)>NEW_MESSAGE_LIMIT};
 }
 
 type MessageLine = {
@@ -196,7 +193,7 @@ export async function analyzeContact(
   if (!contact) return { status: "skipped", reason: "not_found" };
 
   const memory = await ensureMemory(admin, userId, contactId);
-  const { fresh, context, total } = await loadMessages(
+  const { fresh, context, total, hasMore } = await loadMessages(
     admin,
     userId,
     contactId,
@@ -237,7 +234,9 @@ export async function analyzeContact(
 
     const payload = result.data;
     const patch: Database["public"]["Tables"]["customer_memory"]["Update"] = {
-      analysis_status: "ready",
+      analysis_status: hasMore ? "pending" : "ready",
+      message_cursor_at:lastMessage?.sent_at,
+      message_cursor_id:lastMessage?.id,
       last_error: null,
       last_analyzed_message_id: lastMessage?.id ?? memory.last_analyzed_message_id,
       last_analyzed_at: now,
@@ -348,7 +347,7 @@ export async function analyzeContact(
       analyzed: fresh.length,
       tokens: total,
     });
-    return { status: "updated" };
+    return { status: "updated", reason:hasMore ? "more_messages" : undefined };
   } catch (error) {
     const gateway = error instanceof AiGatewayError ? error : null;
     const message =
@@ -415,6 +414,10 @@ export async function processAnalysisQueue(limit = 5): Promise<{
       force: job.reason === "manual",
     });
 
+    if(outcome.reason==="more_messages") {
+      await admin.from("ai_analysis_jobs").update({status:"pending",claimed_at:null,attempts:0}).eq("id",job.id);
+      processed+=1; continue;
+    }
     if (outcome.status === "failed" && job.attempts + 1 < MAX_ATTEMPTS) {
       await admin
         .from("ai_analysis_jobs")
