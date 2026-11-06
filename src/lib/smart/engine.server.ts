@@ -184,7 +184,7 @@ export async function startSmartFlow(
             next_contact_at: initialAt,
             next_contact_reason: humanPending
               ? "Você ainda deve uma resposta ao cliente."
-              : initial?.goal ?? null,
+              : (initial?.goal ?? null),
             next_contact_responsible: humanPending ? "human" : "system",
           }
         : {}),
@@ -221,7 +221,7 @@ export async function startSmartFlow(
         post_quote_next_at: humanPending ? null : initialAt,
         post_quote_next_reason: humanPending
           ? "Você ainda deve uma resposta ao cliente."
-          : initial?.goal ?? null,
+          : (initial?.goal ?? null),
       })
       .eq("id", input.opportunityId)
       .eq("user_id", userId);
@@ -867,11 +867,12 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
       smart_strategy: strategy,
       context_version: control.context_version,
       generated_at: now.toISOString(),
-      analyzed_through_at: now.toISOString(),
+      analyzed_through_at:
+        (messages ?? []).find((m) => m.direction === "inbound")?.sent_at ?? now.toISOString(),
       analyzed_message_ids: (messages ?? [])
         .filter((m) => m.direction === "inbound")
         .map((m) => m.id),
-      logical_contact: postQuote ? cadence?.contact ?? null : null,
+      logical_contact: postQuote ? (cadence?.contact ?? null) : null,
       decision_reason:
         quality.verdict === "review"
           ? `${decision.reason} | Revisão: ${quality.reason}`
@@ -1017,6 +1018,39 @@ export async function smartPreSendCheck(db: Admin, action: ActionRow): Promise<S
 
   const now = new Date();
   const control = await loadControl(db, action.conversation_id);
+  if (action.analyzed_through_at) {
+    const { data: replies, error } = await db
+      .from("messages")
+      .select("id,sent_at")
+      .eq("conversation_id", action.conversation_id)
+      .eq("direction", "inbound")
+      .gte("sent_at", action.analyzed_through_at);
+    if (error) throw new Error(error.message);
+    const known = new Set(
+      Array.isArray(action.analyzed_message_ids) ? action.analyzed_message_ids : [],
+    );
+    if ((replies ?? []).some((reply) => !known.has(reply.id))) {
+      await db
+        .from("scheduled_actions")
+        .update({
+          status: "stale",
+          last_error: "new_customer_reply",
+          decision_reason: "Nova resposta após a análise; texto anterior descartado.",
+        })
+        .eq("id", action.id);
+      if (action.flow_run_id)
+        await db
+          .from("followup_runs")
+          .update({ next_evaluation_at: now.toISOString() })
+          .eq("id", action.flow_run_id);
+      return {
+        allowed: false,
+        verdict: "stale",
+        reason: "Nova resposta após a análise.",
+        deferUntil: null,
+      };
+    }
+  }
   const config = action.flow_run_id
     ? await (async () => {
         const { data: run } = await db

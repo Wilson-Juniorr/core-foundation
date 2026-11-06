@@ -29,7 +29,7 @@ export async function recordPostQuoteAccepted(
     p_action: action.id,
     p_message: messageId,
     p_at: acceptedAt.toISOString(),
-    p_next: next?.at.toISOString() ?? null,
+    p_next: (next?.at.toISOString() ?? null) as unknown as string,
     p_reason: next?.goal ?? "Ciclo de oito contatos concluído; oportunidade preservada.",
   });
   if (failure) throw new Error(failure.message);
@@ -138,7 +138,7 @@ export async function controlPostQuote(
     .eq("flow_run_id", run.id)
     .in("status", ["scheduled", "needs_approval", "stale", "blocked"])
     .or("send_state.is.null,send_state.neq.uncertain");
-  const next = paused || ended ? null : at.toISOString();
+  const next = ended ? null : paused ? run.next_contact_at : at.toISOString();
   const reason = paused
     ? "Pausado por você."
     : ended
@@ -151,7 +151,7 @@ export async function controlPostQuote(
     .update({
       status: ended ? "cancelled" : paused ? "paused" : "active",
       paused_at: paused ? new Date().toISOString() : null,
-      next_evaluation_at: next,
+      next_evaluation_at: paused || ended ? null : next,
       next_contact_at: next,
       next_contact_reason: reason,
       next_contact_responsible: paused ? "human" : ended ? "none" : "system",

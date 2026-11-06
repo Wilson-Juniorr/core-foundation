@@ -242,6 +242,11 @@ function ContactDetailPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
+                    {opportunity.post_quote_next_at && (
+                      <span className="text-xs text-muted-foreground">
+                        Pós-cotação: {formatDateTime(opportunity.post_quote_next_at)}
+                      </span>
+                    )}
                     <NextActionBadge nextActionAt={opportunity.next_action_at} withDate />
                     <Button
                       variant="ghost"

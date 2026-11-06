@@ -845,6 +845,8 @@ export interface TickResult {
 export async function runDueActions(limit = 25): Promise<TickResult> {
   const db = await adminClient();
   const nowIso = new Date().toISOString();
+  const { reconcileSmartSends } = await import("@/lib/smart/send-reconciliation.server");
+  await reconcileSmartSends(db);
 
   const { data: due, error } = await db
     .from("scheduled_actions")

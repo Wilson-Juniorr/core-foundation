@@ -386,7 +386,7 @@ export async function analyzeContact(
       analyzed: fresh.length,
       tokens: total,
     });
-    return { status: "updated", ...(hasMore ? {reason:"more_messages"} : {}) };
+    return { status: "updated", ...(hasMore ? { reason: "more_messages" } : {}) };
   } catch (error) {
     const gateway = error instanceof AiGatewayError ? error : null;
     const message =
