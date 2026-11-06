@@ -90,7 +90,7 @@ export async function activatePostQuote(
 export async function controlPostQuote(
   db: Db,
   userId: string,
-  input: { runId: string; command: "pause" | "resume" | "reschedule" | "end"; at?: string },
+  input: { runId: string; command: "pause" | "resume" | "reschedule" | "end"; at?: string | undefined },
 ) {
   const { data: run } = await db
     .from("followup_runs")
