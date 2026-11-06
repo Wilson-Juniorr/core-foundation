@@ -181,6 +181,8 @@ export function PostQuotePanel({
             <p>
               {action?.send_state === "uncertain"
                 ? "Você · confirmação de envio pendente"
+                : reviews.length > 0
+                  ? "Você · revisão de data"
                 : run.next_contact_responsible === "human"
                   ? "Você"
                   : run.next_contact_responsible === "none"
