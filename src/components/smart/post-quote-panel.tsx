@@ -183,11 +183,11 @@ export function PostQuotePanel({
                 ? "Você · confirmação de envio pendente"
                 : reviews.length > 0
                   ? "Você · revisão de data"
-                : run.next_contact_responsible === "human"
-                  ? "Você"
-                  : run.next_contact_responsible === "none"
-                    ? "Ninguém"
-                    : "Agente"}
+                  : run.next_contact_responsible === "human"
+                    ? "Você"
+                    : run.next_contact_responsible === "none"
+                      ? "Ninguém"
+                      : "Agente"}
             </p>
           </div>
           <p className="sm:col-span-2">{action?.decision_reason ?? run.next_contact_reason}</p>

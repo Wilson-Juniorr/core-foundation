@@ -42,3 +42,9 @@ Exemplo testado: ativação 09/03/2026 09h São Paulo → contato 10/03 10h → 
 4. Ativação/pausa/reagendamento pelo navegador ainda não foram homologados com cliente isolado; os mesmos caminhos centrais foram exercitados em banco isolado.
 5. O fixture executa RPCs reais, mas não reproduz toda a segurança/permissões do ambiente hospedado; isolamento hospedado não foi submetido a teste adversarial multiusuário.
 6. Interpretação ampliada de áudio e seleção da Biblioteca (B/C) não iniciadas.
+
+## Rodada de fechamento (06/11/2026)
+Correções: bloqueio visível `date_review` para datas inválidas/ambíguas; "me chama sexta" = 15h; "te respondo até sexta" = próximo dia permitido 15h; "vou conversar com minha esposa" (quinta) = segunda 15h; executor clássico não reativa run Smart encerrado no envio; resolução auditável de envio incerto (exige descrição; "não chegou" pausa e pede reagendamento explícito); horários do painel sempre em São Paulo; bloqueios mostram "Você" como responsável.
+Testes: 81/81 Vitest (7 regras de data, 20 integrados PGlite + relógio + provedor falso). Teste de reativação comprovadamente falha sem a correção. ESLint 0 erros (7 avisos antigos); typecheck OK.
+Navegador: cliente fictício (+55 11 90000-0001), desktop e 390px: ativar → 1º contato seg 09/11 10:00, aviso de revisão, pausar, reagendar 10/11 11:00, encerrar; tarefa manual preservada; zero mensagens; dados apagados.
+Pendente (ambiente publicado): cron real, envio/recibo UAZAPI real, correlação de idempotência do provedor.
