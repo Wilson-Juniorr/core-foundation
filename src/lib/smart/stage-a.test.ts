@@ -36,13 +36,14 @@ describe("Stage A safety regressions", () => {
     });
     expect(result[0]?.due_at).toBe("2026-11-10T18:30:00.000Z");
   });
-  it("rejects impossible calendar dates instead of rolling months", () => {
-    expect(
-      extractCommitments({
-        text: "me chama dia 31/02/2027",
-        direction: "inbound",
-        now: new Date("2026-11-09T12:00:00Z"),
-      }),
-    ).toEqual([]);
+  it("impossible calendar dates never roll months; they become a review barrier", () => {
+    const result = extractCommitments({
+      text: "me chama dia 31/02/2027",
+      direction: "inbound",
+      now: new Date("2026-11-09T12:00:00Z"),
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.commitment_type).toBe("date_review");
+    expect(result[0]?.due_at).toBeNull();
   });
 });

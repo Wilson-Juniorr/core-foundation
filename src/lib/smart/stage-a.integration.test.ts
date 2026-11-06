@@ -328,3 +328,179 @@ describe("Stage A actual engine + isolated PostgreSQL + fake provider", () => {
     expect((await runFor(runId))["status"]).toBe("active");
   });
 });
+
+describe("Stage A closing round (isolated, fake clock + provider)", () => {
+  it("full cycle: activate → first contact → prepared text → accepted → counted → next; opportunity task kept", async () => {
+    const { runId } = await start();
+    expect((await runFor(runId))["next_contact_at"]).toEqual(new Date("2026-03-10T13:00:00Z"));
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
+    const action = await actionFor(runId);
+    expect(action["content"]).toBe("Como ficou sua análise da proposta?");
+    expect(action["logical_contact"]).toBe(1);
+    await fixture.pg.query("UPDATE scheduled_actions SET status='processing' WHERE id=$1", [
+      action["id"],
+    ]);
+    expect(await executeClaimedAction(db(), action as never)).toBe("sent");
+    const run = await runFor(runId);
+    expect(run["contacts_done"]).toBe(1);
+    expect(run["next_contact_at"]).toEqual(new Date("2026-03-13T18:00:00Z"));
+    const o = (
+      await fixture.pg.query(
+        "SELECT status,next_action_description,post_quote_next_at FROM opportunities",
+      )
+    ).rows[0];
+    expect(o).toEqual({
+      status: "open",
+      next_action_description: "Tarefa manual",
+      post_quote_next_at: new Date("2026-03-13T18:00:00Z"),
+    });
+  });
+
+  it("unreadable date blocks the cadence visibly until reviewed; count preserved", async () => {
+    const { runId } = await start();
+    await fixture.pg.query("UPDATE followup_runs SET contacts_done=3 WHERE id=$1", [runId]);
+    const { resolveDateReview } = await import("./post-quote-runtime.server");
+    const c = (
+      await fixture.pg.query(
+        "INSERT INTO commitments(user_id,conversation_id,contact_id,commitment_type,responsible,description,is_ambiguous,status)VALUES($1,$2,$3,'date_review','human','Revise a data: data inexistente',true,'pending') RETURNING id",
+        [user, conv, contact],
+      )
+    ).rows[0] as { id: string };
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("human_commitment");
+    let run = await runFor(runId);
+    expect(run["status"]).toBe("paused");
+    expect(run["next_contact_responsible"]).toBe("human");
+    expect(String(run["next_contact_reason"])).toContain("revisar");
+    expect(
+      (await fixture.pg.query("SELECT count(*)::int AS n FROM scheduled_actions")).rows[0],
+    ).toEqual({ n: 0 });
+    await resolveDateReview(db(), user, { commitmentId: c.id, note: "Combinei por telefone" });
+    await controlPostQuote(db(), user, {
+      runId,
+      command: "reschedule",
+      at: "2026-03-11T18:00:00Z",
+    });
+    run = await runFor(runId);
+    expect(run["status"]).toBe("active");
+    expect(run["contacts_done"]).toBe(3);
+  });
+
+  it("uncertain send: weak confirmation keeps it blocked; written check resolves auditable, never resends", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    await evaluateSmartRun(db(), runId);
+    const action = await actionFor(runId);
+    await fixture.pg.query(
+      "UPDATE scheduled_actions SET status='blocked',send_state='uncertain',send_started_at='2026-03-10T13:00:00Z' WHERE id=$1",
+      [action["id"]],
+    );
+    const { resolveUncertainSend } = await import("./post-quote-runtime.server");
+    await expect(
+      resolveUncertainSend(db(), user, {
+        actionId: String(action["id"]),
+        outcome: "delivered",
+        evidence: "ok",
+      }),
+    ).rejects.toThrow(/segue bloqueada/);
+    expect((await actionFor(runId))["send_state"]).toBe("uncertain");
+    await resolveUncertainSend(db(), user, {
+      actionId: String(action["id"]),
+      outcome: "not_delivered",
+      evidence: "Conversa no celular não mostra a mensagem",
+    });
+    const run = await runFor(runId);
+    expect((await actionFor(runId))["status"]).toBe("failed");
+    expect(run["contacts_done"]).toBe(0);
+    expect(run["status"]).toBe("paused");
+    expect(run["next_contact_responsible"]).toBe("human");
+    expect(fake.send).not.toHaveBeenCalled();
+  });
+
+  it("uncertain send confirmed as delivered counts exactly once", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    await evaluateSmartRun(db(), runId);
+    const action = await actionFor(runId);
+    await fixture.pg.query(
+      "UPDATE scheduled_actions SET status='blocked',send_state='uncertain',send_started_at='2026-03-10T13:00:00Z' WHERE id=$1",
+      [action["id"]],
+    );
+    const { resolveUncertainSend } = await import("./post-quote-runtime.server");
+    const input = {
+      actionId: String(action["id"]),
+      outcome: "delivered" as const,
+      evidence: "Vi a mensagem com dois tiques às 10h01",
+    };
+    await resolveUncertainSend(db(), user, input);
+    await expect(resolveUncertainSend(db(), user, input)).rejects.toThrow();
+    expect((await runFor(runId))["contacts_done"]).toBe(1);
+    expect(fake.send).not.toHaveBeenCalled();
+  });
+
+  it("after the eighth contact no ninth action is prepared", async () => {
+    const { runId } = await start();
+    await fixture.pg.query("UPDATE followup_runs SET contacts_done=7 WHERE id=$1", [runId]);
+    const aid = crypto.randomUUID();
+    await fixture.pg.query(
+      "INSERT INTO scheduled_actions(id,user_id,conversation_id,flow_run_id,opportunity_id,logical_contact,status,send_state)VALUES($1,$2,$3,$4,$5,8,'processing','started')",
+      [aid, user, conv, runId, opp],
+    );
+    const a = (await fixture.pg.query("SELECT * FROM scheduled_actions WHERE id=$1", [aid]))
+      .rows[0];
+    await recordPostQuoteAccepted(db(), a as never, crypto.randomUUID(), new Date());
+    vi.setSystemTime(new Date("2026-06-01T13:00:00Z"));
+    await evaluateSmartRun(db(), runId);
+    const run = await runFor(runId);
+    expect(run["status"]).toBe("completed");
+    expect(run["contacts_done"]).toBe(8);
+    expect(
+      (
+        await fixture.pg.query(
+          "SELECT count(*)::int AS n FROM scheduled_actions WHERE status IN ('scheduled','needs_approval')",
+        )
+      ).rows[0],
+    ).toEqual({ n: 0 });
+  });
+
+  it("old Smart: executor does not reactivate a run the send just closed", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    await evaluateSmartRun(db(), runId);
+    const action = await actionFor(runId);
+    await fixture.pg.query("UPDATE followup_runs SET policy_key=NULL WHERE id=$1", [runId]);
+    await fixture.pg.query(
+      "UPDATE scheduled_actions SET status='processing',logical_contact=NULL,smart_strategy='GRACEFUL_DECLINE' WHERE id=$1",
+      [action["id"]],
+    );
+    const outcome = await executeClaimedAction(db(), {
+      ...action,
+      status: "processing",
+      logical_contact: null,
+      smart_strategy: "GRACEFUL_DECLINE",
+    } as never);
+    expect(outcome).toBe("sent");
+    expect((await runFor(runId))["status"]).toBe("completed");
+  });
+
+  it("proved failure stays visible with reason and next attempt", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    await evaluateSmartRun(db(), runId);
+    const action = await actionFor(runId);
+    await fixture.pg.query(
+      "UPDATE scheduled_actions SET status='processing',send_state='rejected' WHERE id=$1",
+      [action["id"]],
+    );
+    fake.send.mockRejectedValueOnce(new Error("Proved rejected"));
+    await executeClaimedAction(db(), action as never);
+    const after = await actionFor(runId);
+    expect(after["last_error"]).toBeTruthy();
+    expect(after["status"]).toBe("scheduled");
+    expect(new Date(String(after["scheduled_for"])).getTime()).toBeGreaterThan(Date.now());
+    const run = await runFor(runId);
+    expect(run["next_contact_responsible"]).toBeTruthy();
+    expect(run["next_contact_at"]).toBeTruthy();
+  });
+});

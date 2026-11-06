@@ -309,6 +309,9 @@ async function handoff(
       status: "paused",
       paused_at: new Date().toISOString(),
       next_evaluation_at: new Date(Date.now() + 12 * HOUR_MS).toISOString(),
+      // Falha/bloqueio sempre visível: quem age e por quê.
+      next_contact_responsible: "human",
+      next_contact_reason: reason,
     })
     .eq("id", run.id);
 
@@ -537,9 +540,11 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
   );
 
   if (humanCommitment) {
-    await handoff(db, runRef, `Você assumiu um retorno: ${humanCommitment.description}`, {
-      commitment_id: humanCommitment.id,
-    });
+    const reason =
+      humanCommitment.commitment_type === "date_review"
+        ? `Cadência bloqueada até você revisar. ${humanCommitment.description}`
+        : `Você assumiu um retorno: ${humanCommitment.description}`;
+    await handoff(db, runRef, reason, { commitment_id: humanCommitment.id });
     return "human_commitment";
   }
 
@@ -1107,8 +1112,12 @@ export async function smartPreSendCheck(db: Admin, action: ActionRow): Promise<S
       .from("scheduled_actions")
       .update({
         status: "blocked",
-        last_error: "human_promise",
-        decision_reason: "Você ainda deve uma resposta ao cliente.",
+        last_error: commitments.some((c) => c.commitment_type === "date_review")
+          ? "date_review_pending"
+          : "human_promise",
+        decision_reason: commitments.some((c) => c.commitment_type === "date_review")
+          ? "Data citada pelo cliente precisa da sua revisão antes de qualquer envio."
+          : "Você ainda deve uma resposta ao cliente.",
       })
       .eq("id", action.id);
     return {

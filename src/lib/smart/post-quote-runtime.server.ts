@@ -226,3 +226,109 @@ export async function controlPostQuote(
     { bumpVersion: input.command === "reschedule" },
   );
 }
+
+/** What the consultant must check before resolving an uncertain attempt. */
+export const UNCERTAIN_CHECKLIST =
+  "Abra o WhatsApp do número conectado, entre na conversa deste cliente e confira se a mensagem abaixo aparece como enviada (um ou dois tiques) no horário da tentativa.";
+
+/**
+ * Auditable manual resolution of an uncertain send. Requires a written note of
+ * what was checked; without it the action stays blocked. "not_delivered" never
+ * resends by itself — it only frees the cycle so you can reschedule explicitly.
+ */
+export async function resolveUncertainSend(
+  db: Db,
+  userId: string,
+  input: { actionId: string; outcome: "delivered" | "not_delivered"; evidence: string },
+) {
+  const evidence = input.evidence.trim();
+  if (evidence.length < 15)
+    throw new Error(
+      `Confirmação insuficiente; a tentativa segue bloqueada. ${UNCERTAIN_CHECKLIST}`,
+    );
+  const { data: action } = await db
+    .from("scheduled_actions")
+    .select("*")
+    .eq("id", input.actionId)
+    .eq("user_id", userId)
+    .single();
+  if (!action || action.send_state !== "uncertain")
+    throw new Error("Não há tentativa incerta para resolver.");
+  const { writeAudit } = await import("@/lib/audit/log.server");
+  if (input.outcome === "delivered") {
+    await recordPostQuoteAccepted(
+      db,
+      action,
+      action.message_id as string,
+      new Date(action.send_started_at ?? Date.now()),
+    );
+  } else {
+    await db
+      .from("scheduled_actions")
+      .update({
+        status: "failed",
+        send_state: "rejected",
+        last_error: "uncertain_resolved_not_delivered",
+        decision_reason: `Você confirmou que não chegou: ${evidence}`,
+      })
+      .eq("id", action.id)
+      .eq("send_state", "uncertain");
+    await db
+      .from("followup_runs")
+      .update({
+        status: "paused",
+        paused_at: new Date().toISOString(),
+        next_evaluation_at: null,
+        next_contact_responsible: "human",
+        next_contact_reason: `Contato ${action.logical_contact} não chegou; reagende para tentar de novo.`,
+      })
+      .eq("id", action.flow_run_id ?? "");
+  }
+  await writeAudit(db, userId, {
+    action: "post_quote_uncertain_resolved",
+    summary:
+      input.outcome === "delivered"
+        ? "Tentativa incerta confirmada como entregue pelo consultor."
+        : "Tentativa incerta confirmada como não entregue pelo consultor.",
+    entityType: "scheduled_action",
+    entityId: action.id,
+    actor: "user",
+    metadata: { outcome: input.outcome, evidence, logical_contact: action.logical_contact },
+  });
+}
+
+/** Consultant reviewed an unreadable date: clears the barrier, run stays paused for an explicit reschedule. */
+export async function resolveDateReview(
+  db: Db,
+  userId: string,
+  input: { commitmentId: string; note: string },
+) {
+  const { data: item } = await db
+    .from("commitments")
+    .update({ status: "cancelled" })
+    .eq("id", input.commitmentId)
+    .eq("user_id", userId)
+    .eq("commitment_type", "date_review")
+    .eq("status", "pending")
+    .select("*")
+    .maybeSingle();
+  if (!item) throw new Error("Revisão não encontrada ou já resolvida.");
+  if (item.conversation_id) {
+    const rest = await pendingCommitments(db, item.conversation_id);
+    if (!rest.some((c) => c.responsible === "human"))
+      await patchControl(db, item.conversation_id, {
+        owner: "ai",
+        next_responsible: "customer",
+        next_responsible_reason: "Data revisada por você; defina o próximo contato.",
+      });
+  }
+  const { writeAudit } = await import("@/lib/audit/log.server");
+  await writeAudit(db, userId, {
+    action: "post_quote_date_reviewed",
+    summary: `Data revisada: ${item.description}`,
+    entityType: "commitment",
+    entityId: item.id,
+    actor: "user",
+    metadata: { note: input.note },
+  });
+}

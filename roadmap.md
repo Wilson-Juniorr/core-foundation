@@ -20,8 +20,13 @@
 - [x] Envio Smart não encerrar o acompanhamento
 - [x] Resposta antiga não cancelar retornos novos
 - [x] Leitor de datas: acentos, minutos, prazos e horário original; datas inválidas rejeitadas
-- [ ] Bloqueio visível de expressão de data inválida/ambígua (atualmente não cria compromisso)
-- [ ] Ativação e controles pelo navegador com cliente isolado (painel autenticado conferido; ciclo testado no banco isolado)
+- [x] Data inválida/ambígua vira bloqueio visível + revisão ("Marcar como revisado"); sexta sem hora = 15h; "até sexta" = próximo dia permitido 15h; esposa na quinta = segunda 15h (testado)
+- [x] Smart antigo: envio não reativa acompanhamento recém-encerrado (teste falha sem a correção)
+- [x] Envio incerto: resolução auditável "Chegou / Não chegou" exige descrição do que foi verificado; sem isso segue bloqueado; nunca reenvia sozinho
+- [x] Ativação, pausa, reagendar, encerrar e aviso de revisão conferidos no navegador (desktop e celular) com cliente fictício, sem envio; dados de teste apagados
+- [x] Ciclo completo isolado: ativar → 1º contato → mensagem → aceite → contagem → próximo; resposta nova invalida; pausa/reagendar preservam contagem; aprovação mantém horário; 8º encerra sem 9º; tarefa manual preservada; falhas visíveis
+- [ ] Homologar no app publicado: cron real disparando, envio real UAZAPI e recebimento de recibo (depende de publicar)
+- [ ] Página do cliente no celular tem rolagem lateral (523px em tela de 390px) — anterior a esta rodada, fora do painel
 - [x] Memória em conversas com mais de 400 mensagens
 - [x] Janelas sem interseção bloqueiam; aprovação mantém horário; sem reenvio cego
 - [x] Botão "Ativar pós-cotação" + próximo contato visível

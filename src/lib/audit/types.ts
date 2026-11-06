@@ -6,6 +6,8 @@
  */
 export type AuditAction =
   | "settings_updated"
+  | "post_quote_uncertain_resolved"
+  | "post_quote_date_reviewed"
   | "automation_policy_updated"
   | "notification_settings_updated"
   | "profile_updated"
