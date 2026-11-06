@@ -73,9 +73,7 @@ function overlap(a: SendWindow, b: SendWindow): SendWindow | null {
  * Interseção das janelas informadas, da mais genérica para a mais específica
  * (global → fluxo → etapa); a mais restritiva vence.
  *
- * Quando as configurações não têm nenhuma hora em comum, a janela mais
- * específica prevalece em vez de colapsar em um instante único — colapsar
- * gerava saltos de quase 24 horas no agendamento.
+ * Interseção vazia usa um sentinela explícito, nunca "sem restrição".
  */
 export function mergeWindows(...windows: Array<SendWindow | null>): SendWindow | null {
   let result: SendWindow | null = null;
@@ -85,7 +83,7 @@ export function mergeWindows(...windows: Array<SendWindow | null>): SendWindow |
       result = { ...window };
       continue;
     }
-    result = overlap(result, window) ?? { ...window };
+    result = overlap(result, window) ?? { startMinutes: 0, endMinutes: 0 };
   }
   return result;
 }
@@ -159,6 +157,7 @@ function minutesInside(minutes: number, window: SendWindow): boolean {
  */
 export function nextAllowedInstant(date: Date, window: SendWindow | null, timezone: string): Date {
   if (!window) return date;
+  if (window.startMinutes === window.endMinutes) throw new Error("window_conflict: janelas de envio sem horário em comum");
   const zone = safeTimezone(timezone);
 
   let current = date;
