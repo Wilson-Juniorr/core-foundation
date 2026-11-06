@@ -36,6 +36,13 @@
       "when": 1793991942139,
       "tag": "0004_post_quote_stage_a",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793992660548,
+      "tag": "0005_post_quote_context_guards",
+      "breakpoints": true
     }
   ]
 }
