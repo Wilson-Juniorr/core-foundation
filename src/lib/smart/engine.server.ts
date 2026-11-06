@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { nextSilenceContact, POST_QUOTE_POLICY } from "./post-quote-cadence";
 import type { Database } from "@/integrations/supabase/types";
 import { writeAudit } from "@/lib/audit/log.server";
 import { logEvent } from "@/lib/crm.server";
@@ -66,7 +67,7 @@ async function loadSmartRun(db: Admin, runId: string) {
   const { data } = await db
     .from("followup_runs")
     .select(
-      "id, user_id, flow_id, contact_id, conversation_id, opportunity_id, status, smart_state, deadline_at, next_evaluation_at, started_at, followup_flows!inner(id, name, kind, window_start, window_end, is_active)",
+      "id, user_id, flow_id, contact_id, conversation_id, opportunity_id, status, smart_state, deadline_at, next_evaluation_at, started_at, policy_key, policy_activated_at, contacts_done, last_contact_accepted_at, next_contact_at, next_contact_reason, followup_flows!inner(id, name, kind, window_start, window_end, is_active)",
     )
     .eq("id", runId)
     .maybeSingle();
@@ -93,6 +94,7 @@ export async function startSmartFlow(
     contactId: string;
     conversationId: string;
     opportunityId?: string | null;
+    policyKey?: typeof POST_QUOTE_POLICY;
   },
 ): Promise<{ runId: string; evaluateAt: string }> {
   const config = await loadConfig(db, input.flowId);
@@ -117,7 +119,7 @@ export async function startSmartFlow(
     .from("followup_runs")
     .select("id")
     .eq("conversation_id", input.conversationId)
-    .eq("status", "active")
+    .in("status", ["active", "paused"])
     .limit(1);
   if ((conflicting ?? []).length > 0) {
     throw new SmartFlowError(
@@ -140,6 +142,13 @@ export async function startSmartFlow(
 
   const now = new Date();
   const deadline = new Date(now.getTime() + config.max_duration_days * DAY_MS);
+  const postQuote = input.policyKey === POST_QUOTE_POLICY;
+  const previousControl = await ensureControl(db, userId, input.conversationId);
+  const commitments = await pendingCommitments(db, input.conversationId);
+  const humanPending = previousControl.owner === "human" || previousControl.next_responsible === "human" || commitments.some(c => c.responsible === "human");
+  const initial = postQuote ? nextSilenceContact({doneContacts:0,activatedAt:now,lastContactAt:null}) : null;
+  const committed = commitments.map(c=>c.due_at ?? c.due_window_end).filter((v):v is string=>Boolean(v)).sort().at(-1);
+  const initialAt = initial ? new Date(Math.max(initial.at.getTime(),committed ? new Date(committed).getTime() : 0)).toISOString() : now.toISOString();
 
   const { data: run, error } = await db
     .from("followup_runs")
@@ -149,17 +158,18 @@ export async function startSmartFlow(
       contact_id: input.contactId,
       conversation_id: input.conversationId,
       opportunity_id: input.opportunityId ?? null,
-      status: "active",
-      smart_state: "evaluating",
-      deadline_at: deadline.toISOString(),
-      next_evaluation_at: now.toISOString(),
+      status: postQuote && humanPending ? "paused" : "active",
+      smart_state: postQuote && humanPending ? "needs_human" : "evaluating",
+      deadline_at: postQuote ? null : deadline.toISOString(),
+      next_evaluation_at: postQuote && humanPending ? null : now.toISOString(),
+      ...(postQuote ? {policy_key:POST_QUOTE_POLICY,policy_version:1,policy_activated_at:now.toISOString(),contacts_done:0,next_contact_at:initialAt,next_contact_reason:humanPending ? "Você ainda deve uma resposta ao cliente." : initial?.goal,next_contact_responsible:humanPending ? "human" : "system"} : {}),
     })
     .select("id")
     .single();
   if (error) throw new SmartFlowError(error.message, "insert_failed");
 
   await ensureControl(db, userId, input.conversationId);
-  await patchControl(db, input.conversationId, {
+  if (!postQuote) await patchControl(db, input.conversationId, {
     owner: config.autonomy === "observe" ? "human" : "ai",
     state: "waiting_customer",
     next_responsible: "system",
@@ -175,6 +185,8 @@ export async function startSmartFlow(
     return_source: null,
     force_approval_next: false,
   });
+  if (postQuote && !humanPending && previousControl.owner !== "ai") await patchControl(db,input.conversationId,{owner:"ai"});
+  if(postQuote && input.opportunityId) await db.from("opportunities").update({post_quote_run_id:run.id,post_quote_next_at:humanPending ? null : initialAt,post_quote_next_reason:humanPending ? "Você ainda deve uma resposta ao cliente." : initial?.goal}).eq("id",input.opportunityId).eq("user_id",userId);
   await refreshPressure(db, userId, input.conversationId);
 
   await writeAudit(db, userId, {
@@ -303,6 +315,15 @@ async function handoff(
  * que passará pelo pré-check antes do envio real.
  */
 export async function evaluateSmartRun(db: Admin, runId: string): Promise<string> {
+  const token = crypto.randomUUID();
+  const {data:claimed,error}=await db.from("followup_runs").update({evaluation_token:token,evaluation_lease_until:new Date(Date.now()+5*60_000).toISOString()}).eq("id",runId).eq("status","active").or(`evaluation_lease_until.is.null,evaluation_lease_until.lt.${new Date().toISOString()}`).select("id").maybeSingle();
+  if(error) throw new Error(error.message);
+  if(!claimed) return "evaluation_claimed";
+  try { return await evaluateClaimedSmartRun(db,runId); }
+  finally { await db.from("followup_runs").update({evaluation_token:null,evaluation_lease_until:null}).eq("id",runId).eq("evaluation_token",token); }
+}
+
+async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string> {
   const run = await loadSmartRun(db, runId);
   if (!run) return "not_smart";
   if (run.status !== "active") return `skipped_${run.status}`;
@@ -311,6 +332,9 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   if (!config) return "no_config";
 
   const now = new Date();
+  const postQuote = run.policy_key === POST_QUOTE_POLICY;
+  const cadence = postQuote ? nextSilenceContact({doneContacts:run.contacts_done,activatedAt:new Date(run.policy_activated_at ?? run.started_at),lastContactAt:run.last_contact_accepted_at ? new Date(run.last_contact_accepted_at) : null}) : null;
+  if(postQuote && !cadence) { await completeRun(db,run,"Ciclo de oito contatos concluído."); return "cycle_completed"; }
   const runRef = {
     id: run.id,
     user_id: run.user_id,
@@ -330,7 +354,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
 
   // Prazo máximo alcançado sem recusa: o acompanhamento não morre, ele muda de
   // ritmo — passa a reativação de longo prazo (uma tentativa por mês).
-  if (run.deadline_at && new Date(run.deadline_at) <= now && phase !== "reactivation") {
+  if (!postQuote && run.deadline_at && new Date(run.deadline_at) <= now && phase !== "reactivation") {
     if (phase === "recovery" || phase === "decline") {
       await db
         .from("followup_runs")
@@ -376,11 +400,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     .from("scheduled_actions")
     .select("id")
     .eq("conversation_id", run.conversation_id)
-    .in("status", ["scheduled", "processing", "needs_approval"])
+    .in("status", ["scheduled", "processing", "needs_approval", "blocked"])
     .limit(1);
   if ((existing ?? []).length > 0) return "action_pending";
 
-  const control = (await ensureControl(db, run.user_id, run.conversation_id))!;
+  const control = await ensureControl(db, run.user_id, run.conversation_id);
   const pressure = await refreshPressure(db, run.user_id, run.conversation_id);
 
   /* Conversa com você: o agente não prepara nada. Quem decide a volta é a
@@ -436,14 +460,15 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       .from("followup_runs")
       .update({
         smart_state: "waiting_customer",
-        next_evaluation_at: new Date(commitmentDeadline.getTime() + HOUR_MS).toISOString(),
+        next_evaluation_at: commitmentDeadline.toISOString(),
+        ...(postQuote ? {next_contact_at:commitmentDeadline.toISOString(),next_contact_reason:"Compromisso explícito com o cliente.",next_contact_responsible:"system"} : {}),
       })
       .eq("id", run.id);
     await patchControl(db, run.conversation_id, {
       state: "waiting_customer",
       next_responsible: "customer",
       next_responsible_reason: "Cliente combinou um retorno com prazo.",
-    });
+    }, {bumpVersion:false});
     return "waiting_commitment";
   }
 
@@ -462,7 +487,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     got_reply: Boolean(item.got_reply),
   }));
 
-  if (usage.length >= config.max_actions_per_week && !phase) {
+  if (!postQuote && usage.length >= config.max_actions_per_week && !phase) {
     await db
       .from("followup_runs")
       .update({
@@ -483,7 +508,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
   const minHours = Math.max(6, Math.round(config.min_hours_between_actions * rhythmFactor));
 
   const lastUsedAt = usage[0]?.used_at ? new Date(usage[0].used_at) : null;
-  if (lastUsedAt && !phase) {
+  if (!postQuote && lastUsedAt && !phase) {
     const minNext = new Date(lastUsedAt.getTime() + minHours * HOUR_MS);
     if (now < minNext) {
       await db
@@ -505,13 +530,19 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     return "pressure_limit";
   }
 
+  const plannedAt = postQuote ? new Date(run.next_contact_at ?? cadence?.at ?? now) : null;
+  // Preparar só próximo do envio evita manter um texto envelhecido por semanas.
+  if(plannedAt && plannedAt.getTime()>now.getTime()+15*60_000) {
+    await db.from("followup_runs").update({next_evaluation_at:new Date(plannedAt.getTime()-15*60_000).toISOString()}).eq("id",run.id);
+    return "waiting_cadence";
+  }
   /* ------------------------- contexto para a decisão ---------------------- */
 
   const { data: messages } = await db
     .from("messages")
-    .select("direction, message_type, text_content, sent_at")
+    .select("id, direction, message_type, text_content, sent_at")
     .eq("conversation_id", run.conversation_id)
-    .order("sent_at", { ascending: false })
+    .order("sent_at", { ascending: false }).order("id",{ascending:false})
     .limit(25);
 
   const { data: memory } = await db
@@ -566,7 +597,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     config,
     control,
     contactName: contact?.name ?? null,
-    objective: config.goal,
+    objective: postQuote ? `${config.goal}. Contato ${cadence?.contact} de 8: ${cadence?.goal}. Silêncio não encerra antes do contato 8. Sem negociação ou respostas técnicas.` : config.goal,
     deadlineAt: run.deadline_at,
     recentMessages: (messages ?? [])
       .slice()
@@ -592,6 +623,11 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     timingNote: timing.preferredHour !== null ? timing.reason : null,
   });
 
+  const currentControl = await loadControl(db,run.conversation_id);
+  if(currentControl?.context_version !== control.context_version) {
+    await db.from("followup_runs").update({next_evaluation_at:new Date().toISOString()}).eq("id",run.id);
+    return "context_changed_during_generation";
+  }
   await writeAudit(db, run.user_id, {
     action: "smart_strategy_selected",
     summary: `Decisão do acompanhamento: ${decision.action}${decision.strategy ? ` (${SMART_STRATEGY_META[decision.strategy]?.label ?? decision.strategy})` : ""}`,
@@ -619,7 +655,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     return "phase_handoff";
   }
 
-  if (decision.action === "complete" && !phase) {
+  if (!postQuote && decision.action === "complete" && !phase) {
     await completeRun(db, runRef, decision.reason);
     return "completed";
   }
@@ -642,7 +678,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       next_responsible: decision.nextResponsible,
       next_responsible_reason: decision.reason,
       decision_reason: decision.reason,
-    });
+    }, {bumpVersion:false});
     return "waiting";
   }
 
@@ -677,10 +713,14 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     makeWindow(run.followup_flows.window_start, run.followup_flows.window_end),
   );
 
-  const target = new Date(now.getTime() + Math.max(0, decision.waitHours) * HOUR_MS);
+  if(window && window.startMinutes===window.endMinutes) {
+    await db.from("followup_runs").update({smart_state:"blocked",next_contact_reason:"Janelas de envio sem horário em comum.",next_contact_responsible:"human",next_evaluation_at:new Date(now.getTime()+HOUR_MS).toISOString()}).eq("id",run.id);
+    return "window_conflict";
+  }
+  const target = plannedAt ?? new Date(now.getTime() + Math.max(0, decision.waitHours) * HOUR_MS);
   // Horário inteligente: dentro da janela, preferimos a hora em que este
   // cliente costuma interagir.
-  const scheduledFor = alignToPreferredHour({
+  const scheduledFor = postQuote ? nextAllowedInstant(target,window,DEFAULT_TIMEZONE) : alignToPreferredHour({
     target,
     preferredHour: timing.preferredHour,
     window,
@@ -704,9 +744,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     quality.verdict === "review" ||
     decision.confidence < Number(config.confidence_min);
 
-  const { data: action, error } = await db
-    .from("scheduled_actions")
-    .insert({
+  const { data: actionId, error } = await db.rpc("schedule_smart_action", {p_action: {
       user_id: run.user_id,
       flow_run_id: run.id,
       contact_id: run.contact_id,
@@ -718,24 +756,30 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
       scheduled_for: scheduledFor.toISOString(),
       status: needsApproval ? "needs_approval" : "scheduled",
       cancel_on_reply: true,
-      idempotency_key: `smart:${run.id}:${strategy}:${scheduledFor.toISOString()}`,
+      idempotency_key: postQuote ? `post_quote:${run.id}:${cadence?.contact}:${control.context_version}` : `smart:${run.id}:${strategy}:${scheduledFor.toISOString()}`,
       smart_strategy: strategy,
       context_version: control.context_version,
       generated_at: now.toISOString(),
+      analyzed_through_at: now.toISOString(),
+      analyzed_message_ids: (messages ?? []).filter(m=>m.direction==="inbound").map(m=>m.id),
+      logical_contact: postQuote ? cadence?.contact : null,
       decision_reason:
         quality.verdict === "review"
           ? `${decision.reason} | Revisão: ${quality.reason}`
           : decision.reason,
 
       requires_approval: needsApproval,
-    })
-    .select("id")
-    .maybeSingle();
+    }});
+  const action = actionId ? {id:actionId} : null;
 
   if (error && error.code !== "23505") {
     throw new SmartFlowError(error.message, "schedule_failed");
   }
 
+  if(!action) {
+    await db.from("followup_runs").update({next_evaluation_at:new Date().toISOString()}).eq("id",run.id);
+    return "duplicate_or_context_changed";
+  }
   /* Volta "avisa e espera seu ok": a mensagem fica em Aprovações e você
      recebe um aviso no celular com o texto que ele mandaria. */
   if (action && control.force_approval_next) {
@@ -772,6 +816,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
           ? "waiting_approval"
           : "acting",
       next_evaluation_at: new Date(scheduledFor.getTime() + minHours * HOUR_MS).toISOString(),
+      ...(postQuote ? {next_contact_at:scheduledFor.toISOString(),next_contact_reason:decision.reason,next_contact_responsible:needsApproval ? "human" : "system"} : {}),
     })
     .eq("id", run.id);
 
@@ -781,7 +826,7 @@ export async function evaluateSmartRun(db: Admin, runId: string): Promise<string
     next_responsible_reason: decision.reason,
     decision_reason: decision.reason,
     confidence: decision.confidence,
-  });
+  }, {bumpVersion:false});
 
   return action ? (needsApproval ? "needs_approval" : "scheduled") : "duplicate";
 }
@@ -853,7 +898,7 @@ export async function smartPreSendCheck(db: Admin, action: ActionRow): Promise<S
         const { data: run } = await db
           .from("followup_runs")
           .select("flow_id")
-          .eq("id", action.flow_run_id!)
+          .eq("id", action.flow_run_id ?? "")
           .maybeSingle();
         return run ? await loadConfig(db, run.flow_id) : null;
       })()
@@ -1006,9 +1051,9 @@ export async function recordStrategyUsage(
     state: "waiting_customer",
     next_responsible: "customer",
     next_responsible_reason: "Aguardando resposta do cliente.",
-  });
+  }, {bumpVersion:false});
 
-  if (action.smart_strategy === "GRACEFUL_DECLINE") {
+  if (action.smart_strategy === "GRACEFUL_DECLINE" && !action.logical_contact) {
     await finalizeDecline(db, action);
   }
 }
