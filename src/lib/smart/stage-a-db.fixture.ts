@@ -8,10 +8,10 @@ export async function testDatabase() {
   );
   const types = readFileSync("src/integrations/supabase/types.ts", "utf8");
   const section = types.split("Tables: {")[1]?.split("Views: {")[0] ?? "";
-  for (const match of section.matchAll(/      (\w+): \{\s+Row: \{([\s\S]*?)\n        \}/g)) {
+  for (const match of section.matchAll(/ {6}(\w+): \{\s+Row: \{([\s\S]*?)\n        \}/g)) {
     const table = match[1],
       body = match[2] ?? "";
-    const columns = [...body.matchAll(/          (\w+): ([^\n]+)/g)].map((m) => {
+    const columns = [...body.matchAll(/ {10}(\w+): ([^\n]+)/g)].map((m) => {
       const name = m[1],
         type = m[2] ?? "";
       const sqlType =

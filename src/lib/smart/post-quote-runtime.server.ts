@@ -159,9 +159,31 @@ export async function controlPostQuote(
     : new Date(Math.max(Date.now(), new Date(run.next_contact_at ?? new Date()).getTime()));
   if (!Number.isFinite(at.getTime()) || at.getTime() < Date.now() - 1000)
     throw new Error("Informe uma data futura válida.");
-  if (input.command === "reschedule") {
+  if (input.command === "reschedule" || input.command === "resume") {
     const { isBusinessDay } = await import("./business-calendar");
     if (!isBusinessDay(at)) throw new Error("Escolha um dia útil.");
+    const { makeWindow, mergeWindows, isWithinWindow } = await import("@/lib/followup/time");
+    const { data: settings } = await db
+      .from("user_settings")
+      .select("send_window_start,send_window_end")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const { data: flow } = await db
+      .from("followup_flows")
+      .select("window_start,window_end")
+      .eq("id", run.flow_id)
+      .single();
+    const window = mergeWindows(
+      makeWindow(settings?.send_window_start ?? "09:00", settings?.send_window_end ?? "20:00"),
+      makeWindow(flow?.window_start, flow?.window_end),
+    );
+    if (!isWithinWindow(at, window, "America/Sao_Paulo"))
+      throw new Error("Horário fora das janelas permitidas ou janelas incompatíveis.");
+    const commitments = await pendingCommitments(db, run.conversation_id);
+    if (
+      commitments.some((c) => new Date(c.due_at ?? c.due_window_end ?? 0).getTime() > at.getTime())
+    )
+      throw new Error("O cliente combinou um prazo posterior; preserve o compromisso.");
   }
   const paused = input.command === "pause",
     ended = input.command === "end";

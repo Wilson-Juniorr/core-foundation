@@ -387,6 +387,23 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
   if (!config) return "no_config";
 
   const now = new Date();
+  const earlySettings = await loadSettings(db, run.user_id);
+  const earlyWindow = mergeWindows(
+    makeWindow(earlySettings.windowStart, earlySettings.windowEnd),
+    makeWindow(run.followup_flows.window_start, run.followup_flows.window_end),
+  );
+  if (earlyWindow && earlyWindow.startMinutes === earlyWindow.endMinutes) {
+    await db
+      .from("followup_runs")
+      .update({
+        smart_state: "blocked",
+        next_contact_reason: "Janelas de envio sem horário em comum.",
+        next_contact_responsible: "human",
+        next_evaluation_at: new Date(now.getTime() + HOUR_MS).toISOString(),
+      })
+      .eq("id", run.id);
+    return "window_conflict";
+  }
   const postQuote = run.policy_key === POST_QUOTE_POLICY;
   const cadence = postQuote
     ? nextSilenceContact({
@@ -515,7 +532,9 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
 
   const commitments = await pendingCommitments(db, run.conversation_id);
   const commitmentDeadline = blockingDeadline(commitments, now);
-  const humanCommitment = commitments.find((item) => item.responsible === "human");
+  const humanCommitment = commitments.find(
+    (item) => item.responsible === "human" && item.commitment_type !== "requested_callback",
+  );
 
   if (humanCommitment) {
     await handoff(db, runRef, `Você assumiu um retorno: ${humanCommitment.description}`, {
@@ -1081,6 +1100,24 @@ export async function smartPreSendCheck(db: Admin, action: ActionRow): Promise<S
     .limit(1);
 
   const commitments = await pendingCommitments(db, action.conversation_id);
+  if (
+    commitments.some((c) => c.responsible === "human" && c.commitment_type !== "requested_callback")
+  ) {
+    await db
+      .from("scheduled_actions")
+      .update({
+        status: "blocked",
+        last_error: "human_promise",
+        decision_reason: "Você ainda deve uma resposta ao cliente.",
+      })
+      .eq("id", action.id);
+    return {
+      allowed: false,
+      verdict: "cancel",
+      reason: "Você ainda deve uma resposta ao cliente.",
+      deferUntil: null,
+    };
+  }
   const customerDeadline = blockingDeadline(
     commitments.filter((item) => item.responsible !== "human"),
     now,
