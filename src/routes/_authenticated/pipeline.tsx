@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/pipeline")({
   head: () => ({
     meta: [
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { title: "Pipeline — Próximo Passo" },
       {
         name: "description",

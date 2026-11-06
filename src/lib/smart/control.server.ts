@@ -67,20 +67,12 @@ export async function patchControl(
   options?: { bumpVersion?: boolean },
 ): Promise<void> {
   const bump = options?.bumpVersion !== false;
-  const { data: current } = await db
-    .from("conversation_control")
-    .select("context_version")
-    .eq("conversation_id", conversationId)
-    .maybeSingle();
-
-  await db
-    .from("conversation_control")
-    .update({
-      ...patch,
-      ...(bump ? { context_version: (current?.context_version ?? 1) + 1 } : {}),
-      context_updated_at: new Date().toISOString(),
-    })
-    .eq("conversation_id", conversationId);
+  const { error } = await db.rpc("patch_conversation_control", {
+    p_conversation: conversationId,
+    p_patch: patch as Json,
+    p_bump: bump,
+  });
+  if (error) throw new Error(error.message);
 }
 
 export async function loadControl(db: Admin, conversationId: string): Promise<ControlRow | null> {
@@ -410,7 +402,7 @@ export async function registerCustomerMessage(
     } else if ((closing || irritated) && hasSmart) {
       await markHandoff(db, {
         conversationId: input.conversationId,
-        kind: kind!,
+        kind: closing ? "closing" : "irritation",
         reason: closing ? "Cliente quer fechar." : "Cliente demonstrou incômodo.",
         at: input.at,
       });

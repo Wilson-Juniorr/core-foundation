@@ -43,8 +43,7 @@ export async function approveSmartAction(
       status: "scheduled",
       requires_approval: false,
       content: input.content ?? action.content,
-      // Liberada agora: o pré-check ainda roda antes do envio.
-      scheduled_for: new Date().toISOString(),
+      // Aprovação não altera o compromisso de horário; pré-check segue obrigatório.
       last_error: null,
     })
     .eq("id", action.id)

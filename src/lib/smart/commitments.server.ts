@@ -31,7 +31,18 @@ export async function extractAndStoreCommitments(
   const found = extractCommitments({
     text: input.text,
     direction: input.direction,
-    now: new Date(),
+    now: input.messageId
+      ? new Date(
+          (
+            await db
+              .from("messages")
+              .select("sent_at")
+              .eq("id", input.messageId)
+              .eq("user_id", input.userId)
+              .maybeSingle()
+          ).data?.sent_at ?? new Date().toISOString(),
+        )
+      : new Date(),
   });
   if (found.length === 0) return [];
 
@@ -119,8 +130,8 @@ export function blockingDeadline(commitments: CommitmentRow[], now: Date): Date 
     const reference = commitment.due_at ?? commitment.due_window_end;
     if (!reference) continue;
     const at = new Date(reference);
-    if (at.getTime() <= now.getTime()) continue;
-    if (!deadline || at.getTime() < deadline.getTime()) deadline = at;
+    if (!Number.isFinite(at.getTime()) || at.getTime() <= now.getTime()) continue;
+    if (!deadline || at.getTime() > deadline.getTime()) deadline = at;
   }
   return deadline;
 }

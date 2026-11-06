@@ -23,6 +23,8 @@ export function mapOpportunity(row: OpportunityRow): OpportunityWithRelations {
     estimated_value: row.estimated_value === null ? null : Number(row.estimated_value),
     next_action_description: row.next_action_description,
     next_action_at: row.next_action_at,
+    post_quote_next_at: row.post_quote_next_at,
+    post_quote_next_reason: row.post_quote_next_reason,
     notes: row.notes,
     created_at: row.created_at,
     updated_at: row.updated_at,

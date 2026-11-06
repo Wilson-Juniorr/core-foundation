@@ -31,6 +31,8 @@ export type Opportunity = {
   estimated_value: number | null;
   next_action_description: string | null;
   next_action_at: string | null;
+  post_quote_next_at?: string | null;
+  post_quote_next_reason?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;

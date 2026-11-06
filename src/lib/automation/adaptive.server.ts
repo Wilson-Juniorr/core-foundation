@@ -59,7 +59,7 @@ async function resolveContentMode(
 ): Promise<AdaptiveOutcome> {
   const mode = (action.content_mode ?? "fixed_content") as ContentMode;
 
-  if (mode === "fixed_content") {
+  if (mode === "fixed_content" || (action.smart_strategy && fixedText)) {
     return {
       kind: "send",
       text: fixedText,

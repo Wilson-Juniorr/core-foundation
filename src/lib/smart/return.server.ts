@@ -367,32 +367,28 @@ export async function applyReturn(
   const runs = await resumableRuns(db, control.conversation_id);
   const now = new Date().toISOString();
 
-  await db
-    .from("conversation_control")
-    .update({
-      owner: "ai",
-      state: "ai_controlled",
-      next_responsible: "system",
-      next_responsible_reason: "O agente voltou a acompanhar.",
-      decision_reason:
-        options.mode === "confirm"
-          ? "Agente voltou: a próxima mensagem espera o seu ok."
-          : "Agente voltou a acompanhar.",
-      force_approval_next: options.mode === "confirm",
-      cooldown_waived_at: options.waiveCooldown ? now : control.cooldown_waived_at,
-      handoff_kind: null,
-      handoff_at: null,
-      handoff_reason: null,
-      sensitive_since_handoff: false,
-      return_mode: null,
-      return_at: null,
-      return_reason: null,
-      return_source: null,
-      return_check_at: null,
-      context_version: control.context_version + 1,
-      context_updated_at: now,
-    })
-    .eq("conversation_id", control.conversation_id);
+  const { patchControl } = await import("./control.server");
+  await patchControl(db, control.conversation_id, {
+    owner: "ai",
+    state: "ai_controlled",
+    next_responsible: "system",
+    next_responsible_reason: "O agente voltou a acompanhar.",
+    decision_reason:
+      options.mode === "confirm"
+        ? "Agente voltou: a próxima mensagem espera o seu ok."
+        : "Agente voltou a acompanhar.",
+    force_approval_next: options.mode === "confirm",
+    cooldown_waived_at: options.waiveCooldown ? now : control.cooldown_waived_at,
+    handoff_kind: null,
+    handoff_at: null,
+    handoff_reason: null,
+    sensitive_since_handoff: false,
+    return_mode: null,
+    return_at: null,
+    return_reason: null,
+    return_source: null,
+    return_check_at: null,
+  });
 
   for (const run of runs) {
     await db
