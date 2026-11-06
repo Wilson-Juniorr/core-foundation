@@ -67,19 +67,17 @@ export async function activatePostQuote(
     throw new Error("Já existe um acompanhamento ativo ou pausado; nada foi alterado.");
   const { ensureConversationForContact } = await import("@/lib/whatsapp/link.server");
   const { conversationId } = await ensureConversationForContact(userId, contactId);
-  const { data: flows } = await db
-    .from("followup_flows")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("kind", "smart")
-    .eq("is_active", true)
-    .order("created_at")
-    .limit(1);
-  const flow = flows?.[0];
-  if (!flow) throw new Error("Crie um fluxo inteligente ativo antes de ativar o pós-cotação.");
+  // A dedicated policy flow avoids borrowing unrelated strategies/settings.
+  const {data:flows}=await db.from("followup_flows").select("id").eq("user_id",userId).eq("name","Pós-cotação · política v1").eq("kind","smart").eq("is_active",true).limit(1);
+  let flowId=flows?.[0]?.id;
+  if(!flowId) {
+    const {saveSmartFlow}=await import("./flows.server");
+    const saved=await saveSmartFlow(db,userId,{name:"Pós-cotação · política v1",description:"Ciclo explícito de oito contatos",is_active:true,window_start:"09:00",window_end:"19:00",goal:"Acompanhar a análise da cotação de plano de saúde; qualquer preço, negociação ou dúvida técnica vai ao consultor.",max_duration_days:180,autonomy:"auto",allowed_strategies:["CHECK_IN","VALUE_REINFORCEMENT","OBJECTION_HANDLING"],allowed_media:["text"],max_pressure:70,min_hours_between_actions:36,max_actions_per_week:2,handoff_situations:["Preço","Dúvida técnica"],completion_criteria:"Oito contatos aceitos encerram somente o ciclo.",confidence_min:0.6});
+    flowId=saved.flowId;
+  }
   const { startSmartFlow } = await import("./engine.server");
   return startSmartFlow(db, userId, {
-    flowId: flow.id,
+    flowId,
     contactId,
     conversationId,
     opportunityId,

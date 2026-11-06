@@ -367,9 +367,8 @@ export async function applyReturn(
   const runs = await resumableRuns(db, control.conversation_id);
   const now = new Date().toISOString();
 
-  await db
-    .from("conversation_control")
-    .update({
+  const {patchControl}=await import("./control.server");
+  await patchControl(db,control.conversation_id,{
       owner: "ai",
       state: "ai_controlled",
       next_responsible: "system",
@@ -389,10 +388,7 @@ export async function applyReturn(
       return_reason: null,
       return_source: null,
       return_check_at: null,
-      context_version: control.context_version + 1,
-      context_updated_at: now,
-    })
-    .eq("conversation_id", control.conversation_id);
+    });
 
   for (const run of runs) {
     await db

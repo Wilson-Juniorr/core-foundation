@@ -74,7 +74,7 @@ export async function enqueueAnalysis(
     .is("opportunity_id", null);
 }
 
-async function loadMessages(
+export async function loadMessages(
   admin: Admin,
   userId: string,
   contactId: string,

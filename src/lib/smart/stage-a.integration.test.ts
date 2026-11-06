@@ -14,7 +14,7 @@ vi.mock('./timing.server',()=>({learnContactTiming:async()=>({preferredHour:null
 vi.mock('./return.server',()=>({consultantNotes:async()=>[]}));
 vi.mock('./quality.server',()=>({reviewMessage:()=>({verdict:'accept'})}));
 vi.mock('@/lib/whatsapp/store.server',()=>({loadPrimaryConnection:async()=>({status:'connected'})}));
-vi.mock('@/lib/whatsapp/service.server',()=>({sendText:fake.send}));
+vi.mock('@/lib/whatsapp/service.server',()=>({sendText:fake.send,sendMedia:vi.fn()}));
 vi.mock('@/lib/automation/policy.server',()=>({loadPolicySettings:async()=>({}),evaluatePolicy:async()=>({decision:'allowed',rules:[],reason:'allowed'})}));
 vi.mock('@/lib/automation/audit.server',()=>({recordDecision:vi.fn()}));
 vi.mock('@/lib/automation/adaptive.server',()=>({resolveAdaptiveContent:async(_db:unknown,_action:unknown,_policy:unknown,text:string)=>({kind:'send',text,media:null})}));
@@ -42,7 +42,6 @@ describe('Stage A actual engine + isolated PostgreSQL + fake provider',()=>{
   expect((await fixture.pg.query('SELECT context_version FROM conversation_control')).rows[0]).toEqual({context_version:1});
   await fixture.pg.query("UPDATE scheduled_actions SET status='processing' WHERE id=$1",[action['id']]);
   const outcome=await executeClaimedAction(db(),action as never);
-  if(outcome!=='sent') console.log('execution diagnostic',await actionFor(runId));
   expect(outcome).toBe('sent');
   const run=await runFor(runId);expect(run['status']).toBe('active');expect(run['contacts_done']).toBe(1);expect(run['next_contact_at']).toEqual(new Date('2026-03-13T18:00:00Z'));
   expect(fake.send).toHaveBeenCalledTimes(1);
