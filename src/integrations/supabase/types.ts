@@ -1036,6 +1036,8 @@ export type Database = {
           last_analyzed_message_id: string | null
           last_error: string | null
           main_objections: Json
+          message_cursor_at: string | null
+          message_cursor_id: string | null
           model: string | null
           next_step_detected: string | null
           opportunity_id: string | null
@@ -1075,6 +1077,8 @@ export type Database = {
           last_analyzed_message_id?: string | null
           last_error?: string | null
           main_objections?: Json
+          message_cursor_at?: string | null
+          message_cursor_id?: string | null
           model?: string | null
           next_step_detected?: string | null
           opportunity_id?: string | null
@@ -1114,6 +1118,8 @@ export type Database = {
           last_analyzed_message_id?: string | null
           last_error?: string | null
           main_objections?: Json
+          message_cursor_at?: string | null
+          message_cursor_id?: string | null
           model?: string | null
           next_step_detected?: string | null
           opportunity_id?: string | null
@@ -1290,15 +1296,25 @@ export type Database = {
         Row: {
           completed_at: string | null
           contact_id: string
+          contacts_done: number
           conversation_id: string
           created_at: string
           current_step_id: string | null
           deadline_at: string | null
+          evaluation_lease_until: string | null
+          evaluation_token: string | null
           flow_id: string
           id: string
+          last_contact_accepted_at: string | null
+          next_contact_at: string | null
+          next_contact_reason: string | null
+          next_contact_responsible: string | null
           next_evaluation_at: string | null
           opportunity_id: string | null
           paused_at: string | null
+          policy_activated_at: string | null
+          policy_key: string | null
+          policy_version: number | null
           smart_state: string | null
           started_at: string
           status: Database["public"]["Enums"]["followup_run_status"]
@@ -1310,15 +1326,25 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           contact_id: string
+          contacts_done?: number
           conversation_id: string
           created_at?: string
           current_step_id?: string | null
           deadline_at?: string | null
+          evaluation_lease_until?: string | null
+          evaluation_token?: string | null
           flow_id: string
           id?: string
+          last_contact_accepted_at?: string | null
+          next_contact_at?: string | null
+          next_contact_reason?: string | null
+          next_contact_responsible?: string | null
           next_evaluation_at?: string | null
           opportunity_id?: string | null
           paused_at?: string | null
+          policy_activated_at?: string | null
+          policy_key?: string | null
+          policy_version?: number | null
           smart_state?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["followup_run_status"]
@@ -1330,15 +1356,25 @@ export type Database = {
         Update: {
           completed_at?: string | null
           contact_id?: string
+          contacts_done?: number
           conversation_id?: string
           created_at?: string
           current_step_id?: string | null
           deadline_at?: string | null
+          evaluation_lease_until?: string | null
+          evaluation_token?: string | null
           flow_id?: string
           id?: string
+          last_contact_accepted_at?: string | null
+          next_contact_at?: string | null
+          next_contact_reason?: string | null
+          next_contact_responsible?: string | null
           next_evaluation_at?: string | null
           opportunity_id?: string | null
           paused_at?: string | null
+          policy_activated_at?: string | null
+          policy_key?: string | null
+          policy_version?: number | null
           smart_state?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["followup_run_status"]
@@ -1672,6 +1708,9 @@ export type Database = {
           next_action_description: string | null
           notes: string | null
           pipeline_stage_id: string
+          post_quote_next_at: string | null
+          post_quote_next_reason: string | null
+          post_quote_run_id: string | null
           status: Database["public"]["Enums"]["opportunity_status"]
           title: string
           updated_at: string
@@ -1686,6 +1725,9 @@ export type Database = {
           next_action_description?: string | null
           notes?: string | null
           pipeline_stage_id: string
+          post_quote_next_at?: string | null
+          post_quote_next_reason?: string | null
+          post_quote_run_id?: string | null
           status?: Database["public"]["Enums"]["opportunity_status"]
           title: string
           updated_at?: string
@@ -1700,6 +1742,9 @@ export type Database = {
           next_action_description?: string | null
           notes?: string | null
           pipeline_stage_id?: string
+          post_quote_next_at?: string | null
+          post_quote_next_reason?: string | null
+          post_quote_run_id?: string | null
           status?: Database["public"]["Enums"]["opportunity_status"]
           title?: string
           updated_at?: string
@@ -1830,6 +1875,8 @@ export type Database = {
       scheduled_actions: {
         Row: {
           action_type: Database["public"]["Enums"]["followup_action_type"]
+          analyzed_message_ids: Json
+          analyzed_through_at: string | null
           attempts: number
           cancel_on_reply: boolean
           contact_id: string | null
@@ -1848,6 +1895,7 @@ export type Database = {
           id: string
           idempotency_key: string
           last_error: string | null
+          logical_contact: number | null
           media_filename: string | null
           media_mime_type: string | null
           media_reference: string | null
@@ -1855,6 +1903,8 @@ export type Database = {
           opportunity_id: string | null
           requires_approval: boolean
           scheduled_for: string
+          send_started_at: string | null
+          send_state: string | null
           simulated_at: string | null
           smart_strategy: string | null
           status: Database["public"]["Enums"]["scheduled_action_status"]
@@ -1864,6 +1914,8 @@ export type Database = {
         }
         Insert: {
           action_type?: Database["public"]["Enums"]["followup_action_type"]
+          analyzed_message_ids?: Json
+          analyzed_through_at?: string | null
           attempts?: number
           cancel_on_reply?: boolean
           contact_id?: string | null
@@ -1882,6 +1934,7 @@ export type Database = {
           id?: string
           idempotency_key: string
           last_error?: string | null
+          logical_contact?: number | null
           media_filename?: string | null
           media_mime_type?: string | null
           media_reference?: string | null
@@ -1889,6 +1942,8 @@ export type Database = {
           opportunity_id?: string | null
           requires_approval?: boolean
           scheduled_for: string
+          send_started_at?: string | null
+          send_state?: string | null
           simulated_at?: string | null
           smart_strategy?: string | null
           status?: Database["public"]["Enums"]["scheduled_action_status"]
@@ -1898,6 +1953,8 @@ export type Database = {
         }
         Update: {
           action_type?: Database["public"]["Enums"]["followup_action_type"]
+          analyzed_message_ids?: Json
+          analyzed_through_at?: string | null
           attempts?: number
           cancel_on_reply?: boolean
           contact_id?: string | null
@@ -1916,6 +1973,7 @@ export type Database = {
           id?: string
           idempotency_key?: string
           last_error?: string | null
+          logical_contact?: number | null
           media_filename?: string | null
           media_mime_type?: string | null
           media_reference?: string | null
@@ -1923,6 +1981,8 @@ export type Database = {
           opportunity_id?: string | null
           requires_approval?: boolean
           scheduled_for?: string
+          send_started_at?: string | null
+          send_state?: string | null
           simulated_at?: string | null
           smart_strategy?: string | null
           status?: Database["public"]["Enums"]["scheduled_action_status"]
@@ -2373,6 +2433,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_post_quote_contact: {
+        Args: {
+          p_action: string
+          p_at: string
+          p_message: string
+          p_next: string
+          p_reason: string
+        }
+        Returns: boolean
+      }
       analytics_flows: { Args: { _from: string; _to: string }; Returns: Json }
       analytics_funnel: { Args: { _from: string; _to: string }; Returns: Json }
       analytics_health: { Args: never; Returns: Json }
@@ -2384,6 +2454,11 @@ export type Database = {
         Args: { _from: string; _to: string }
         Returns: Json
       }
+      patch_conversation_control: {
+        Args: { p_bump?: boolean; p_conversation: string; p_patch: Json }
+        Returns: undefined
+      }
+      schedule_smart_action: { Args: { p_action: Json }; Returns: string }
     }
     Enums: {
       ai_job_status: "pending" | "processing" | "done" | "failed"
