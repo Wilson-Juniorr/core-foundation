@@ -41,7 +41,9 @@ describe('Stage A actual engine + isolated PostgreSQL + fake provider',()=>{
   const action=await actionFor(runId);
   expect((await fixture.pg.query('SELECT context_version FROM conversation_control')).rows[0]).toEqual({context_version:1});
   await fixture.pg.query("UPDATE scheduled_actions SET status='processing' WHERE id=$1",[action['id']]);
-  expect(await executeClaimedAction(db(),action as never)).toBe('sent');
+  const outcome=await executeClaimedAction(db(),action as never);
+  if(outcome!=='sent') console.log('execution diagnostic',await actionFor(runId));
+  expect(outcome).toBe('sent');
   const run=await runFor(runId);expect(run['status']).toBe('active');expect(run['contacts_done']).toBe(1);expect(run['next_contact_at']).toEqual(new Date('2026-03-13T18:00:00Z'));
   expect(fake.send).toHaveBeenCalledTimes(1);
  });
