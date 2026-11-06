@@ -32,7 +32,16 @@ export async function extractAndStoreCommitments(
     text: input.text,
     direction: input.direction,
     now: input.messageId
-      ? new Date((await db.from("messages").select("sent_at").eq("id", input.messageId).eq("user_id", input.userId).maybeSingle()).data?.sent_at ?? new Date().toISOString())
+      ? new Date(
+          (
+            await db
+              .from("messages")
+              .select("sent_at")
+              .eq("id", input.messageId)
+              .eq("user_id", input.userId)
+              .maybeSingle()
+          ).data?.sent_at ?? new Date().toISOString(),
+        )
       : new Date(),
   });
   if (found.length === 0) return [];

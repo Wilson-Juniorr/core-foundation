@@ -121,7 +121,10 @@ export function extractCommitments(input: {
   const text = (input.text ?? "").trim();
   if (text.length < 3) return [];
   const timezone = input.timezone ?? DEFAULT_TIMEZONE;
-  const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const lower = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
   const now = input.now;
   const clock = /(?:as?\s+|\b)(\d{1,2})(?::|h)(\d{2})?\b/.exec(lower);
   const hour = clock ? Number(clock[1]) : null;
@@ -130,9 +133,16 @@ export function extractCommitments(input: {
   const fullDate = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/.exec(lower);
   if (fullDate) {
     const parts = zonedParts(now, timezone);
-    const day = Number(fullDate[1]), month = Number(fullDate[2]), year = Number(fullDate[3] ?? parts.year);
-    const check = new Date(Date.UTC(year, month-1, day));
-    if (check.getUTCFullYear() !== year || check.getUTCMonth()+1 !== month || check.getUTCDate() !== day) return [];
+    const day = Number(fullDate[1]),
+      month = Number(fullDate[2]),
+      year = Number(fullDate[3] ?? parts.year);
+    const check = new Date(Date.UTC(year, month - 1, day));
+    if (
+      check.getUTCFullYear() !== year ||
+      check.getUTCMonth() + 1 !== month ||
+      check.getUTCDate() !== day
+    )
+      return [];
   }
 
   const baseResponsible: CommitmentResponsible =
@@ -285,7 +295,8 @@ export function extractCommitments(input: {
 
   /* 6. Compromisso explícito do consultor. */
   if (
-    results.length === 0 && input.direction === "outbound" &&
+    results.length === 0 &&
+    input.direction === "outbound" &&
     /\b(vou\s+(verificar|checar|ver|confirmar|consultar|cotar|simular)|j(á|a)\s+te\s+(retorno|falo|aviso)|te\s+(retorno|aviso|falo|mando))\b/i.test(
       lower,
     )
@@ -308,21 +319,25 @@ export function extractCommitments(input: {
   const deadlinePromise = /\b(te\s+respondo|te\s+retorno|respondo|retorno)\s+ate\b/.test(lower);
   return results.map((original) => {
     const item = { ...original };
-    if (callbackRequested) { item.responsible = input.direction === "inbound" ? "system" : "human"; item.commitment_type = "requested_callback"; }
+    if (callbackRequested) {
+      item.responsible = input.direction === "inbound" ? "system" : "human";
+      item.commitment_type = "requested_callback";
+    }
     if (deadlinePromise) item.commitment_type = "customer_deadline";
     const reference = item.due_at ?? item.due_window_end;
     if (reference && (hour !== null || deadlinePromise)) {
       const parts = zonedParts(new Date(reference), timezone);
       const at = zonedInstant({ ...parts, hour: hour ?? 18, minute }, timezone).toISOString();
-      if (item.due_at) item.due_at = at; else item.due_window_end = at;
+      if (item.due_at) item.due_at = at;
+      else item.due_window_end = at;
     }
-    return ({
-    ...item,
-    due_at: item.due_at ? toBusinessDay(new Date(item.due_at), timezone).toISOString() : null,
-    due_window_end: item.due_window_end
-      ? toBusinessDay(new Date(item.due_window_end), timezone).toISOString()
-      : null,
-  });
+    return {
+      ...item,
+      due_at: item.due_at ? toBusinessDay(new Date(item.due_at), timezone).toISOString() : null,
+      due_window_end: item.due_window_end
+        ? toBusinessDay(new Date(item.due_window_end), timezone).toISOString()
+        : null,
+    };
   });
 }
 

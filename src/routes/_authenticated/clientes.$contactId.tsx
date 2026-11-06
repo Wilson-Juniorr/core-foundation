@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { ContactFormDialog } from "@/components/contact-form-dialog";
 import { FollowupPanel } from "@/components/followup/followup-panel";
+import { PostQuotePanel } from "@/components/smart/post-quote-panel";
 import { SmartControlCard } from "@/components/smart/smart-control-card";
 import { AgentHandoffCard } from "@/components/smart/agent-handoff-card";
 
@@ -45,6 +46,8 @@ export const Route = createFileRoute("/_authenticated/clientes/$contactId")({
   head: () => ({
     meta: [
       { title: "Cliente — Próximo Passo" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         name: "description",
         content: "Ficha do cliente com oportunidades, próximas ações e histórico completo.",
@@ -186,6 +189,8 @@ function ContactDetailPage() {
         </Card>
 
         <DealSheetCard contactId={contactId} />
+
+        <PostQuotePanel contactId={contactId} opportunities={opportunities} />
 
         <AgentHandoffCard conversationId={conversation.data?.id ?? null} />
 

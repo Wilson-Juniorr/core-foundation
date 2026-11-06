@@ -680,7 +680,12 @@ async function noteHumanIntervention(
 
 export async function sendText(
   userId: string,
-  input: { conversationId: string; text: string; source?: SendSource | undefined; scheduledActionId?: string },
+  input: {
+    conversationId: string;
+    text: string;
+    source?: SendSource | undefined;
+    scheduledActionId?: string;
+  },
 ): Promise<{ messageId: string }> {
   const { db, connection, creds, conversation } = await conversationForSend(
     userId,
@@ -706,18 +711,27 @@ export async function sendText(
     .single();
   if (insertError) throw new Error(insertError.message);
 
-  if(input.scheduledActionId) {
-    const {error}=await db.from("scheduled_actions").update({message_id:pending.id,send_state:"started",send_started_at:new Date().toISOString()}).eq("id",input.scheduledActionId).eq("user_id",userId).eq("status","processing");
-    if(error) throw new Error(error.message);
+  if (input.scheduledActionId) {
+    const { error } = await db
+      .from("scheduled_actions")
+      .update({
+        message_id: pending.id,
+        send_state: "started",
+        send_started_at: new Date().toISOString(),
+      })
+      .eq("id", input.scheduledActionId)
+      .eq("user_id", userId)
+      .eq("status", "processing");
+    if (error) throw new Error(error.message);
   }
-  let accepted=false;
+  let accepted = false;
   try {
     const result = await provider.sendTextMessage(creds, {
       phoneNumber: conversation.phone_number!,
       text: input.text,
     });
 
-    accepted=true;
+    accepted = true;
     await db
       .from("messages")
       .update({ status: result.status, external_message_id: result.externalMessageId })
@@ -742,10 +756,24 @@ export async function sendText(
     waLog.info("message_sent", { connection_id: connection.id, type: "text", source });
     return { messageId: pending.id };
   } catch (error) {
-    const {ProviderError}=await import("./log.server");
-    const uncertain=accepted || !(error instanceof ProviderError) || (!error.disconnected && (error.statusCode===null || error.statusCode>=500));
-    await db.from("messages").update({ status: uncertain ? "pending" : "failed" }).eq("id", pending.id);
-    if(input.scheduledActionId) await db.from("scheduled_actions").update({send_state:uncertain?"uncertain":"rejected",last_error:uncertain?"send_result_uncertain":null}).eq("id",input.scheduledActionId).eq("user_id",userId);
+    const { ProviderError } = await import("./log.server");
+    const uncertain =
+      accepted ||
+      !(error instanceof ProviderError) ||
+      (!error.disconnected && (error.statusCode === null || error.statusCode >= 500));
+    await db
+      .from("messages")
+      .update({ status: uncertain ? "pending" : "failed" })
+      .eq("id", pending.id);
+    if (input.scheduledActionId)
+      await db
+        .from("scheduled_actions")
+        .update({
+          send_state: uncertain ? "uncertain" : "rejected",
+          last_error: uncertain ? "send_result_uncertain" : null,
+        })
+        .eq("id", input.scheduledActionId)
+        .eq("user_id", userId);
     waLog.error("message_send_failed", { connection_id: connection.id, type: "text", source });
     await noteSendFailure(db, connection.id, error);
     throw new Error(userFacingProviderError(error));

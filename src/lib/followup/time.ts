@@ -157,7 +157,8 @@ function minutesInside(minutes: number, window: SendWindow): boolean {
  */
 export function nextAllowedInstant(date: Date, window: SendWindow | null, timezone: string): Date {
   if (!window) return date;
-  if (window.startMinutes === window.endMinutes) throw new Error("window_conflict: janelas de envio sem horário em comum");
+  if (window.startMinutes === window.endMinutes)
+    throw new Error("window_conflict: janelas de envio sem horário em comum");
   const zone = safeTimezone(timezone);
 
   let current = date;
