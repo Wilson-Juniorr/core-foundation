@@ -10,7 +10,7 @@ export async function testDatabase() {
   const table=match[1],body=match[2] ?? '';
   const columns=[...body.matchAll(/          (\w+): ([^\n]+)/g)].map(m=>{
    const name=m[1],type=m[2] ?? '';
-   const sqlType=name==='id'||name?.endsWith('_id')||name==='evaluation_token'?'uuid':type.includes('Json')?'jsonb':type.startsWith('number')?'numeric':type.startsWith('boolean')?'boolean':name?.endsWith('_at')||name?.endsWith('_until')||name==='scheduled_for'?'timestamptz':table==='followup_runs'&&name==='status'?'public.followup_run_status':'text';
+   const sqlType=name==='id'||name?.endsWith('_id')||name==='evaluation_token'?'uuid':type.includes('Json')?'jsonb':type.startsWith('number')?(name?.includes('confidence')||name?.includes('value')?'numeric':'integer'):type.startsWith('boolean')?'boolean':name?.endsWith('_at')||name?.endsWith('_until')||name==='scheduled_for'?'timestamptz':table==='followup_runs'&&name==='status'?'public.followup_run_status':'text';
    const defaults=name==='id'?' DEFAULT gen_random_uuid() PRIMARY KEY':name==='created_at'||name==='updated_at'?' DEFAULT now()':name==='context_version'?' DEFAULT 1':name==='contacts_done'||name==='attempts'?' DEFAULT 0':name==='status'&&table==='scheduled_actions'?" DEFAULT 'scheduled'":'';
    return `"${name}" ${sqlType}${defaults}`;
   });
