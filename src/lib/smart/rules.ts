@@ -72,6 +72,9 @@ export function atLocalHour(
 
 /* --------------------------- extrator de promessas -------------------------- */
 
+/** Compromisso-barreira: data inválida/ambígua aguardando revisão do consultor. */
+export const DATE_REVIEW_TYPE = "date_review";
+
 export interface ExtractedCommitment {
   commitment_type: string;
   responsible: CommitmentResponsible;
