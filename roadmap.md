@@ -13,6 +13,7 @@
 
 # Pós-cotação confiável (plano aprovado 06/11)
 ## Etapa A
+- [ ] Integração solicitada em 06/11: política persistida, controles, testes integrados e confirmação de envio sem duplicidade
 - [x] Regras de agenda: 1º contato 24h+10h e 8 contatos por silêncio (testadas)
 - [ ] Mensagem preparada não se anular sozinha (versão do contexto atômica)
 - [ ] Envio Smart não encerrar o acompanhamento
