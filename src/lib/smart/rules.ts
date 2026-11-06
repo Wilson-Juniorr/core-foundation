@@ -320,7 +320,7 @@ export function extractCommitments(input: {
   return results.map((original) => {
     const item = { ...original };
     if (callbackRequested) {
-      item.responsible = input.direction === "inbound" ? "system" : "human";
+      item.responsible = input.direction === "inbound" ? "customer" : "human";
       item.commitment_type = "requested_callback";
     }
     if (deadlinePromise) item.commitment_type = "customer_deadline";

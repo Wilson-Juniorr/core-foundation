@@ -274,8 +274,8 @@ export async function analyzeContact(
     const payload = result.data;
     const patch: Database["public"]["Tables"]["customer_memory"]["Update"] = {
       analysis_status: hasMore ? "pending" : "ready",
-      message_cursor_at: lastMessage?.sent_at,
-      message_cursor_id: lastMessage?.id,
+      message_cursor_at: lastMessage?.sent_at ?? null,
+      message_cursor_id: lastMessage?.id ?? null,
       last_error: null,
       last_analyzed_message_id: lastMessage?.id ?? memory.last_analyzed_message_id,
       last_analyzed_at: now,
@@ -386,7 +386,7 @@ export async function analyzeContact(
       analyzed: fresh.length,
       tokens: total,
     });
-    return { status: "updated", reason: hasMore ? "more_messages" : undefined };
+    return { status: "updated", ...(hasMore ? {reason:"more_messages"} : {}) };
   } catch (error) {
     const gateway = error instanceof AiGatewayError ? error : null;
     const message =

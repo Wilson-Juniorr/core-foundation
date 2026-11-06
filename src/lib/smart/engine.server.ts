@@ -184,7 +184,7 @@ export async function startSmartFlow(
             next_contact_at: initialAt,
             next_contact_reason: humanPending
               ? "Você ainda deve uma resposta ao cliente."
-              : initial?.goal,
+              : initial?.goal ?? null,
             next_contact_responsible: humanPending ? "human" : "system",
           }
         : {}),
@@ -221,7 +221,7 @@ export async function startSmartFlow(
         post_quote_next_at: humanPending ? null : initialAt,
         post_quote_next_reason: humanPending
           ? "Você ainda deve uma resposta ao cliente."
-          : initial?.goal,
+          : initial?.goal ?? null,
       })
       .eq("id", input.opportunityId)
       .eq("user_id", userId);
@@ -871,7 +871,7 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
       analyzed_message_ids: (messages ?? [])
         .filter((m) => m.direction === "inbound")
         .map((m) => m.id),
-      logical_contact: postQuote ? cadence?.contact : null,
+      logical_contact: postQuote ? cadence?.contact ?? null : null,
       decision_reason:
         quality.verdict === "review"
           ? `${decision.reason} | Revisão: ${quality.reason}`

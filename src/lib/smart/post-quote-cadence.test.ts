@@ -40,8 +40,9 @@ describe("cadência de silêncio", () => {
     for (let done = 0; done < 8; done += 1) {
       const n = nextSilenceContact({ doneContacts: done, activatedAt: activated, lastContactAt: last, timezone: tz });
       expect(n).not.toBeNull();
-      got.push(fmt(n!.at));
-      last = n!.at;
+      if(!n) throw new Error("Missing cadence step");
+      got.push(fmt(n.at));
+      last = n.at;
     }
     // 10/03 10h; +3=13 15h; +3=16 10h; +4=20 15h; +5=25 10h; +5=30 15h; +7=06/04 15h; +7=13/04 15h
     expect(got).toEqual(
@@ -62,6 +63,7 @@ describe("cadência de silêncio", () => {
   it("soma dias de calendário e só depois ajusta ao dia útil", () => {
     // último contato quinta 12/03 → +3 = domingo 15 → segunda 16 às 15h
     const n = nextSilenceContact({ doneContacts: 1, activatedAt: at(9, 9), lastContactAt: at(12, 10), timezone: tz });
-    expect(fmt(n!.at)).toBe(fmt(at(16, 15)));
+    if(!n) throw new Error("Missing cadence step");
+    expect(fmt(n.at)).toBe(fmt(at(16, 15)));
   });
 });
