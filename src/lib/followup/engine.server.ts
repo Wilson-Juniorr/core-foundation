@@ -1287,11 +1287,12 @@ export async function executeClaimedAction(
       await db
         .from("followup_runs")
         .update({
-          status: "active",
           smart_state: "waiting_customer",
           next_evaluation_at: new Date(Date.now() + 36 * 3_600_000).toISOString(),
         })
-        .eq("id", run.id);
+        .eq("id", run.id)
+        // Never revive a run the send just closed (e.g. graceful decline).
+        .eq("status", "active");
     return "sent";
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha desconhecida";

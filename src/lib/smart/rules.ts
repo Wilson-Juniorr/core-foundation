@@ -126,10 +126,25 @@ export function extractCommitments(input: {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
   const now = input.now;
+  const callbackRequested = /\bme\s+(chama|liga|manda|avisa)\b/.test(lower);
+  const deadlinePromise = /\b(te\s+respondo|te\s+retorno|respondo|retorno)\s+ate\b/.test(lower);
+  /** Data citada que não conseguimos interpretar com segurança: bloqueia e pede revisão. */
+  const review = (why: string): ExtractedCommitment[] => [
+    {
+      commitment_type: DATE_REVIEW_TYPE,
+      responsible: "human",
+      description: `Revise a data: ${why} — “${text.slice(0, 120)}”`,
+      due_at: null,
+      due_window_end: null,
+      is_ambiguous: true,
+      confidence: 0.3,
+      dedupe_key: hashKey(`${DATE_REVIEW_TYPE}|${lower}`),
+    },
+  ];
   const clock = /(?:as?\s+|\b)(\d{1,2})(?::|h)(\d{2})?\b/.exec(lower);
   const hour = clock ? Number(clock[1]) : null;
   const minute = clock?.[2] ? Number(clock[2]) : 0;
-  if (hour !== null && (hour > 23 || minute > 59)) return [];
+  if (hour !== null && (hour > 23 || minute > 59)) return review("horário inexistente");
   const fullDate = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/.exec(lower);
   if (fullDate) {
     const parts = zonedParts(now, timezone);
@@ -142,7 +157,7 @@ export function extractCommitments(input: {
       check.getUTCMonth() + 1 !== month ||
       check.getUTCDate() !== day
     )
-      return [];
+      return review("data inexistente no calendário");
   }
 
   const baseResponsible: CommitmentResponsible =
@@ -168,7 +183,8 @@ export function extractCommitments(input: {
       responsible: "third_party",
       description: `Vai conversar com ${thirdParty[0]} antes de decidir`,
       due_at: null,
-      due_window_end: atLocalHour(addBusinessDays(now, 2, timezone), 0, 18, timezone).toISOString(),
+      // Sem outro prazo: 2 dias úteis às 15h (quinta → segunda 15h).
+      due_window_end: atLocalHour(addBusinessDays(now, 2, timezone), 0, 15, timezone).toISOString(),
       is_ambiguous: true,
       confidence: 0.7,
     });
@@ -188,7 +204,7 @@ export function extractCommitments(input: {
       commitment_type: "callback_on_weekday",
       responsible,
       description: `Retomar o contato na ${weekday.label}${partOfDay ? ` ${partOfDay.label}` : ""}`,
-      due_at: nextWeekday(now, weekday.day, partOfDay?.hour ?? 10, timezone).toISOString(),
+      due_at: nextWeekday(now, weekday.day, partOfDay?.hour ?? 15, timezone).toISOString(),
       due_window_end: null,
       is_ambiguous: false,
       confidence: 0.75,
@@ -252,7 +268,8 @@ export function extractCommitments(input: {
       const parts = zonedParts(now, timezone);
       const month = fullDate ? Number(fullDate[2]) : parts.month;
       const year = fullDate ? Number(fullDate[3] ?? parts.year) : parts.year;
-      if (new Date(Date.UTC(year, month - 1, day)).getUTCDate() !== day) return [];
+      if (new Date(Date.UTC(year, month - 1, day)).getUTCDate() !== day)
+        return review("dia inexistente neste mês");
       let target = zonedInstant({ year, month, day, hour: hour ?? 10, minute }, timezone);
       if (!fullDate && target.getTime() < now.getTime()) {
         const nextMonth = parts.month === 12 ? 1 : parts.month + 1;
@@ -314,18 +331,39 @@ export function extractCommitments(input: {
     });
   }
 
+  const dated = results.filter(
+    (item) => item.commitment_type !== "consult_third_party" && (item.due_at || item.due_window_end),
+  );
+  // Pedido de retorno/prazo sem data reconhecível: não chutamos, pedimos revisão.
+  if (dated.length === 0 && (callbackRequested || deadlinePromise)) {
+    const loose = /\b(depois|outro\s+dia|qualquer\s+dia|em\s+breve|logo|ate\s+(o|a)\s+\w+)\b/.test(
+      lower,
+    );
+    if (loose || deadlinePromise) return review("prazo sem data reconhecível");
+  }
+  // Outro prazo explícito prevalece sobre a espera padrão de "vou ver com minha esposa".
+  if (dated.length > 0) {
+    for (const item of results)
+      if (item.commitment_type === "consult_third_party") item.due_window_end = null;
+  }
+
   // Retornos nunca caem em fim de semana ou feriado nacional.
-  const callbackRequested = /\bme\s+(chama|liga|manda|avisa)\b/.test(lower);
-  const deadlinePromise = /\b(te\s+respondo|te\s+retorno|respondo|retorno)\s+ate\b/.test(lower);
   return results.map((original) => {
     const item = { ...original };
     if (callbackRequested) {
       item.responsible = input.direction === "inbound" ? "customer" : "human";
       item.commitment_type = "requested_callback";
     }
-    if (deadlinePromise) item.commitment_type = "customer_deadline";
     const reference = item.due_at ?? item.due_window_end;
-    if (reference && (hour !== null || deadlinePromise)) {
+    if (deadlinePromise && reference && item.commitment_type !== "consult_third_party") {
+      // "Te respondo até sexta": espera o prazo acabar; retorno no próximo dia permitido às 15h.
+      item.commitment_type = "customer_deadline";
+      const parts = zonedParts(new Date(reference), timezone);
+      const dayAfter = zonedInstant({ ...parts, hour: 15, minute: 0 }, timezone);
+      item.due_at = new Date(dayAfter.getTime() + DAY_MS).toISOString();
+      item.due_window_end = null;
+      item.description = `${item.description} — prazo do cliente; retorno após o prazo`;
+    } else if (reference && hour !== null) {
       const parts = zonedParts(new Date(reference), timezone);
       const at = zonedInstant({ ...parts, hour: hour ?? 18, minute }, timezone).toISOString();
       if (item.due_at) item.due_at = at;
