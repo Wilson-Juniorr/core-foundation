@@ -18,7 +18,16 @@ import {
   postQuoteViewFn,
   resolvePostQuoteFn,
 } from "@/lib/post-quote.functions";
-import { formatDateTime } from "@/lib/domain/datetime";
+// Times are labelled "São Paulo", so render them in that zone regardless of the device.
+const spFormat = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const formatDateTime = (value: string) => spFormat.format(new Date(value)).replace(", ", " às ");
 import { localInstant } from "@/lib/smart/post-quote-cadence";
 export function PostQuotePanel({
   contactId,
