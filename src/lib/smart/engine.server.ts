@@ -881,7 +881,7 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
       status: needsApproval ? "needs_approval" : "scheduled",
       cancel_on_reply: true,
       idempotency_key: postQuote
-        ? `post_quote:${run.id}:${cadence?.contact}:${control.context_version}`
+        ? `post_quote:${run.id}:${cadence?.contact}:${control.context_version}:${crypto.randomUUID()}`
         : `smart:${run.id}:${strategy}:${scheduledFor.toISOString()}`,
       smart_strategy: strategy,
       context_version: control.context_version,

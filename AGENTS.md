@@ -19,3 +19,11 @@
 - Webhook outbound messages matching a recent automation send (same type/text, ≤3 min) are echoes, not human intervention (`isAutomationEcho`), so the agent doesn't silence itself.
 - Owner alerts go to the consultant's personal WhatsApp through the durable `owner_alerts` queue (business days 08–20h, otherwise digested next morning); a disconnected WhatsApp keeps them pending without spending attempts.
 - The post-quote deal sheet (stage, decider, quoted plan, temperature) lives as columns on `customer_memory`, merged only through `src/lib/ai/deal-sheet.ts` (tested): human-confirmed fields are never overwritten and empty AI readings never erase known facts.
+
+## Post-quote execution
+- Explicit post-quote runs use the versioned cadence module and persisted run progress; legacy runs remain opt-in unchanged.
+- Context mutations use the atomic control RPC; operational decisions do not bump context, while proposal and instruction triggers do.
+- Smart evaluations use expiring claims and transactional schedule insertion; logical-contact uniqueness prevents competing pending actions.
+- Accepted post-quote contacts advance transactionally; uncertain attempts stay blocked until a durable message receipt confirms acceptance.
+- Post-quote CRM next-action fields are separate from manual tasks; run changes synchronize them with a database trigger.
+- Integration tests use isolated PGlite and fake providers; this dependency must never enter application imports.

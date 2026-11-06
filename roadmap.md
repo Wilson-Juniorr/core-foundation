@@ -13,15 +13,18 @@
 
 # Pós-cotação confiável (plano aprovado 06/11)
 ## Etapa A
-- [ ] Integração solicitada em 06/11: política persistida, controles, testes integrados e confirmação de envio sem duplicidade
+- [x] Política persistida, controles e testes integrados em banco isolado/provedor falso
+- [ ] Confirmação operacional UAZAPI para tentativas sem recibo (capacidade de correlação do provedor não confirmada)
 - [x] Regras de agenda: 1º contato 24h+10h e 8 contatos por silêncio (testadas)
-- [ ] Mensagem preparada não se anular sozinha (versão do contexto atômica)
-- [ ] Envio Smart não encerrar o acompanhamento
-- [ ] Resposta antiga não cancelar retornos novos
-- [ ] Leitor de datas (acentos, horas, "até sexta", datas inválidas, horário original)
-- [ ] Memória em conversas com mais de 400 mensagens
-- [ ] Janelas sem interseção bloqueiam; aprovação mantém horário; sem reenvio cego
-- [ ] Botão "Ativar pós-cotação" + próximo contato visível
+- [x] Mensagem preparada não se anular sozinha (versão do contexto atômica)
+- [x] Envio Smart não encerrar o acompanhamento
+- [x] Resposta antiga não cancelar retornos novos
+- [x] Leitor de datas: acentos, minutos, prazos e horário original; datas inválidas rejeitadas
+- [ ] Bloqueio visível de expressão de data inválida/ambígua (atualmente não cria compromisso)
+- [ ] Ativação e controles pelo navegador com cliente isolado (painel autenticado conferido; ciclo testado no banco isolado)
+- [x] Memória em conversas com mais de 400 mensagens
+- [x] Janelas sem interseção bloqueiam; aprovação mantém horário; sem reenvio cego
+- [x] Botão "Ativar pós-cotação" + próximo contato visível
 ## Etapa B
 - [ ] Decisão por mensagem (texto/áudio), botões Assumir/Resolvida/Reagendar/Pausar/Encerrar
 ## Etapa C
