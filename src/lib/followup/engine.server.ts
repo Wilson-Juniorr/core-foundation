@@ -971,10 +971,18 @@ export async function executeClaimedAction(
     await releaseAction(db, action, { status: "blocked", last_error: "send_result_uncertain" });
     return "skipped";
   }
-  if(action.logical_contact) {
-    const {isBusinessDay,toBusinessDay}=await import("@/lib/smart/business-calendar");
-    if(!isBusinessDay(now,DEFAULT_TIMEZONE)) {
-      await releaseAction(db,action,{status:"scheduled",scheduled_for:nextAllowedInstant(toBusinessDay(now,DEFAULT_TIMEZONE),window,DEFAULT_TIMEZONE).toISOString(),last_error:"non_business_day"});
+  if (action.logical_contact) {
+    const { isBusinessDay, toBusinessDay } = await import("@/lib/smart/business-calendar");
+    if (!isBusinessDay(now, DEFAULT_TIMEZONE)) {
+      await releaseAction(db, action, {
+        status: "scheduled",
+        scheduled_for: nextAllowedInstant(
+          toBusinessDay(now, DEFAULT_TIMEZONE),
+          window,
+          DEFAULT_TIMEZONE,
+        ).toISOString(),
+        last_error: "non_business_day",
+      });
       return "rescheduled";
     }
   }
@@ -1161,9 +1169,9 @@ export async function executeClaimedAction(
       ? action
       : { ...action, action_type: "text_message", media_reference: null };
 
-  if(action.smart_strategy && evaluation.decision==="simulated") {
-    const {smartPreSendCheck}=await import("@/lib/smart/engine.server");
-    if(!(await smartPreSendCheck(db,effectiveAction)).allowed) return "skipped";
+  if (action.smart_strategy && evaluation.decision === "simulated") {
+    const { smartPreSendCheck } = await import("@/lib/smart/engine.server");
+    if (!(await smartPreSendCheck(db, effectiveAction)).allowed) return "skipped";
   }
   // Modo teste: a decisão é completa, mas nada chega ao cliente.
   if (evaluation.decision === "simulated") {
