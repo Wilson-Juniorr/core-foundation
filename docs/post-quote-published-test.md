@@ -27,13 +27,13 @@ Execute somente após publicar a versão com esta correção. Esta rodada não p
 
 Faça cada cenário separadamente, apenas neste contato, antes de aprovar qualquer mensagem. Não empilhe cenários numa única conversa sem resolver a revisão anterior.
 
-| Mensagem recebida | Resultado esperado |
-| --- | --- |
-| Me chama dia 32 | Bloqueado · revisão de data; responsável Você; nenhum envio |
-| Me chama dia 0 | Mesmo bloqueio |
-| Me chama às 14h | Mesmo bloqueio: falta o dia |
-| Me chama quinta dia 13/03/2026 às 14h25 | Revisão: 13/03/2026 é sexta, não quinta |
-| Me chama sexta dia 13/03/2026 às 14h25 | Um único compromisso, sexta às 14h25, sem duplicação |
+| Mensagem recebida                       | Resultado esperado                                          |
+| --------------------------------------- | ----------------------------------------------------------- |
+| Me chama dia 32                         | Bloqueado · revisão de data; responsável Você; nenhum envio |
+| Me chama dia 0                          | Mesmo bloqueio                                              |
+| Me chama às 14h                         | Mesmo bloqueio: falta o dia                                 |
+| Me chama quinta dia 13/03/2026 às 14h25 | Revisão: 13/03/2026 é sexta, não quinta                     |
+| Me chama sexta dia 13/03/2026 às 14h25  | Um único compromisso, sexta às 14h25, sem duplicação        |
 
 As duas datas de março são exemplos históricos dos testes automatizados: **não as use para agendar um envio real agora**. Para testar no publicado, substitua por uma data futura útil, calculando o dia da semana correspondente; no caso contraditório, escreva outro dia da semana. Confira a concordância antes do ajuste de feriados/fins de semana. Horas e minutos explícitos devem continuar iguais após esse ajuste.
 

@@ -344,20 +344,34 @@ describe("Stage A closing round (isolated, fake clock + provider)", () => {
     if (!item) throw new Error("Missing review barrier");
     await fixture.pg.query(
       "INSERT INTO commitments(user_id,conversation_id,contact_id,commitment_type,responsible,description,is_ambiguous,status)VALUES($1,$2,$3,$4,$5,$6,$7,'pending')",
-      [user, conv, contact, item.commitment_type, item.responsible, item.description, item.is_ambiguous],
+      [
+        user,
+        conv,
+        contact,
+        item.commitment_type,
+        item.responsible,
+        item.description,
+        item.is_ambiguous,
+      ],
     );
     vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
     expect(await evaluateSmartRun(db(), runId)).toBe("human_commitment");
     expect((await runFor(runId))["status"]).toBe("paused");
     expect((await runFor(runId))["contacts_done"]).toBe(0);
-    expect((await fixture.pg.query("SELECT count(*)::int AS n FROM scheduled_actions")).rows[0]).toEqual({ n: 0 });
+    expect(
+      (await fixture.pg.query("SELECT count(*)::int AS n FROM scheduled_actions")).rows[0],
+    ).toEqual({ n: 0 });
     expect(fake.send).not.toHaveBeenCalled();
   });
 
   it("individual rescheduling preserves return-with-approval; no send before approval; accepted contact is 1 of 8", async () => {
     const { runId } = await start();
     await patchControl(db(), conv, { owner: "ai", force_approval_next: true });
-    await controlPostQuote(db(), user, { runId, command: "reschedule", at: "2026-03-10T18:25:00Z" });
+    await controlPostQuote(db(), user, {
+      runId,
+      command: "reschedule",
+      at: "2026-03-10T18:25:00Z",
+    });
     vi.setSystemTime(new Date("2026-03-10T18:25:00Z"));
     expect(await evaluateSmartRun(db(), runId)).toBe("needs_approval");
     let action = await actionFor(runId);
@@ -369,12 +383,26 @@ describe("Stage A closing round (isolated, fake clock + provider)", () => {
     action = await actionFor(runId);
     expect(action["scheduled_for"]).toEqual(new Date("2026-03-10T18:25:00Z"));
     expect(fake.send).not.toHaveBeenCalled();
-    await fixture.pg.query("UPDATE scheduled_actions SET status='processing' WHERE id=$1", [action["id"]]);
-    expect(await executeClaimedAction(db(), { ...action, status: "processing" } as never)).toBe("sent");
+    await fixture.pg.query("UPDATE scheduled_actions SET status='processing' WHERE id=$1", [
+      action["id"],
+    ]);
+    expect(await executeClaimedAction(db(), { ...action, status: "processing" } as never)).toBe(
+      "sent",
+    );
     expect(fake.send).toHaveBeenCalledTimes(1);
     expect((await runFor(runId))["contacts_done"]).toBe(1);
     expect((await runFor(runId))["next_contact_at"]).toEqual(new Date("2026-03-13T18:00:00Z"));
-    expect((await fixture.pg.query("SELECT status,next_action_description,post_quote_next_at FROM opportunities")).rows[0]).toEqual({ status: "open", next_action_description: "Tarefa manual", post_quote_next_at: new Date("2026-03-13T18:00:00Z") });
+    expect(
+      (
+        await fixture.pg.query(
+          "SELECT status,next_action_description,post_quote_next_at FROM opportunities",
+        )
+      ).rows[0],
+    ).toEqual({
+      status: "open",
+      next_action_description: "Tarefa manual",
+      post_quote_next_at: new Date("2026-03-13T18:00:00Z"),
+    });
   });
 
   it("full cycle: activate → first contact → prepared text → accepted → counted → next; opportunity task kept", async () => {
