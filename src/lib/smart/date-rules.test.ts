@@ -79,4 +79,26 @@ describe("post-quote date rules", () => {
     expect(read("me chama dia 5 às 14h25")[0]?.due_at).toBe("2026-04-06T17:25:00.000Z");
     expect(read("me chama dia 31")[0]?.due_at).toBe("2026-03-31T13:00:00.000Z");
   });
+  it.each([
+    ["me chama sexta, dia 13, à tarde", "2026-03-13T18:00:00.000Z"], // sexta 15h
+    ["me chama sexta, dia 13, de manhã", "2026-03-13T12:00:00.000Z"], // sexta 9h
+    ["me chama sexta, dia 13, à noite", "2026-03-13T22:00:00.000Z"], // sexta 19h
+  ])("%s becomes one commitment at the period's hour", (text, expected) => {
+    const items = read(text);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      commitment_type: "requested_callback",
+      due_at: expected,
+      is_ambiguous: false,
+    });
+  });
+  it("an explicit time beats the period of the day on a stated date", () => {
+    const items = read("me chama sexta, dia 13, à tarde, às 14h25");
+    expect(items).toHaveLength(1);
+    expect(items[0]?.due_at).toBe("2026-03-13T17:25:00.000Z");
+  });
+  it("period of the day also applies to weekday and tomorrow references", () => {
+    expect(read("me chama sexta à tarde")[0]?.due_at).toBe("2026-03-13T18:00:00.000Z");
+    expect(read("me chama amanhã de manhã")[0]?.due_at).toBe("2026-03-13T12:00:00.000Z");
+  });
 });
