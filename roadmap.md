@@ -13,8 +13,9 @@
 
 # Pós-cotação confiável (plano aprovado 06/11)
 ## Etapa A
-- [ ] Corrigir dia 0/32, hora sem dia e conflito dia da semana/data; testar compromisso único com minutos
-- [ ] Preparar roteiro publicado com cotação manual → ficha → devolução com aprovação → reagendamento individual → aprovação/recebimento/1 de 8/CRM; execução pelo usuário
+- [x] Corrigir dia 0/32, hora sem dia e conflito dia da semana/data; compromisso único com minutos; regressões reproduzidas antes da correção e suíte 94/94 após
+- [x] Preparar roteiro `docs/post-quote-published-test.md`: cotação manual → ficha → devolução com aprovação → reagendamento individual → aprovação/recebimento/1 de 8/CRM; sem ativação/envio pelo agente de desenvolvimento
+- [ ] Executar roteiro no publicado com contato controlado pelo usuário (publicar esta versão; aprovação e envio pelo usuário; devolução exige aprovação apenas da próxima mensagem)
 - [x] Política persistida, controles e testes integrados em banco isolado/provedor falso
 - [ ] Confirmação operacional UAZAPI para tentativas sem recibo (capacidade de correlação do provedor não confirmada)
 - [x] Regras de agenda: 1º contato 24h+10h e 8 contatos por silêncio (testadas)
