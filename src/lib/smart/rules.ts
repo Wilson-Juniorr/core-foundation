@@ -148,6 +148,10 @@ export function extractCommitments(input: {
   const hour = clock ? Number(clock[1]) : null;
   const minute = clock?.[2] ? Number(clock[2]) : 0;
   if (hour !== null && (hour > 23 || minute > 59)) return review("horário inexistente");
+  // Período do dia ("de manhã", "à tarde", "à noite") vale para qualquer data
+  // reconhecida; um horário explícito ("às 14h25") sempre prevalece sobre ele.
+  const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
+  const statedHour = hour ?? partOfDay?.hour ?? 10;
   const fullDate = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/.exec(lower);
   if (fullDate) {
     const parts = zonedParts(now, timezone);
@@ -180,12 +184,12 @@ export function extractCommitments(input: {
       );
     };
     if (!validDay()) return review("dia inexistente neste mês");
-    calendarReference = zonedInstant({ year, month, day, hour: hour ?? 10, minute }, timezone);
+    calendarReference = zonedInstant({ year, month, day, hour: statedHour, minute }, timezone);
     if (!fullDate && calendarReference.getTime() < now.getTime()) {
       year += month === 12 ? 1 : 0;
       month = month === 12 ? 1 : month + 1;
       if (!validDay()) return review("dia inexistente no próximo mês");
-      calendarReference = zonedInstant({ year, month, day, hour: hour ?? 10, minute }, timezone);
+      calendarReference = zonedInstant({ year, month, day, hour: statedHour, minute }, timezone);
     }
     // Compare the stated calendar date before shifting weekends/holidays.
     if (statedWeekday && new Date(Date.UTC(year, month - 1, day)).getUTCDay() !== statedWeekday.day)
@@ -223,11 +227,12 @@ export function extractCommitments(input: {
   }
 
   /* 2. Dia da semana: "me chama sexta". */
+  let weekdayMatched = false;
   for (const weekday of WEEKDAYS) {
     // A weekday beside a calendar date describes the same commitment, not a second one.
     if (calendarReference) break;
     if (!weekday.re.test(lower)) continue;
-    const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
+    weekdayMatched = true;
     const responsible: CommitmentResponsible =
       /\b(me\s+chama|me\s+liga|me\s+manda|me\s+avisa)\b/i.test(lower)
         ? input.direction === "inbound"
@@ -246,9 +251,10 @@ export function extractCommitments(input: {
     break;
   }
 
-  /* 3. Amanhã / hoje mais tarde. */
-  if (/\bamanh(ã|a)\b/i.test(lower)) {
-    const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
+  /* 3. Amanhã / hoje mais tarde — só quando não há data nem dia da semana citados. */
+  if (calendarReference || weekdayMatched) {
+    // A data explícita já carrega o período do dia; nada a acrescentar aqui.
+  } else if (/\bamanh(ã|a)\b/i.test(lower)) {
     const responsible: CommitmentResponsible =
       /\b(te\s+(retorno|respondo|falo|chamo|aviso)|volto\s+a\s+falar)\b/i.test(lower)
         ? baseResponsible
@@ -267,7 +273,6 @@ export function extractCommitments(input: {
     (PART_OF_DAY.some((part) => part.re.test(lower)) &&
       /\b(me\s+chama|te\s+chamo|te\s+falo|te\s+retorno)\b/i.test(lower))
   ) {
-    const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
     push({
       commitment_type: "callback_today",
       responsible: baseResponsible,
@@ -280,9 +285,8 @@ export function extractCommitments(input: {
   }
 
   /* 3b. Relativo: "me chama daqui 3 dias" → cai em dia útil. */
-  const relDays = parseRelativeDays(lower);
+  const relDays = calendarReference || weekdayMatched ? null : parseRelativeDays(lower);
   if (relDays) {
-    const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
     push({
       commitment_type: "callback_in_days",
       responsible: baseResponsible,
