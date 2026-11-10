@@ -48,3 +48,12 @@ Correções: bloqueio visível `date_review` para datas inválidas/ambíguas; "m
 Testes: 81/81 Vitest (7 regras de data, 20 integrados PGlite + relógio + provedor falso). Teste de reativação comprovadamente falha sem a correção. ESLint 0 erros (7 avisos antigos); typecheck OK.
 Navegador: cliente fictício (+55 11 90000-0001), desktop e 390px: ativar → 1º contato seg 09/11 10:00, aviso de revisão, pausar, reagendar 10/11 11:00, encerrar; tarefa manual preservada; zero mensagens; dados apagados.
 Pendente (ambiente publicado): cron real, envio/recibo UAZAPI real, correlação de idempotência do provedor.
+
+## Regressões de datas e roteiro controlado (10/11/2026)
+
+- Reproduzidas sete falhas antes da correção: dia 32/0 e hora sem dia retornavam vazio; weekday/data conflitantes geravam compromissos; referências concordantes eram duplicadas.
+- Corrigido `rules.ts`: valores fora de 1–31 e hora sem dia viram `date_review`; comparação weekday/data ocorre antes do ajuste de dias úteis; referências concordantes geram um único compromisso; horário/minutos são mantidos, inclusive na passagem de mês, cuja data também é validada.
+- **94/94 testes passaram em nove arquivos**: 15 regras de datas, 25 integrações isoladas, nove testes da cadência e demais regressões. Quatro novas integrações comprovam que os bloqueios não geram ações nem chamadas ao provedor; uma comprova reagendamento individual com aprovação pendente, horário preservado, nenhum envio antes de aprovar, aceite único, contador 1 e próxima data no CRM com tarefa manual intacta. Mantidos oito contatos e primeira mensagem automática após 24h.
+- Lint: zero erros, sete avisos preexistentes. Verificação automática disponível: `build OK`.
+- Roteiro detalhado: `docs/post-quote-published-test.md`. Não foram usadas contas/contatos reais, alteradas configurações compartilhadas ou enviadas mensagens. A devolução humana completa na interface publicada e a chegada no WhatsApp permanecem pendentes de execução pelo usuário; não confundir configuração de aprovação testada no banco isolado com homologação dessa devolução no navegador.
+- Esta rodada não publicou a nova versão. Publicação, agendador real e recibos UAZAPI continuam pendentes; B/C não iniciadas. Aprovação de devolução vale para a próxima mensagem; o roteiro termina pausando apenas o contato de teste para evitar continuação automática.

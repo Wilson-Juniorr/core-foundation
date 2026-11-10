@@ -37,4 +37,46 @@ describe("post-quote date rules", () => {
   it("callback request with no recognizable date asks for review", () => {
     expect(read("me chama depois")[0]?.commitment_type).toBe("date_review");
   });
+  it.each(["me chama dia 32", "me chama dia 0", "me chama às 14h"])(
+    "%s blocks sending until human date review",
+    (text) => {
+      expect(read(text)).toEqual([
+        expect.objectContaining({
+          commitment_type: "date_review",
+          responsible: "human",
+          due_at: null,
+          due_window_end: null,
+          is_ambiguous: true,
+        }),
+      ]);
+    },
+  );
+  it.each(["me chama quinta dia 13/03/2026 às 14h25", "me chama sexta dia 12 às 14:25"])(
+    "%s rejects a weekday that contradicts the calendar date",
+    (text) => {
+      const items = read(text);
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        commitment_type: "date_review",
+        responsible: "human",
+        due_at: null,
+      });
+    },
+  );
+  it.each(["me chama sexta dia 13/03/2026 às 14h25", "me chama sexta dia 13 às 14:25"])(
+    "%s creates exactly one commitment with the stated hour and minutes",
+    (text) => {
+      const items = read(text);
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        commitment_type: "requested_callback",
+        due_at: "2026-03-13T17:25:00.000Z",
+        is_ambiguous: false,
+      });
+    },
+  );
+  it("a month rollover preserves the explicit time and validates the resulting date", () => {
+    expect(read("me chama dia 5 às 14h25")[0]?.due_at).toBe("2026-04-06T17:25:00.000Z");
+    expect(read("me chama dia 31")[0]?.due_at).toBe("2026-03-31T13:00:00.000Z");
+  });
 });

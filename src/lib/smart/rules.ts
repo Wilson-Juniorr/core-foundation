@@ -162,6 +162,35 @@ export function extractCommitments(input: {
     )
       return review("data inexistente no calendário");
   }
+  const dayOfMonth = fullDate ?? /\bdia\s+(\d+)\b/i.exec(lower);
+  const statedWeekday = WEEKDAYS.find((weekday) => weekday.re.test(lower));
+  let calendarReference: Date | null = null;
+  if (dayOfMonth) {
+    const day = Number(dayOfMonth[1]);
+    if (day < 1 || day > 31) return review("dia do mês inexistente");
+    const parts = zonedParts(now, timezone);
+    let month = fullDate ? Number(fullDate[2]) : parts.month;
+    let year = fullDate ? Number(fullDate[3] ?? parts.year) : parts.year;
+    const validDay = () => {
+      const check = new Date(Date.UTC(year, month - 1, day));
+      return (
+        check.getUTCFullYear() === year &&
+        check.getUTCMonth() + 1 === month &&
+        check.getUTCDate() === day
+      );
+    };
+    if (!validDay()) return review("dia inexistente neste mês");
+    calendarReference = zonedInstant({ year, month, day, hour: hour ?? 10, minute }, timezone);
+    if (!fullDate && calendarReference.getTime() < now.getTime()) {
+      year += month === 12 ? 1 : 0;
+      month = month === 12 ? 1 : month + 1;
+      if (!validDay()) return review("dia inexistente no próximo mês");
+      calendarReference = zonedInstant({ year, month, day, hour: hour ?? 10, minute }, timezone);
+    }
+    // Compare the stated calendar date before shifting weekends/holidays.
+    if (statedWeekday && new Date(Date.UTC(year, month - 1, day)).getUTCDay() !== statedWeekday.day)
+      return review("dia da semana incompatível com a data informada");
+  }
 
   const baseResponsible: CommitmentResponsible =
     input.direction === "inbound" ? "customer" : "human";
@@ -195,6 +224,8 @@ export function extractCommitments(input: {
 
   /* 2. Dia da semana: "me chama sexta". */
   for (const weekday of WEEKDAYS) {
+    // A weekday beside a calendar date describes the same commitment, not a second one.
+    if (calendarReference) break;
     if (!weekday.re.test(lower)) continue;
     const partOfDay = PART_OF_DAY.find((part) => part.re.test(lower));
     const responsible: CommitmentResponsible =
@@ -264,31 +295,17 @@ export function extractCommitments(input: {
   }
 
   /* 4. Dia do mês: "recebo dia 5". */
-  const dayOfMonth = fullDate ?? /\bdia\s+(\d{1,2})\b/i.exec(lower);
-  if (dayOfMonth) {
+  if (dayOfMonth && calendarReference) {
     const day = Number(dayOfMonth[1]);
-    if (day >= 1 && day <= 31) {
-      const parts = zonedParts(now, timezone);
-      const month = fullDate ? Number(fullDate[2]) : parts.month;
-      const year = fullDate ? Number(fullDate[3] ?? parts.year) : parts.year;
-      if (new Date(Date.UTC(year, month - 1, day)).getUTCDate() !== day)
-        return review("dia inexistente neste mês");
-      let target = zonedInstant({ year, month, day, hour: hour ?? 10, minute }, timezone);
-      if (!fullDate && target.getTime() < now.getTime()) {
-        const nextMonth = parts.month === 12 ? 1 : parts.month + 1;
-        const year = parts.month === 12 ? parts.year + 1 : parts.year;
-        target = zonedInstant({ year, month: nextMonth, day, hour: 10, minute: 0 }, timezone);
-      }
-      push({
-        commitment_type: "date_reference",
-        responsible: baseResponsible,
-        description: `Data citada na conversa: dia ${day}`,
-        due_at: target.toISOString(),
-        due_window_end: null,
-        is_ambiguous: false,
-        confidence: 0.6,
-      });
-    }
+    push({
+      commitment_type: "date_reference",
+      responsible: baseResponsible,
+      description: `Data citada na conversa: dia ${day}`,
+      due_at: calendarReference.toISOString(),
+      due_window_end: null,
+      is_ambiguous: false,
+      confidence: 0.6,
+    });
   }
 
   /* 5. Janelas vagas — nunca viram horário exato. */
@@ -340,6 +357,7 @@ export function extractCommitments(input: {
   );
   // Pedido de retorno/prazo sem data reconhecível: não chutamos, pedimos revisão.
   if (dated.length === 0 && (callbackRequested || deadlinePromise)) {
+    if (clock) return review("horário informado sem dia reconhecível");
     const loose = /\b(depois|outro\s+dia|qualquer\s+dia|em\s+breve|logo|ate\s+(o|a)\s+\w+)\b/.test(
       lower,
     );
