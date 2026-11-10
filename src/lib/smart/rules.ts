@@ -227,10 +227,12 @@ export function extractCommitments(input: {
   }
 
   /* 2. Dia da semana: "me chama sexta". */
+  let weekdayMatched = false;
   for (const weekday of WEEKDAYS) {
     // A weekday beside a calendar date describes the same commitment, not a second one.
     if (calendarReference) break;
     if (!weekday.re.test(lower)) continue;
+    weekdayMatched = true;
     const responsible: CommitmentResponsible =
       /\b(me\s+chama|me\s+liga|me\s+manda|me\s+avisa)\b/i.test(lower)
         ? input.direction === "inbound"
@@ -249,8 +251,10 @@ export function extractCommitments(input: {
     break;
   }
 
-  /* 3. Amanhã / hoje mais tarde. */
-  if (/\bamanh(ã|a)\b/i.test(lower)) {
+  /* 3. Amanhã / hoje mais tarde — só quando não há data nem dia da semana citados. */
+  if (calendarReference || weekdayMatched) {
+    // A data explícita já carrega o período do dia; nada a acrescentar aqui.
+  } else if (/\bamanh(ã|a)\b/i.test(lower)) {
     const responsible: CommitmentResponsible =
       /\b(te\s+(retorno|respondo|falo|chamo|aviso)|volto\s+a\s+falar)\b/i.test(lower)
         ? baseResponsible
@@ -281,7 +285,7 @@ export function extractCommitments(input: {
   }
 
   /* 3b. Relativo: "me chama daqui 3 dias" → cai em dia útil. */
-  const relDays = parseRelativeDays(lower);
+  const relDays = calendarReference || weekdayMatched ? null : parseRelativeDays(lower);
   if (relDays) {
     push({
       commitment_type: "callback_in_days",
