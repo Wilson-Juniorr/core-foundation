@@ -173,7 +173,11 @@ export function extractCommitments(input: {
     let year = fullDate ? Number(fullDate[3] ?? parts.year) : parts.year;
     const validDay = () => {
       const check = new Date(Date.UTC(year, month - 1, day));
-      return check.getUTCFullYear() === year && check.getUTCMonth() + 1 === month && check.getUTCDate() === day;
+      return (
+        check.getUTCFullYear() === year &&
+        check.getUTCMonth() + 1 === month &&
+        check.getUTCDate() === day
+      );
     };
     if (!validDay()) return review("dia inexistente neste mês");
     calendarReference = zonedInstant({ year, month, day, hour: hour ?? 10, minute }, timezone);
@@ -293,15 +297,15 @@ export function extractCommitments(input: {
   /* 4. Dia do mês: "recebo dia 5". */
   if (dayOfMonth && calendarReference) {
     const day = Number(dayOfMonth[1]);
-      push({
-        commitment_type: "date_reference",
-        responsible: baseResponsible,
-        description: `Data citada na conversa: dia ${day}`,
-        due_at: calendarReference.toISOString(),
-        due_window_end: null,
-        is_ambiguous: false,
-        confidence: 0.6,
-      });
+    push({
+      commitment_type: "date_reference",
+      responsible: baseResponsible,
+      description: `Data citada na conversa: dia ${day}`,
+      due_at: calendarReference.toISOString(),
+      due_window_end: null,
+      is_ambiguous: false,
+      confidence: 0.6,
+    });
   }
 
   /* 5. Janelas vagas — nunca viram horário exato. */
