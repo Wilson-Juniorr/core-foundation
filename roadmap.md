@@ -13,6 +13,7 @@
 
 # Pós-cotação confiável (plano aprovado 06/11)
 ## Etapa A
+- [ ] Aplicar patch de seleção de oportunidade; conferir Yasmin F Souza sem alterar dados e validar zero/uma/várias oportunidades abertas no computador e celular
 - [x] Corrigir dia 0/32, hora sem dia e conflito dia da semana/data; compromisso único com minutos; regressões reproduzidas antes da correção e suíte 94/94 após
 - [x] Preparar roteiro `docs/post-quote-published-test.md`: cotação manual → ficha → devolução com aprovação → reagendamento individual → aprovação/recebimento/1 de 8/CRM; sem ativação/envio pelo agente de desenvolvimento
 - [ ] Executar roteiro no publicado com contato controlado pelo usuário (publicar esta versão; aprovação e envio pelo usuário; devolução exige aprovação apenas da próxima mensagem)
