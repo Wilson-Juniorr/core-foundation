@@ -5,6 +5,7 @@ import { Pause, Play, CalendarClock, Plus, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { postQuoteOpportunitySelection } from "@/lib/smart/post-quote-opportunity";
 import {
   Select,
   SelectTrigger,
@@ -50,10 +51,10 @@ export function PostQuotePanel({
     refetchInterval: 30000,
   });
   const [opportunityId, setOpportunityId] = useState("");
-  const openOpportunities = opportunities.filter((opportunity) => opportunity.status === "open");
-  const selectedOpportunity =
-    openOpportunities.find((opportunity) => opportunity.id === opportunityId) ??
-    (openOpportunities.length === 1 ? openOpportunities[0] : undefined);
+  const { openOpportunities, selectedOpportunity } = postQuoteOpportunitySelection(
+    opportunities,
+    opportunityId,
+  );
   const [at, setAt] = useState("");
   const [rescheduling, setRescheduling] = useState(false);
   const run = query.data?.run,
