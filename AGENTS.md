@@ -29,3 +29,4 @@
 - Accepted post-quote contacts advance transactionally; uncertain attempts stay blocked until a durable message receipt confirms acceptance.
 - Post-quote CRM next-action fields are separate from manual tasks; run changes synchronize them with a database trigger.
 - Integration tests use isolated PGlite and fake providers; this dependency must never enter application imports.
+- Post-quote opportunity selection uses a pure tested selector: only open quotes qualify, a single quote defaults automatically, and multiple quotes require explicit choice to avoid activating the wrong deal.
