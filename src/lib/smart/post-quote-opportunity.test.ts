@@ -23,9 +23,14 @@ describe("post-quote opportunity selection", () => {
     expect(postQuoteOpportunitySelection([first, second], "").selectedOpportunity).toBeUndefined();
   });
   it("uses the chosen opportunity rather than the first open quote", () => {
-    expect(postQuoteOpportunitySelection([first, second], "quote-2").selectedOpportunity?.id).toBe("quote-2");
+    expect(postQuoteOpportunitySelection([first, second], "quote-2").selectedOpportunity?.id).toBe(
+      "quote-2",
+    );
   });
   it("invalidates a selection that closed while multiple quotes remain open", () => {
-    expect(postQuoteOpportunitySelection([first, second, { ...first, id: "old", status: "won" }], "old").selectedOpportunity).toBeUndefined();
+    expect(
+      postQuoteOpportunitySelection([first, second, { ...first, id: "old", status: "won" }], "old")
+        .selectedOpportunity,
+    ).toBeUndefined();
   });
 });
