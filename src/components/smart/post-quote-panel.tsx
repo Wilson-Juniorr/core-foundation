@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Pause, Play, CalendarClock, Square } from "lucide-react";
+import { Pause, Play, CalendarClock, Plus, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,9 +32,11 @@ import { localInstant } from "@/lib/smart/post-quote-cadence";
 export function PostQuotePanel({
   contactId,
   opportunities,
+  onCreateOpportunity,
 }: {
   contactId: string;
   opportunities: { id: string; title: string; status: string }[];
+  onCreateOpportunity: () => void;
 }) {
   const client = useQueryClient();
   const view = useServerFn(postQuoteViewFn),
@@ -48,6 +50,10 @@ export function PostQuotePanel({
     refetchInterval: 30000,
   });
   const [opportunityId, setOpportunityId] = useState("");
+  const openOpportunities = opportunities.filter((opportunity) => opportunity.status === "open");
+  const selectedOpportunity =
+    openOpportunities.find((opportunity) => opportunity.id === opportunityId) ??
+    (openOpportunities.length === 1 ? openOpportunities[0] : undefined);
   const [at, setAt] = useState("");
   const [rescheduling, setRescheduling] = useState(false);
   const run = query.data?.run,
@@ -59,12 +65,9 @@ export function PostQuotePanel({
     client.invalidateQueries({ queryKey: ["smart"] });
   };
   const start = useMutation({
-    mutationFn: () =>
+    mutationFn: (selectedId: string) =>
       activate({
-        data: {
-          contactId,
-          opportunityId: opportunityId || opportunities.find((o) => o.status === "open")?.id || "",
-        },
+        data: { contactId, opportunityId: selectedId },
       }),
     onSuccess: () => {
       invalidate();
@@ -139,25 +142,36 @@ export function PostQuotePanel({
       {query.isError && (
         <p className="text-sm text-destructive">Não foi possível consultar o acompanhamento.</p>
       )}
-      {!live && (
+      {!live && openOpportunities.length === 0 && (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {opportunities.length === 0
+              ? "Este cliente ainda não tem uma oportunidade. Cadastre a cotação para ativar o acompanhamento."
+              : "As oportunidades deste cliente estão fechadas ou arquivadas. A ativação exige uma oportunidade aberta para esta cotação."}
+          </p>
+          <Button type="button" variant="outline" onClick={onCreateOpportunity}>
+            <Plus className="size-4" />
+            Nova oportunidade
+          </Button>
+        </div>
+      )}
+      {!live && openOpportunities.length > 0 && (
         <div className="flex flex-wrap gap-3">
-          <Select value={opportunityId} onValueChange={setOpportunityId}>
-            <SelectTrigger className="w-full sm:w-72">
+          <Select value={selectedOpportunity?.id ?? ""} onValueChange={setOpportunityId}>
+            <SelectTrigger aria-label="Oportunidade da cotação" className="w-full sm:w-72">
               <SelectValue placeholder="Oportunidade da cotação" />
             </SelectTrigger>
             <SelectContent>
-              {opportunities
-                .filter((o) => o.status === "open")
-                .map((o) => (
-                  <SelectItem key={o.id} value={o.id}>
-                    {o.title}
-                  </SelectItem>
-                ))}
+              {openOpportunities.map((opportunity) => (
+                <SelectItem key={opportunity.id} value={opportunity.id}>
+                  {opportunity.title}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button
-            disabled={start.isPending || !opportunities.some((o) => o.status === "open")}
-            onClick={() => start.mutate()}
+            disabled={start.isPending || !selectedOpportunity}
+            onClick={() => selectedOpportunity && start.mutate(selectedOpportunity.id)}
           >
             <Play className="size-4" />
             Ativar pós-cotação

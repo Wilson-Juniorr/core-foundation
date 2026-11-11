@@ -190,7 +190,11 @@ function ContactDetailPage() {
 
         <DealSheetCard contactId={contactId} />
 
-        <PostQuotePanel contactId={contactId} opportunities={opportunities} />
+        <PostQuotePanel
+          contactId={contactId}
+          opportunities={opportunities}
+          onCreateOpportunity={() => setCreatingOpportunity(true)}
+        />
 
         <AgentHandoffCard conversationId={conversation.data?.id ?? null} />
 
