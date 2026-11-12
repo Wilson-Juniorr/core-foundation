@@ -309,13 +309,24 @@ try {
     width: 375,
     height: 800,
     deviceScaleFactor: 1,
-    mobile: true,
+    mobile: false,
   });
   await waitFor("window.innerWidth === 375");
   assert.equal(await js("document.documentElement.scrollWidth"), 375);
-  await click('button[aria-label="Abrir navegação"]');
+  async function activateWithKeyboard(selector) {
+    await js(`document.querySelector(${JSON.stringify(selector)}).focus()`);
+    for (const type of ["keyDown", "keyUp"]) {
+      await command("Input.dispatchKeyEvent", {
+        type,
+        key: "Enter",
+        code: "Enter",
+        windowsVirtualKeyCode: 13,
+      });
+    }
+  }
+  await activateWithKeyboard('button[aria-label="Abrir navegação"]');
   await waitFor("Boolean(document.querySelector('[role=dialog] nav'))");
-  await click('[role=dialog] nav a[href="/atencao"]');
+  await activateWithKeyboard('[role=dialog] nav a[href="/atencao"]');
   await waitFor("document.body.innerText.includes('Pós-vendas com prazo')");
   assert.equal(await js("document.documentElement.scrollWidth"), 375);
   console.log(
