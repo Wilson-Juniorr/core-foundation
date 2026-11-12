@@ -128,6 +128,7 @@ export type ConversationMessage = {
   sent_at: string;
   delivered_at: string | null;
   read_at: string | null;
+  metadata?: import("@/integrations/supabase/types").Json;
 };
 
 export type ConversationDetail = {

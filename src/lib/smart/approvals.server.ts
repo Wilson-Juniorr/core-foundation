@@ -42,6 +42,7 @@ export async function approveSmartAction(
     .update({
       status: "scheduled",
       requires_approval: false,
+      dispatch_approved_at: new Date().toISOString(),
       content: input.content ?? action.content,
       // Aprovação não altera o compromisso de horário; pré-check segue obrigatório.
       last_error: null,

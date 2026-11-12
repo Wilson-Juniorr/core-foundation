@@ -10,6 +10,7 @@ type Admin = SupabaseClient<Database>;
 const OPT_OUT_PATTERNS: RegExp[] = [
   /n[ãa]o\s+quero\s+mais\s+(receber|mensagens|nada)/i,
   /n[ãa]o\s+(me\s+)?(mande|envie|manda|envia)\s+mais/i,
+  /n[ãa]o\s+(me\s+)?(chame|chama)\s+mais/i,
   /pa?re?\s+de\s+me\s+(mandar|enviar|chamar)/i,
   /me\s+(tira|remove|retire|exclua)\s+(da|dessa|desta)\s+lista/i,
   /descadastr/i,
@@ -68,11 +69,20 @@ export async function applyCustomerOptOut(db: Admin, input: OptOutInput): Promis
     .from("scheduled_actions")
     .update({ status: "cancelled", last_error: "customer_opt_out" })
     .eq("conversation_id", input.conversationId)
-    .eq("status", "scheduled");
+    .in("status", ["scheduled", "needs_approval", "stale", "blocked"])
+    .or("send_state.is.null,send_state.neq.uncertain");
 
   await db
     .from("followup_runs")
-    .update({ status: "stopped", stopped_at: nowIso, stop_reason: "customer_opt_out" })
+    .update({
+      status: "stopped",
+      stopped_at: nowIso,
+      stop_reason: "customer_opt_out",
+      next_evaluation_at: null,
+      next_contact_at: null,
+      next_contact_reason: "Cliente pediu para parar.",
+      next_contact_responsible: "none",
+    })
     .eq("conversation_id", input.conversationId)
     .in("status", ["active", "paused"]);
 

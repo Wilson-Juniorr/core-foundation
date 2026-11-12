@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CalendarClock } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -9,6 +10,15 @@ import { ConversationList } from "@/components/whatsapp/conversation-list";
 import { FollowupPanel } from "@/components/followup/followup-panel";
 import { SmartControlCard } from "@/components/smart/smart-control-card";
 
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { useWhatsAppRealtime } from "@/hooks/use-whatsapp-realtime";
 import { markConversationRead } from "@/lib/whatsapp.functions";
@@ -73,25 +83,39 @@ function ConversasPage() {
   return (
     <AppShell
       title="Conversas"
-      description="Atendimento no WhatsApp com histórico ligado aos clientes."
+      description="Atendimento no WhatsApp"
+      actions={
+        selectedId && detail.data?.conversation.contact_id ? (
+          <Sheet key={selectedId}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <CalendarClock aria-hidden />
+                Acompanhamento
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+              <SheetHeader>
+                <SheetTitle>Acompanhamento da conversa</SheetTitle>
+                <SheetDescription>Gerencie a agenda e o controle do agente.</SheetDescription>
+              </SheetHeader>
+              <div className="mt-4 space-y-3">
+                <FollowupPanel
+                  contactId={detail.data.conversation.contact_id}
+                  conversationId={selectedId}
+                  compact
+                />
+                <SmartControlCard conversationId={selectedId} />
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : null
+      }
     >
       <div className="flex h-[calc(100dvh-11rem)] min-h-[30rem] flex-col gap-4">
-        {connection.data && connection.data.status !== "connected" && (
+        {connection.data && ["not_configured", "connecting"].includes(connection.data.status) && (
           <p className="bg-muted text-muted-foreground shrink-0 rounded-md border px-4 py-3 text-sm">
-            WhatsApp não conectado. Você pode ler o histórico, mas o envio fica indisponível até
-            reconectar em Configurações.
+            Conecte o WhatsApp em Configurações para enviar mensagens.
           </p>
-        )}
-
-        {selectedId && detail.data?.conversation.contact_id && (
-          <div className="shrink-0 space-y-3">
-            <FollowupPanel
-              contactId={detail.data.conversation.contact_id}
-              conversationId={selectedId}
-              compact
-            />
-            <SmartControlCard conversationId={selectedId} />
-          </div>
         )}
 
         {conversations.isLoading ? (

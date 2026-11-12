@@ -43,6 +43,34 @@
       "when": 1793992660548,
       "tag": "0005_post_quote_context_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794369600000,
+      "tag": "0006_post_quote_late_receipt",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794456000000,
+      "tag": "0007_post_quote_history_context",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794456000001,
+      "tag": "0008_post_sale",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794456000002,
+      "tag": "0009_automation_dispatch_guard",
+      "breakpoints": true
     }
   ]
 }

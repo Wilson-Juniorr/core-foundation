@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, Json } from "@/integrations/supabase/types";
 import { adminClient } from "@/lib/followup/engine.server";
+import { messageContextText } from "@/lib/whatsapp/message-context";
 import { AiGatewayError, completeStructured, estimateCost } from "./gateway.server";
 import { describeDealSheet, mergeDealSheet, toDealSheet } from "./deal-sheet";
 import { clamp01, ensureMemory, isHumanLocked, loadMemory, mergeLists } from "./memory.server";
@@ -28,6 +29,8 @@ const NEW_MESSAGE_LIMIT = 60;
 /** Mensagens antigas enviadas apenas como contexto recente. */
 const CONTEXT_MESSAGE_LIMIT = 8;
 const MAX_ATTEMPTS = 3;
+const CONTEXT_COLUMNS =
+  "id,direction,message_type,text_content,sent_at,metadata,media_mime_type,media_filename";
 
 interface AiPayload {
   current_summary: string;
@@ -101,7 +104,7 @@ export async function loadMessages(
   const cursorId = memory?.message_cursor_id ?? oldCursor?.id;
   let query = admin
     .from("messages")
-    .select("id,direction,message_type,text_content,sent_at")
+    .select(CONTEXT_COLUMNS)
     .eq("user_id", userId)
     .eq("contact_id", contactId)
     .order("sent_at", { ascending: true })
@@ -116,7 +119,7 @@ export async function loadMessages(
     cursorAt && cursorId
       ? await admin
           .from("messages")
-          .select("id,direction,message_type,text_content,sent_at")
+          .select(CONTEXT_COLUMNS)
           .eq("user_id", userId)
           .eq("contact_id", contactId)
           .or(`sent_at.lt.${cursorAt},and(sent_at.eq.${cursorAt},id.lte.${cursorId})`)
@@ -138,6 +141,9 @@ type MessageLine = {
   message_type: string;
   text_content: string | null;
   sent_at: string;
+  metadata: Json;
+  media_mime_type: string | null;
+  media_filename: string | null;
 };
 
 function renderMessages(rows: MessageLine[]): string {
@@ -145,7 +151,7 @@ function renderMessages(rows: MessageLine[]): string {
     .map((row) => {
       const who = row.direction === "inbound" ? "Cliente" : "Vendedor";
       const body =
-        row.text_content?.trim() ||
+        messageContextText(row) ||
         (row.message_type === "audio"
           ? "[áudio sem transcrição disponível]"
           : `[${row.message_type}]`);
@@ -232,6 +238,18 @@ export async function analyzeContact(
   if (!contact) return { status: "skipped", reason: "not_found" };
 
   const memory = await ensureMemory(admin, userId, contactId);
+  const { readContactMedia, markMediaAnalyzed } =
+    await import("@/lib/whatsapp/media-context.server");
+  let media;
+  try {
+    media = await readContactMedia(admin, { userId, contactId });
+  } catch (error) {
+    aiLog("warn", "media_processing_failed", { contact_id: contactId });
+    return {
+      status: "failed",
+      reason: error instanceof Error ? error.message : "Falha na leitura de mídia.",
+    };
+  }
   const { fresh, context, total, hasMore } = await loadMessages(
     admin,
     userId,
@@ -239,11 +257,15 @@ export async function analyzeContact(
     memory.last_analyzed_message_id,
   );
 
-  if (total === 0) return { status: "skipped", reason: "no_messages" };
-  if (fresh.length === 0 && !options.force) return { status: "skipped", reason: "up_to_date" };
+  if (total === 0 && media.messages.length === 0)
+    return { status: "skipped", reason: "no_messages" };
+  if (fresh.length === 0 && media.messages.length === 0 && !options.force) {
+    return { status: "skipped", reason: media.hasMore ? "more_messages" : "up_to_date" };
+  }
 
-  const target = fresh.length > 0 ? fresh : context;
-  const lastMessage = target[target.length - 1];
+  const lastMessage = fresh.at(-1);
+  const recentIds = new Set([...fresh, ...context].map((message) => message.id));
+  const olderMedia = media.messages.filter((message) => !recentIds.has(message.id));
 
   await admin.from("customer_memory").update({ analysis_status: "processing" }).eq("id", memory.id);
 
@@ -260,6 +282,8 @@ export async function analyzeContact(
     "",
     fresh.length > 0 ? "MENSAGENS NOVAS (analisar):" : "",
     fresh.length > 0 ? renderMessages(fresh) : "",
+    olderMedia.length > 0 ? "MÍDIAS DO HISTÓRICO LIDAS NESTE CICLO:" : "",
+    renderMessages(olderMedia),
   ].join("\n");
 
   try {
@@ -269,13 +293,15 @@ export async function analyzeContact(
       user: userPrompt,
       schemaName: "customer_memory",
       schema: ANALYSIS_JSON_SCHEMA,
+      timeoutMs: 30_000,
     });
 
     const payload = result.data;
     const patch: Database["public"]["Tables"]["customer_memory"]["Update"] = {
-      analysis_status: hasMore ? "pending" : "ready",
-      message_cursor_at: lastMessage?.sent_at ?? null,
-      message_cursor_id: lastMessage?.id ?? null,
+      analysis_status: hasMore || media.hasMore ? "pending" : "ready",
+      ...(lastMessage
+        ? { message_cursor_at: lastMessage.sent_at, message_cursor_id: lastMessage.id }
+        : {}),
       last_error: null,
       last_analyzed_message_id: lastMessage?.id ?? memory.last_analyzed_message_id,
       last_analyzed_at: now,
@@ -335,6 +361,7 @@ export async function analyzeContact(
       .update(patch)
       .eq("id", memory.id);
     if (updateError) throw new Error(updateError.message);
+    await markMediaAnalyzed(admin, userId, media.messages);
 
     // Insights: upsert idempotente (índice único por tipo + conteúdo + mensagem).
     const insights = (payload.insights ?? [])
@@ -386,7 +413,7 @@ export async function analyzeContact(
       analyzed: fresh.length,
       tokens: total,
     });
-    return { status: "updated", ...(hasMore ? { reason: "more_messages" } : {}) };
+    return { status: "updated", ...(hasMore || media.hasMore ? { reason: "more_messages" } : {}) };
   } catch (error) {
     const gateway = error instanceof AiGatewayError ? error : null;
     const message =
@@ -422,6 +449,12 @@ export async function processAnalysisQueue(limit = 5): Promise<{
   failed: number;
 }> {
   const admin = await adminClient();
+  const { error: recoveryError } = await admin
+    .from("ai_analysis_jobs")
+    .update({ status: "pending", claimed_at: null })
+    .eq("status", "processing")
+    .lt("claimed_at", new Date(Date.now() - 5 * 60_000).toISOString());
+  if (recoveryError) throw new Error(recoveryError.message);
   const { data: jobs, error } = await admin
     .from("ai_analysis_jobs")
     .select("*")
@@ -435,11 +468,12 @@ export async function processAnalysisQueue(limit = 5): Promise<{
 
   for (const job of jobs ?? []) {
     // Claim atômico: duas execuções simultâneas nunca pegam o mesmo job.
+    const claimedAt = new Date().toISOString();
     const { data: claimed } = await admin
       .from("ai_analysis_jobs")
       .update({
         status: "processing",
-        claimed_at: new Date().toISOString(),
+        claimed_at: claimedAt,
         attempts: job.attempts + 1,
       })
       .eq("id", job.id)
@@ -451,13 +485,17 @@ export async function processAnalysisQueue(limit = 5): Promise<{
     const outcome = await analyzeContact(job.user_id, job.contact_id, {
       conversationId: job.conversation_id,
       force: job.reason === "manual",
-    });
+    }).catch((error): AnalysisOutcome => ({
+      status: "failed",
+      reason: error instanceof Error ? error.message : "Falha ao analisar a conversa.",
+    }));
 
     if (outcome.reason === "more_messages") {
       await admin
         .from("ai_analysis_jobs")
         .update({ status: "pending", claimed_at: null, attempts: 0 })
-        .eq("id", job.id);
+        .eq("id", job.id)
+        .eq("claimed_at", claimedAt);
       processed += 1;
       continue;
     }
@@ -465,7 +503,8 @@ export async function processAnalysisQueue(limit = 5): Promise<{
       await admin
         .from("ai_analysis_jobs")
         .update({ status: "pending", last_error: outcome.reason ?? null, claimed_at: null })
-        .eq("id", job.id);
+        .eq("id", job.id)
+        .eq("claimed_at", claimedAt);
       failed += 1;
       continue;
     }
@@ -477,7 +516,8 @@ export async function processAnalysisQueue(limit = 5): Promise<{
         last_error: outcome.reason ?? null,
         finished_at: new Date().toISOString(),
       })
-      .eq("id", job.id);
+      .eq("id", job.id)
+      .eq("claimed_at", claimedAt);
 
     if (outcome.status === "failed") failed += 1;
     else processed += 1;

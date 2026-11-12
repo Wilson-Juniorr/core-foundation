@@ -31,6 +31,15 @@ export const getWhatsAppConnection = createServerFn({ method: "GET" })
     return presentConnection(connection);
   });
 
+export const getWhatsAppOperationalStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { loadPrimaryConnection } = await import("./whatsapp/store.server");
+    const connection = await loadPrimaryConnection(supabaseAdmin, context.userId);
+    return connection?.status ?? null;
+  });
+
 export const saveWhatsAppSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => whatsappSettingsSchema.parse(input))

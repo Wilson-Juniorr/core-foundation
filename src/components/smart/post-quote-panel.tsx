@@ -5,6 +5,12 @@ import { Pause, Play, CalendarClock, Plus, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  POST_QUOTE_HISTORY_REQUIRED,
+  POST_QUOTE_NOTE_MAX,
+  POST_QUOTE_NOTE_MIN,
+} from "@/lib/smart/post-quote-history";
 import { postQuoteOpportunitySelection } from "@/lib/smart/post-quote-opportunity";
 import {
   Select,
@@ -51,6 +57,12 @@ export function PostQuotePanel({
     refetchInterval: 30000,
   });
   const [opportunityId, setOpportunityId] = useState("");
+  const [contextNote, setContextNote] = useState("");
+  const [historyIssue, setHistoryIssue] = useState<{
+    opportunityId: string;
+    unavailable: boolean;
+    requestedAt?: number;
+  }>();
   const { openOpportunities, selectedOpportunity } = postQuoteOpportunitySelection(
     opportunities,
     opportunityId,
@@ -66,13 +78,37 @@ export function PostQuotePanel({
     client.invalidateQueries({ queryKey: ["smart"] });
   };
   const start = useMutation({
-    mutationFn: (selectedId: string) =>
-      activate({
-        data: { contactId, opportunityId: selectedId },
-      }),
-    onSuccess: () => {
+    mutationFn: (data: {
+      opportunityId: string;
+      contextNote?: string;
+      recoverRunId?: string;
+      lookupOnly?: boolean;
+    }) => activate({ data: { contactId, ...data } }),
+    onSuccess: (result, input) => {
       invalidate();
-      toast.success("Pós-cotação ativado.");
+      if (result.status === "history_required") {
+        setHistoryIssue({
+          opportunityId: input.opportunityId,
+          unavailable: result.sync === "unavailable",
+          ...(result.sync === "requested"
+            ? { requestedAt: Date.now() }
+            : input.lookupOnly && historyIssue?.requestedAt
+              ? { requestedAt: historyIssue.requestedAt }
+              : {}),
+        });
+        return;
+      }
+      setHistoryIssue(undefined);
+      setContextNote("");
+      toast.success(
+        result.contextNote
+          ? "Resumo salvo. Confira a próxima mensagem em Follow-ups → Aprovações."
+          : result.imported
+            ? "Histórico recuperado. O próximo envio exige sua aprovação."
+            : result.status === "recovered"
+              ? "Histórico recuperado."
+              : "Pós-cotação ativado.",
+      );
     },
     onError: (e) => toast.error(e.message),
   });
@@ -121,6 +157,19 @@ export function PostQuotePanel({
   });
   const reviews = query.data?.reviews ?? [];
   const live = run && ["active", "paused"].includes(run.status);
+  const needsRecovery =
+    run?.status === "active" && run.next_contact_reason === POST_QUOTE_HISTORY_REQUIRED;
+  const historyOpportunityId = needsRecovery
+    ? run.opportunity_id
+    : !live && selectedOpportunity?.id === historyIssue?.opportunityId
+      ? selectedOpportunity?.id
+      : null;
+  const historyRequested =
+    historyIssue?.opportunityId === historyOpportunityId &&
+    Date.now() - (historyIssue?.requestedAt ?? 0) < 2 * 60_000;
+  const historyInput = historyOpportunityId
+    ? { opportunityId: historyOpportunityId, ...(needsRecovery ? { recoverRunId: run.id } : {}) }
+    : null;
   const status =
     run?.status === "active"
       ? "Ativo"
@@ -158,7 +207,14 @@ export function PostQuotePanel({
       )}
       {!live && openOpportunities.length > 0 && (
         <div className="flex flex-wrap gap-3">
-          <Select value={selectedOpportunity?.id ?? ""} onValueChange={setOpportunityId}>
+          <Select
+            value={selectedOpportunity?.id ?? ""}
+            onValueChange={(value) => {
+              setOpportunityId(value);
+              setContextNote("");
+              setHistoryIssue(undefined);
+            }}
+          >
             <SelectTrigger aria-label="Oportunidade da cotação" className="w-full sm:w-72">
               <SelectValue placeholder="Oportunidade da cotação" />
             </SelectTrigger>
@@ -171,11 +227,54 @@ export function PostQuotePanel({
             </SelectContent>
           </Select>
           <Button
-            disabled={start.isPending || !selectedOpportunity}
-            onClick={() => selectedOpportunity && start.mutate(selectedOpportunity.id)}
+            disabled={start.isPending || !selectedOpportunity || Boolean(historyInput)}
+            onClick={() =>
+              selectedOpportunity && start.mutate({ opportunityId: selectedOpportunity.id })
+            }
           >
             <Play className="size-4" />
             Ativar pós-cotação
+          </Button>
+        </div>
+      )}
+      {historyInput && (
+        <div
+          className="space-y-3 rounded-md border p-3 text-sm"
+          role="group"
+          aria-label="Recuperar contexto da cotação"
+        >
+          <p role="status" className="font-medium">
+            {historyRequested
+              ? "Solicitamos o histórico ao celular. Abra o WhatsApp no aparelho e confira novamente em instantes."
+              : historyIssue?.unavailable
+                ? "O WhatsApp não disponibilizou o histórico agora."
+                : "O histórico disponível ainda não traz a cotação."}
+          </p>
+          <Button
+            variant="outline"
+            disabled={start.isPending}
+            onClick={() => start.mutate({ ...historyInput, lookupOnly: historyRequested })}
+          >
+            {historyRequested ? "Verificar histórico" : "Buscar histórico novamente"}
+          </Button>
+          <label className="block space-y-2">
+            <span>Resumo desta cotação</span>
+            <Textarea
+              value={contextNote}
+              onChange={(event) => setContextNote(event.target.value)}
+              maxLength={POST_QUOTE_NOTE_MAX}
+              placeholder="Quais opções você enviou, qual foi a última resposta e o que ficou combinado?"
+            />
+          </label>
+          <p className="text-muted-foreground">
+            Confira no WhatsApp se o cliente ainda espera seu retorno. Com o resumo, você aprova os
+            envios enquanto a cotação não estiver disponível no histórico.
+          </p>
+          <Button
+            disabled={start.isPending || contextNote.trim().length < POST_QUOTE_NOTE_MIN}
+            onClick={() => start.mutate({ ...historyInput, contextNote: contextNote.trim() })}
+          >
+            {needsRecovery ? "Salvar resumo e reavaliar" : "Ativar com resumo e aprovação"}
           </Button>
         </div>
       )}
@@ -184,11 +283,13 @@ export function PostQuotePanel({
           <div>
             <p className="text-muted-foreground">Próxima ação · São Paulo</p>
             <p>
-              {action?.scheduled_for
-                ? formatDateTime(action.scheduled_for)
-                : run.next_contact_at
-                  ? formatDateTime(run.next_contact_at)
-                  : "Sem envio programado"}
+              {needsRecovery
+                ? "Envio suspenso · aguardando contexto"
+                : action?.scheduled_for
+                  ? formatDateTime(action.scheduled_for)
+                  : run.next_contact_at
+                    ? formatDateTime(run.next_contact_at)
+                    : "Sem envio programado"}
             </p>
           </div>
           <div>

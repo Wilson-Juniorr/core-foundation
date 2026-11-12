@@ -9,6 +9,7 @@ import {
   type ReturnMode,
 } from "./handoff";
 import { RESUMABLE_SMART_STATES } from "./return.server";
+import { isPostQuoteManuallyPaused } from "./post-quote-cadence";
 
 type Client = SupabaseClient<Database>;
 
@@ -46,7 +47,9 @@ export async function getAgentHandoffView(
     db.from("conversation_control").select("*").eq("conversation_id", conversationId).maybeSingle(),
     db
       .from("followup_runs")
-      .select("id, status, smart_state, followup_flows!inner(kind)")
+      .select(
+        "id, status, smart_state, policy_key, stop_reason, next_contact_reason, followup_flows!inner(kind)",
+      )
       .eq("conversation_id", conversationId)
       .in("status", ["active", "paused"])
       .eq("followup_flows.kind", "smart"),
@@ -60,8 +63,12 @@ export async function getAgentHandoffView(
 
   const smartRuns = runs ?? [];
   const canReturn = smartRuns.some(
-    (run) => run.status === "active" || RESUMABLE_SMART_STATES.includes(run.smart_state ?? ""),
+    (run) =>
+      run.status === "active" ||
+      isPostQuoteManuallyPaused(run) ||
+      RESUMABLE_SMART_STATES.includes(run.smart_state ?? ""),
   );
+  const manuallyPaused = smartRuns.some(isPostQuoteManuallyPaused);
   const owner = (control?.owner ?? "none") as AgentHandoffView["owner"];
   const inbound = control?.last_inbound_at ?? null;
   const human = control?.last_human_message_at ?? null;
@@ -83,7 +90,7 @@ export async function getAgentHandoffView(
           }
         : null,
     returnPlan:
-      owner === "human" && control?.return_mode
+      !manuallyPaused && owner === "human" && control?.return_mode
         ? {
             mode: control.return_mode as ReturnMode,
             label: RETURN_MODE_LABELS[control.return_mode as ReturnMode] ?? control.return_mode,
@@ -92,7 +99,7 @@ export async function getAgentHandoffView(
             source: control.return_source,
           }
         : null,
-    analyzingAt: owner === "human" ? (control?.return_check_at ?? null) : null,
+    analyzingAt: !manuallyPaused && owner === "human" ? (control?.return_check_at ?? null) : null,
     instructions: (instructions ?? []).map((row) => ({
       id: row.id,
       text: row.text,

@@ -228,7 +228,11 @@ export async function resolveAdaptiveContent(
   fixedText: string | null,
 ): Promise<AdaptiveOutcome> {
   const outcome = await resolveContentMode(db, action, settings, fixedText);
-  if (outcome.kind === "send" && settings.require_approval_all) {
+  if (
+    outcome.kind === "send" &&
+    settings.require_approval_all &&
+    !(action.smart_strategy && action.dispatch_approved_at)
+  ) {
     return {
       kind: "approval_required",
       reason: "Modo de aprovação obrigatória ativo: revise antes do envio.",

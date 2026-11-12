@@ -5,6 +5,7 @@
 
 const TARGET_MIN_WIDTH = 1600;
 const MAX_WIDTH = 2600;
+const MAX_PIXELS = 8_000_000;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -27,9 +28,13 @@ export async function preprocessForOcr(dataUrl: string): Promise<string> {
     const naturalHeight = image.naturalHeight || image.height;
     if (!naturalWidth || !naturalHeight) return dataUrl;
 
-    const scale = Math.min(MAX_WIDTH / naturalWidth, Math.max(1, TARGET_MIN_WIDTH / naturalWidth));
-    const width = Math.round(naturalWidth * Math.max(scale, 1));
-    const height = Math.round(naturalHeight * Math.max(scale, 1));
+    const scale = Math.min(
+      MAX_WIDTH / naturalWidth,
+      Math.sqrt(MAX_PIXELS / (naturalWidth * naturalHeight)),
+      Math.max(1, TARGET_MIN_WIDTH / naturalWidth),
+    );
+    const width = Math.max(1, Math.floor(naturalWidth * scale));
+    const height = Math.max(1, Math.floor(naturalHeight * scale));
 
     const canvas = document.createElement("canvas");
     canvas.width = width;

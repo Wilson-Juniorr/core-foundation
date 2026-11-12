@@ -9,7 +9,10 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "build:check": "VITE_SUPABASE_URL=https://example.invalid VITE_SUPABASE_PUBLISHABLE_KEY=local-validation VITE_SUPABASE_PROJECT_ID=local-validation bun run build",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run build:check",
     "format": "prettier --write ."
   },
   "overrides": {
@@ -67,6 +70,7 @@
     "tailwindcss": "^4.2.1",
     "tesseract.js": "^7.0.0",
     "tw-animate-css": "^1.3.4",
+    "unpdf": "1.6.2",
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
     "zod": "^3.24.2"

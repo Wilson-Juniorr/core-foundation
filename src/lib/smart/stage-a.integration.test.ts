@@ -2,12 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { testDatabase } from "./stage-a-db.fixture";
 import { startSmartFlow, evaluateSmartRun, smartPreSendCheck } from "./engine.server";
 import { executeClaimedAction } from "../followup/engine.server";
-import { patchControl } from "./control.server";
-import { nextSilenceContact } from "./post-quote-cadence";
+import { loadControl, patchControl, registerCustomerMessage } from "./control.server";
+import { nextSilenceContact, POST_QUOTE_FLOW_NAME } from "./post-quote-cadence";
+import { applyReturn } from "./return.server";
 import { loadMessages } from "../ai/analysis.server";
 import { reconcileSmartSends } from "./send-reconciliation.server";
 import { approveSmartAction } from "./approvals.server";
-import { controlPostQuote, recordPostQuoteAccepted } from "./post-quote-runtime.server";
+import {
+  activatePostQuote,
+  controlPostQuote,
+  recordPostQuoteAccepted,
+} from "./post-quote-runtime.server";
+import { WhatsAppDispatchCancelled } from "../whatsapp/dispatch";
 import { extractCommitments } from "./rules";
 const fake = vi.hoisted(() => ({ send: vi.fn(), decision: vi.fn(), policy: "allowed" }));
 vi.mock("@/lib/audit/log.server", () => ({ writeAudit: vi.fn() }));
@@ -22,10 +28,18 @@ vi.mock("./timing.server", () => ({
   learnContactTiming: async () => ({ preferredHour: null }),
   alignToPreferredHour: ({ target }: { target: Date }) => target,
 }));
-vi.mock("./return.server", () => ({ consultantNotes: async () => [], markHandoff: vi.fn() }));
+vi.mock("./return.server", async (original) => ({
+  ...(await original<typeof import("./return.server")>()),
+  consultantNotes: async () => [],
+  markHandoff: vi.fn(),
+}));
 vi.mock("./quality.server", () => ({ reviewMessage: () => ({ verdict: "accept" }) }));
-vi.mock("@/lib/whatsapp/store.server", () => ({
+vi.mock("@/lib/whatsapp/store.server", async (original) => ({
+  ...(await original<typeof import("@/lib/whatsapp/store.server")>()),
   loadPrimaryConnection: async () => ({ status: "connected" }),
+}));
+vi.mock("@/lib/whatsapp/link.server", () => ({
+  ensureConversationForContact: async () => ({ conversationId: conv }),
 }));
 vi.mock("@/lib/whatsapp/service.server", () => ({ sendText: fake.send, sendMedia: vi.fn() }));
 vi.mock("@/lib/automation/policy.server", () => ({
@@ -53,7 +67,7 @@ beforeEach(async () => {
   vi.setSystemTime(new Date("2026-03-09T12:00:00Z"));
   fixture = await testDatabase();
   await fixture.pg.exec(
-    `INSERT INTO contacts(id,user_id,name)VALUES('${contact}','${user}','Teste'); INSERT INTO opportunities(id,user_id,contact_id,status,next_action_description)VALUES('${opp}','${user}','${contact}','open','Tarefa manual'); INSERT INTO followup_flows(id,user_id,kind,is_active,name,window_start,window_end)VALUES('${flow}','${user}','smart',true,'Teste','09:00','19:00'); INSERT INTO smart_flow_configs(flow_id,user_id,autonomy,max_duration_days,min_hours_between_actions,max_actions_per_week,max_pressure,confidence_min,goal,allowed_strategies)VALUES('${flow}','${user}','auto',90,36,2,100,0.6,'Acompanhar', '["CHECK_IN"]'); INSERT INTO conversation_control(conversation_id,user_id,owner,next_responsible,context_version)VALUES('${conv}','${user}','ai','customer',1);`,
+    `INSERT INTO contacts(id,user_id,name,is_archived)VALUES('${contact}','${user}','Teste',false); INSERT INTO opportunities(id,user_id,contact_id,status,next_action_description)VALUES('${opp}','${user}','${contact}','open','Tarefa manual'); INSERT INTO followup_flows(id,user_id,kind,is_active,name,window_start,window_end)VALUES('${flow}','${user}','smart',true,'Teste','09:00','19:00'); INSERT INTO smart_flow_configs(flow_id,user_id,autonomy,max_duration_days,min_hours_between_actions,max_actions_per_week,max_pressure,confidence_min,goal,allowed_strategies)VALUES('${flow}','${user}','auto',90,36,2,100,0.6,'Acompanhar', '["CHECK_IN"]'); INSERT INTO conversation_control(conversation_id,user_id,owner,next_responsible,context_version)VALUES('${conv}','${user}','ai','customer',1);`,
   );
   fake.policy = "allowed";
   fake.decision.mockResolvedValue({
@@ -72,13 +86,19 @@ afterEach(async () => {
   await fixture.pg.close();
   vi.clearAllMocks();
 });
-async function start() {
+async function start(options: { history?: boolean; note?: string } = {}) {
+  if (options.history !== false)
+    await fixture.pg.query(
+      "INSERT INTO messages(id,user_id,conversation_id,contact_id,direction,message_type,status,text_content,sent_at) VALUES ($1,$2,$3,$4,'outbound','text','sent','Segue a cotação do plano.',now()) ON CONFLICT DO NOTHING",
+      ["10000000-0000-4000-8000-000000000006", user, conv, contact],
+    );
   return startSmartFlow(db(), user, {
     flowId: flow,
     contactId: contact,
     conversationId: conv,
     opportunityId: opp,
     policyKey: "post_quote_v1",
+    ...(options.note ? { postQuoteContextNote: options.note } : {}),
   });
 }
 async function actionFor(runId: string) {
@@ -113,6 +133,58 @@ describe("Stage A actual engine + isolated PostgreSQL + fake provider", () => {
     expect(run["contacts_done"]).toBe(1);
     expect(run["next_contact_at"]).toEqual(new Date("2026-03-13T18:00:00Z"));
     expect(fake.send).toHaveBeenCalledTimes(1);
+  });
+  it("does not activate without an imported quote and allows the confirmed note", async () => {
+    await fixture.pg.query(
+      "INSERT INTO conversations(id,user_id,contact_id,external_chat_id,whatsapp_connection_id) VALUES($1,$2,$3,'5511999999999@s.whatsapp.net',$4)",
+      [conv, user, contact, crypto.randomUUID()],
+    );
+    await fixture.pg.query("UPDATE followup_flows SET name=$1 WHERE id=$2", [
+      POST_QUOTE_FLOW_NAME,
+      flow,
+    ]);
+    expect(await activatePostQuote(db(), user, contact, opp)).toEqual({
+      status: "history_required",
+      sync: "unavailable",
+    });
+    expect((await fixture.pg.query("SELECT id FROM followup_runs")).rows).toHaveLength(0);
+    const result = await activatePostQuote(db(), user, contact, opp, {
+      contextNote: "Enviei a opção Porto P220. Cliente vai decidir com a esposa.",
+    });
+    expect(result).toMatchObject({ status: "activated", contextNote: true });
+    if (result.status !== "activated") throw new Error("Ciclo não ativado");
+    expect((await runFor(result.runId))["post_quote_context_note"]).toContain("Porto P220");
+    expect(fake.send).not.toHaveBeenCalled();
+  });
+  it("suspends evaluation when the proposal is missing and keeps the attempt unspent", async () => {
+    const { runId } = await start({ history: false });
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("post_quote_history_required");
+    expect(await actionFor(runId)).toBeUndefined();
+    expect((await runFor(runId))["contacts_done"]).toBe(0);
+    expect(fake.decision).not.toHaveBeenCalled();
+  });
+  it("uses the consultant's proposal summary with mandatory approval", async () => {
+    const note = "Enviei a opção Porto P220. Cliente vai avaliar com a esposa.";
+    const { runId } = await start({ history: false, note });
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("needs_approval");
+    expect(fake.decision.mock.calls[0]?.[1]).toMatchObject({ postQuoteContextNote: note });
+    expect((await actionFor(runId))["status"]).toBe("needs_approval");
+    expect(fake.send).not.toHaveBeenCalled();
+  });
+  it("discards an already scheduled action if the history is no longer available", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
+    await fixture.pg.query("DELETE FROM messages WHERE conversation_id=$1", [conv]);
+    const action = await actionFor(runId);
+    expect(await smartPreSendCheck(db(), action as never)).toMatchObject({
+      allowed: false,
+      verdict: "stale",
+    });
+    expect((await runFor(runId))["contacts_done"]).toBe(0);
+    expect(fake.send).not.toHaveBeenCalled();
   });
   it("operational update does not stale text; real context changes atomically", async () => {
     await patchControl(db(), conv, { decision_reason: "operational" }, { bumpVersion: false });
@@ -158,14 +230,14 @@ describe("Stage A actual engine + isolated PostgreSQL + fake provider", () => {
     vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
     const message = crypto.randomUUID();
     await fixture.pg.query(
-      "INSERT INTO messages(id,user_id,conversation_id,direction,sent_at)VALUES($1,$2,$3,'inbound','2026-03-10T12:00:00Z')",
+      "INSERT INTO messages(id,user_id,conversation_id,direction,sent_at,status)VALUES($1,$2,$3,'inbound','2026-03-10T12:00:00Z','received')",
       [message, user, conv],
     );
     await evaluateSmartRun(db(), runId);
     const action = await actionFor(runId);
     expect((await smartPreSendCheck(db(), action as never)).allowed).toBe(true);
     await fixture.pg.query(
-      "INSERT INTO messages(user_id,conversation_id,direction,sent_at)VALUES($1,$2,'inbound','2026-03-10T12:00:00Z')",
+      "INSERT INTO messages(user_id,conversation_id,direction,sent_at,status)VALUES($1,$2,'inbound','2026-03-10T12:00:00Z','received')",
       [user, conv],
     );
     expect((await smartPreSendCheck(db(), action as never)).allowed).toBe(false);
@@ -391,6 +463,7 @@ describe("Stage A closing round (isolated, fake clock + provider)", () => {
     );
     expect(fake.send).toHaveBeenCalledTimes(1);
     expect((await runFor(runId))["contacts_done"]).toBe(1);
+    expect((await loadControl(db(), conv))?.force_approval_next).toBe(false);
     expect((await runFor(runId))["next_contact_at"]).toEqual(new Date("2026-03-13T18:00:00Z"));
     expect(
       (
@@ -403,6 +476,123 @@ describe("Stage A closing round (isolated, fake clock + provider)", () => {
       next_action_description: "Tarefa manual",
       post_quote_next_at: new Date("2026-03-13T18:00:00Z"),
     });
+  });
+
+  it("permite ativar a política de pós-cotação apenas pelo fluxo dedicado", async () => {
+    await fixture.pg.query("UPDATE followup_flows SET name=$1 WHERE id=$2", [
+      POST_QUOTE_FLOW_NAME,
+      flow,
+    ]);
+    await expect(
+      startSmartFlow(db(), user, {
+        flowId: flow,
+        contactId: contact,
+        conversationId: conv,
+        opportunityId: opp,
+      }),
+    ).rejects.toThrow("Use Ativar pós-cotação");
+    const { runId } = await start();
+    expect((await runFor(runId))["policy_key"]).toBe("post_quote_v1");
+  });
+
+  it("a pausa manual vence uma volta automática já agendada", async () => {
+    const { runId } = await start();
+    await fixture.pg.query("UPDATE followup_runs SET smart_state='human_active' WHERE id=$1", [
+      runId,
+    ]);
+    await patchControl(db(), conv, {
+      owner: "human",
+      return_at: "2026-03-09T12:00:00Z",
+      return_mode: "auto",
+      return_source: "ai",
+    });
+    await controlPostQuote(db(), user, { runId, command: "pause" });
+    const control = (await loadControl(db(), conv))!;
+    expect(
+      await applyReturn(db(), control, { mode: "auto", source: "ai", waiveCooldown: false }),
+    ).toBe(0);
+    expect((await runFor(runId))["status"]).toBe("paused");
+    expect((await loadControl(db(), conv))?.owner).toBe("human");
+    expect(
+      (await fixture.pg.query("SELECT post_quote_next_at FROM opportunities")).rows[0],
+    ).toEqual({ post_quote_next_at: null });
+
+    expect(
+      await applyReturn(db(), (await loadControl(db(), conv))!, {
+        mode: "confirm",
+        source: "manual",
+        waiveCooldown: true,
+      }),
+    ).toBe(1);
+    expect((await runFor(runId))["status"]).toBe("active");
+    expect((await runFor(runId))["stop_reason"]).toBeNull();
+    expect((await loadControl(db(), conv))?.force_approval_next).toBe(true);
+  });
+
+  it("uma resposta invalida o rascunho e o texto novo ainda precisa de aprovação", async () => {
+    const { runId } = await start();
+    await patchControl(db(), conv, { force_approval_next: true });
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("needs_approval");
+    const old = await actionFor(runId);
+    await registerCustomerMessage(db(), {
+      userId: user,
+      contactId: contact,
+      conversationId: conv,
+      messageType: "text",
+      text: "Ainda estou vendo a proposta.",
+      at: "2026-03-10T13:01:00Z",
+    });
+    expect(
+      (await fixture.pg.query("SELECT status FROM scheduled_actions WHERE id=$1", [old["id"]]))
+        .rows[0],
+    ).toEqual({ status: "stale" });
+    vi.setSystemTime(new Date("2026-03-10T13:05:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("needs_approval");
+    expect((await loadControl(db(), conv))?.force_approval_next).toBe(true);
+    expect(fake.send).not.toHaveBeenCalled();
+  });
+
+  it("encerra o pós-cotação quando a cliente recusa, preservando a oportunidade", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
+    await registerCustomerMessage(db(), {
+      userId: user,
+      contactId: contact,
+      conversationId: conv,
+      messageType: "text",
+      text: "Agora não, obrigado.",
+      at: "2026-03-10T13:01:00Z",
+    });
+    const run = await runFor(runId);
+    expect(run["status"]).toBe("stopped");
+    expect(run["next_contact_at"]).toBeNull();
+    expect((await actionFor(runId))["status"]).toBe("cancelled");
+    expect((await fixture.pg.query("SELECT status FROM opportunities")).rows[0]).toEqual({
+      status: "open",
+    });
+    expect(fake.send).not.toHaveBeenCalled();
+  });
+
+  it.each(["pause", "end"] as const)("recibo atrasado preserva o comando %s", async (command) => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
+    const action = await actionFor(runId);
+    await fixture.pg.query(
+      "UPDATE scheduled_actions SET status='blocked', send_state='uncertain' WHERE id=$1",
+      [action["id"]],
+    );
+    await controlPostQuote(db(), user, { runId, command });
+    await recordPostQuoteAccepted(db(), action as never, crypto.randomUUID());
+    const run = await runFor(runId);
+    expect(run["status"]).toBe(command === "pause" ? "paused" : "cancelled");
+    expect(run["contacts_done"]).toBe(1);
+    expect(run["next_evaluation_at"]).toBeNull();
+    expect(
+      (await fixture.pg.query("SELECT post_quote_next_at FROM opportunities")).rows[0],
+    ).toEqual({ post_quote_next_at: null });
   });
 
   it("full cycle: activate → first contact → prepared text → accepted → counted → next; opportunity task kept", async () => {
@@ -557,6 +747,80 @@ describe("Stage A closing round (isolated, fake clock + provider)", () => {
     } as never);
     expect(outcome).toBe("sent");
     expect((await runFor(runId))["status"]).toBe("completed");
+  });
+
+  it("discards a newly received audio while the transport is preparing the send", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    await evaluateSmartRun(db(), runId);
+    const action = await actionFor(runId);
+    await fixture.pg.query("UPDATE scheduled_actions SET status='processing' WHERE id=$1", [
+      action["id"],
+    ]);
+    const provider = vi.fn();
+    fake.send.mockImplementationOnce(async (_user, { beforeDispatch }) => {
+      await fixture.pg.query(
+        "INSERT INTO messages(user_id,conversation_id,direction,message_type,status,sent_at) VALUES ($1,$2,'inbound','audio','received',$3)",
+        [user, conv, new Date().toISOString()],
+      );
+      if (!(await beforeDispatch())) throw new WhatsAppDispatchCancelled();
+      return provider();
+    });
+
+    expect(await executeClaimedAction(db(), { ...action, status: "processing" } as never)).toBe(
+      "skipped",
+    );
+    expect(provider).not.toHaveBeenCalled();
+    expect(await actionFor(runId)).toMatchObject({
+      status: "stale",
+      last_error: "new_customer_reply",
+      send_state: null,
+    });
+  });
+
+  it("database guards the final claim against a late reply and duplicate dispatch", async () => {
+    const { runId } = await start();
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    await evaluateSmartRun(db(), runId);
+    const action = await actionFor(runId);
+    await fixture.pg.query("UPDATE scheduled_actions SET status='processing' WHERE id=$1", [
+      action["id"],
+    ]);
+    await fixture.pg.query(
+      "INSERT INTO conversations(id,user_id,phone_number) VALUES ($1,$2,'+5511999999999')",
+      [conv, user],
+    );
+    const prepared = crypto.randomUUID();
+    const incoming = crypto.randomUUID();
+    await fixture.pg.query(
+      "INSERT INTO messages(id,user_id,conversation_id,direction,message_type,status,sent_at,recipient_phone) VALUES ($1,$2,$3,'outbound','text','pending',$5,'+5511999999999'),($4,$2,$3,'inbound','text','received',$5,NULL)",
+      [prepared, user, conv, incoming, new Date().toISOString()],
+    );
+    const begin = () =>
+      fixture.db.rpc("begin_automation_dispatch", {
+        p_action: action["id"],
+        p_user: user,
+        p_message: prepared,
+      });
+    expect(await begin()).toEqual({ data: false, error: null });
+    await fixture.pg.query("DELETE FROM messages WHERE id=$1", [incoming]);
+    await fixture.pg.query(
+      "INSERT INTO user_settings(user_id,test_mode,test_mode_allowlist) VALUES ($1,true,ARRAY['999999999'])",
+      [user],
+    );
+    expect(await begin()).toEqual({ data: false, error: null });
+    await fixture.pg.query(
+      "UPDATE user_settings SET test_mode_allowlist=ARRAY['(11) 99999-9999'], require_approval_all=true WHERE user_id=$1",
+      [user],
+    );
+    expect(await begin()).toEqual({ data: false, error: null });
+    await fixture.pg.query(
+      "UPDATE scheduled_actions SET dispatch_approved_at=clock_timestamp() WHERE id=$1",
+      [action["id"]],
+    );
+    expect(await begin()).toEqual({ data: true, error: null });
+    expect(await begin()).toEqual({ data: false, error: null });
+    expect(await actionFor(runId)).toMatchObject({ message_id: prepared, send_state: "started" });
   });
 
   it("proved failure stays visible with reason and next attempt", async () => {

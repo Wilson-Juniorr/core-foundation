@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { normalizePhone } from "@/lib/domain/phone";
 import type { Database } from "@/integrations/supabase/types";
 import type {
   AutomationPolicySettings,
@@ -21,7 +22,7 @@ export async function loadPolicySettings(
   db: Admin,
   userId: string,
 ): Promise<AutomationPolicySettings> {
-  const { data } = await db
+  const { data, error } = await db
     .from("user_settings")
     .select(
       "automation_paused, automation_paused_at, test_mode, test_mode_phone, test_mode_allowlist, require_approval_all, conversation_cooldown_minutes, manual_message_cooldown_minutes, active_conversation_minutes, max_automations_per_day, max_flow_automations_per_day, confidence_auto_min, confidence_approval_min",
@@ -29,6 +30,7 @@ export async function loadPolicySettings(
     .eq("user_id", userId)
     .maybeSingle();
 
+  if (error) throw new Error("Não foi possível verificar as regras de automação.");
   if (!data) return { ...DEFAULT_POLICY };
 
   return {
@@ -114,10 +116,6 @@ function untilAfter(now: Date, anchorIso: string | null | undefined, minutes: nu
   return new Date(Math.max(target, now.getTime() + 60_000)).toISOString();
 }
 
-function digitsOnly(value: string | null | undefined): string {
-  return (value ?? "").replace(/\D/g, "");
-}
-
 /**
  * Modo teste com lista de liberação: números marcados como teste recebem de
  * verdade (para validar ponta a ponta), qualquer outro número é apenas simulado.
@@ -131,8 +129,8 @@ async function isTestAllowlisted(
     ...(settings.test_mode_allowlist ?? []),
     ...(settings.test_mode_phone ? [settings.test_mode_phone] : []),
   ]
-    .map(digitsOnly)
-    .filter((value) => value.length >= 8);
+    .map((value) => normalizePhone(value))
+    .filter((value) => value && /^\+\d{10,15}$/.test(value));
   if (allowlist.length === 0) return false;
 
   const { data } = await db
@@ -140,9 +138,8 @@ async function isTestAllowlisted(
     .select("phone_number")
     .eq("id", conversationId)
     .maybeSingle();
-  const target = digitsOnly(data?.phone_number);
-  if (target.length < 8) return false;
-  return allowlist.some((entry) => entry.endsWith(target) || target.endsWith(entry));
+  const target = normalizePhone(data?.phone_number);
+  return Boolean(target && allowlist.includes(target));
 }
 
 /**

@@ -1315,6 +1315,7 @@ export type Database = {
           policy_activated_at: string | null
           policy_key: string | null
           policy_version: number | null
+          post_quote_context_note: string | null
           smart_state: string | null
           started_at: string
           status: Database["public"]["Enums"]["followup_run_status"]
@@ -1345,6 +1346,7 @@ export type Database = {
           policy_activated_at?: string | null
           policy_key?: string | null
           policy_version?: number | null
+          post_quote_context_note?: string | null
           smart_state?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["followup_run_status"]
@@ -1375,6 +1377,7 @@ export type Database = {
           policy_activated_at?: string | null
           policy_key?: string | null
           policy_version?: number | null
+          post_quote_context_note?: string | null
           smart_state?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["followup_run_status"]
@@ -1711,6 +1714,11 @@ export type Database = {
           post_quote_next_at: string | null
           post_quote_next_reason: string | null
           post_quote_run_id: string | null
+          post_sale_due_on: string | null
+          post_sale_effective_on: string | null
+          post_sale_note: string | null
+          post_sale_stage: string | null
+          post_sale_version: number
           status: Database["public"]["Enums"]["opportunity_status"]
           title: string
           updated_at: string
@@ -1728,6 +1736,11 @@ export type Database = {
           post_quote_next_at?: string | null
           post_quote_next_reason?: string | null
           post_quote_run_id?: string | null
+          post_sale_due_on?: string | null
+          post_sale_effective_on?: string | null
+          post_sale_note?: string | null
+          post_sale_stage?: string | null
+          post_sale_version?: number
           status?: Database["public"]["Enums"]["opportunity_status"]
           title: string
           updated_at?: string
@@ -1745,6 +1758,11 @@ export type Database = {
           post_quote_next_at?: string | null
           post_quote_next_reason?: string | null
           post_quote_run_id?: string | null
+          post_sale_due_on?: string | null
+          post_sale_effective_on?: string | null
+          post_sale_note?: string | null
+          post_sale_stage?: string | null
+          post_sale_version?: number
           status?: Database["public"]["Enums"]["opportunity_status"]
           title?: string
           updated_at?: string
@@ -1886,6 +1904,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           decision_reason: string | null
+          dispatch_approved_at: string | null
           draft_id: string | null
           executed_at: string | null
           external_message_id: string | null
@@ -1925,6 +1944,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           decision_reason?: string | null
+          dispatch_approved_at?: string | null
           draft_id?: string | null
           executed_at?: string | null
           external_message_id?: string | null
@@ -1964,6 +1984,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           decision_reason?: string | null
+          dispatch_approved_at?: string | null
           draft_id?: string | null
           executed_at?: string | null
           external_message_id?: string | null
@@ -2433,6 +2454,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_automation_dispatch: {
+        Args: { p_action: string; p_message: string; p_user: string }
+        Returns: boolean
+      }
       accept_post_quote_contact: {
         Args: {
           p_action: string
