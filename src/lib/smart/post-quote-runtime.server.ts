@@ -1,8 +1,28 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { nextSilenceContact, POST_QUOTE_POLICY } from "./post-quote-cadence";
-import { loadControl, patchControl } from "./control.server";
+import {
+  isPostQuoteManuallyPaused,
+  nextSilenceContact,
+  POST_QUOTE_FLOW_NAME,
+  POST_QUOTE_MANUAL_PAUSE,
+  POST_QUOTE_MANUAL_PAUSE_LABEL,
+  POST_QUOTE_POLICY,
+} from "./post-quote-cadence";
+import { ensureControl, loadControl, patchControl } from "./control.server";
 import { pendingCommitments } from "./commitments.server";
+import { applyCustomerOptOut } from "@/lib/automation/optout.server";
+import { messageContextText } from "@/lib/whatsapp/message-context";
+import {
+  POST_QUOTE_HISTORY_REQUIRED,
+  POST_QUOTE_NOTE_MIN,
+  POST_QUOTE_NOTE_MAX,
+} from "./post-quote-history";
+import {
+  hasPostQuoteHistory,
+  loadPostQuoteMessages,
+  optOutInHistory,
+  recoverPostQuoteMessages,
+} from "./post-quote-history.server";
 type Db = SupabaseClient<Database>;
 type Action = Database["public"]["Tables"]["scheduled_actions"]["Row"];
 
@@ -25,7 +45,7 @@ export async function recordPostQuoteAccepted(
     activatedAt: new Date(run.policy_activated_at ?? run.started_at),
     lastContactAt: acceptedAt,
   });
-  const { error: failure } = await db.rpc("accept_post_quote_contact", {
+  const { data: accepted, error: failure } = await db.rpc("accept_post_quote_contact", {
     p_action: action.id,
     p_message: messageId,
     p_at: acceptedAt.toISOString(),
@@ -33,6 +53,14 @@ export async function recordPostQuoteAccepted(
     p_reason: next?.goal ?? "Ciclo de oito contatos concluído; oportunidade preservada.",
   });
   if (failure) throw new Error(failure.message);
+  if (accepted && action.context_version !== null) {
+    // Só consome a aprovação da versão aceita, mesmo quando o recibo chega depois.
+    await db
+      .from("conversation_control")
+      .update({ force_approval_next: false })
+      .eq("conversation_id", action.conversation_id)
+      .eq("context_version", action.context_version);
+  }
 }
 
 export async function activatePostQuote(
@@ -40,6 +68,11 @@ export async function activatePostQuote(
   userId: string,
   contactId: string,
   opportunityId: string,
+  options: {
+    contextNote?: string | undefined;
+    recoverRunId?: string | undefined;
+    lookupOnly?: boolean | undefined;
+  } = {},
 ) {
   const { data: contact } = await db
     .from("contacts")
@@ -56,23 +89,86 @@ export async function activatePostQuote(
     .eq("status", "open")
     .single();
   if (!contact || !opportunity) throw new Error("Selecione uma oportunidade aberta deste cliente.");
-  const { data: live } = await db
+  const { data: live, error: liveError } = await db
     .from("followup_runs")
-    .select("id")
+    .select("id,conversation_id,policy_key,opportunity_id,status,next_contact_reason")
     .eq("contact_id", contactId)
     .eq("user_id", userId)
     .in("status", ["active", "paused"])
-    .limit(1);
-  if (live?.length)
+    .limit(1)
+    .maybeSingle();
+  if (liveError) throw new Error(liveError.message);
+  if (
+    options.recoverRunId &&
+    (!live ||
+      live.id !== options.recoverRunId ||
+      live.policy_key !== POST_QUOTE_POLICY ||
+      live.opportunity_id !== opportunityId ||
+      live.status !== "active" ||
+      live.next_contact_reason !== POST_QUOTE_HISTORY_REQUIRED)
+  )
+    throw new Error("Este ciclo não está aguardando a recuperação do histórico.");
+  if (live && !options.recoverRunId)
     throw new Error("Já existe um acompanhamento ativo ou pausado; nada foi alterado.");
+  const contextNote = options.contextNote?.trim() || null;
+  if (
+    contextNote &&
+    (contextNote.length < POST_QUOTE_NOTE_MIN || contextNote.length > POST_QUOTE_NOTE_MAX)
+  )
+    throw new Error("Registre o que enviou na cotação e o que ficou combinado.");
   const { ensureConversationForContact } = await import("@/lib/whatsapp/link.server");
-  const { conversationId } = await ensureConversationForContact(userId, contactId);
+  const conversationId =
+    live?.conversation_id ??
+    (await ensureConversationForContact(userId, contactId, { importHistory: false }))
+      .conversationId;
+  const scope = { userId, contactId, conversationId };
+  let messages = await loadPostQuoteMessages(db, scope);
+  let imported = false;
+  if (!contextNote && !hasPostQuoteHistory(messages)) {
+    const sync = await recoverPostQuoteMessages(db, scope, !options.lookupOnly);
+    imported = sync === "imported" || sync === "requested";
+    messages = await loadPostQuoteMessages(db, scope);
+    if (!hasPostQuoteHistory(messages) && !optOutInHistory(messages))
+      return { status: "history_required" as const, sync };
+  }
+  const optOut = optOutInHistory(messages);
+  if (optOut) {
+    await applyCustomerOptOut(db, { ...scope, quote: messageContextText(optOut) ?? "" });
+    throw new Error("O cliente pediu para parar no WhatsApp. Pós-cotação bloqueado.");
+  }
+  if (imported) {
+    await ensureControl(db, userId, conversationId);
+    await patchControl(db, conversationId, { force_approval_next: true });
+  }
+  if (live) {
+    const { data: updated, error } = await db
+      .from("followup_runs")
+      .update({
+        ...(contextNote ? { post_quote_context_note: contextNote } : {}),
+        smart_state: "evaluating",
+        next_evaluation_at: new Date().toISOString(),
+        next_contact_responsible: "system",
+        next_contact_reason: contextNote
+          ? "Resumo registrado. O próximo envio exige aprovação."
+          : "Histórico disponível. Reavaliando o próximo contato.",
+      })
+      .eq("id", live.id)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .eq("next_contact_reason", POST_QUOTE_HISTORY_REQUIRED)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("O ciclo mudou. Atualize a ficha antes de continuar.");
+    await enqueuePostQuoteHistory(db, scope);
+    return { status: "recovered" as const, contextNote: Boolean(contextNote), imported };
+  }
   // A dedicated policy flow avoids borrowing unrelated strategies/settings.
   const { data: flows } = await db
     .from("followup_flows")
     .select("id")
     .eq("user_id", userId)
-    .eq("name", "Pós-cotação · política v1")
+    .eq("name", POST_QUOTE_FLOW_NAME)
     .eq("kind", "smart")
     .eq("is_active", true)
     .limit(1);
@@ -80,7 +176,7 @@ export async function activatePostQuote(
   if (!flowId) {
     const { saveSmartFlow } = await import("./flows.server");
     const saved = await saveSmartFlow(db, userId, {
-      name: "Pós-cotação · política v1",
+      name: POST_QUOTE_FLOW_NAME,
       description: "Ciclo explícito de oito contatos",
       is_active: true,
       window_start: "09:00",
@@ -107,13 +203,34 @@ export async function activatePostQuote(
     flowId = saved.flowId;
   }
   const { startSmartFlow } = await import("./engine.server");
-  return startSmartFlow(db, userId, {
+  const result = await startSmartFlow(db, userId, {
     flowId,
     contactId,
     conversationId,
     opportunityId,
     policyKey: POST_QUOTE_POLICY,
+    ...(contextNote ? { postQuoteContextNote: contextNote } : {}),
   });
+  await enqueuePostQuoteHistory(db, scope);
+  return { status: "activated" as const, contextNote: Boolean(contextNote), imported, ...result };
+}
+
+async function enqueuePostQuoteHistory(
+  db: Db,
+  scope: { userId: string; contactId: string; conversationId: string },
+) {
+  try {
+    const { enqueueAnalysis } = await import("@/lib/ai/analysis.server");
+    await enqueueAnalysis(db, {
+      ...scope,
+      reason: "post_quote_history",
+    });
+  } catch (error) {
+    console.error(
+      "post_quote_history_enqueue_failed",
+      error instanceof Error ? error.name : "unknown",
+    );
+  }
 }
 
 export async function controlPostQuote(
@@ -195,7 +312,7 @@ export async function controlPostQuote(
     .or("send_state.is.null,send_state.neq.uncertain");
   const next = ended ? null : paused ? run.next_contact_at : at.toISOString();
   const reason = paused
-    ? "Pausado por você."
+    ? POST_QUOTE_MANUAL_PAUSE_LABEL
     : ended
       ? "Encerrado por você."
       : input.command === "reschedule"
@@ -210,20 +327,29 @@ export async function controlPostQuote(
       next_contact_at: next,
       next_contact_reason: reason,
       next_contact_responsible: paused ? "human" : ended ? "none" : "system",
-      stop_reason: ended ? "manually_cancelled" : null,
+      stop_reason: ended ? "manually_cancelled" : paused ? POST_QUOTE_MANUAL_PAUSE : null,
+      ...(ended
+        ? { smart_state: "completed", stopped_at: new Date().toISOString() }
+        : !paused && isPostQuoteManuallyPaused(run)
+          ? { smart_state: "evaluating" }
+          : {}),
     })
     .eq("id", run.id);
   if (error) throw new Error(error.message);
   await db
     .from("opportunities")
-    .update({ post_quote_run_id: run.id, post_quote_next_at: next, post_quote_next_reason: reason })
+    .update({
+      post_quote_run_id: run.id,
+      post_quote_next_at: paused || ended ? null : next,
+      post_quote_next_reason: reason,
+    })
     .eq("id", run.opportunity_id ?? "")
     .eq("user_id", userId);
   await patchControl(
     db,
     run.conversation_id,
     { decision_reason: reason },
-    { bumpVersion: input.command === "reschedule" },
+    { bumpVersion: input.command !== "resume" },
   );
 }
 

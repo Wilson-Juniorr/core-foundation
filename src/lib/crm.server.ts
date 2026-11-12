@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 import type { TimelineEventType } from "./domain/events";
+import { isPostSaleStage } from "./domain/post-sale";
 import type { Contact, Opportunity, OpportunityWithRelations } from "./crm.types";
 
 type Client = SupabaseClient<Database>;
@@ -25,6 +26,11 @@ export function mapOpportunity(row: OpportunityRow): OpportunityWithRelations {
     next_action_at: row.next_action_at,
     post_quote_next_at: row.post_quote_next_at,
     post_quote_next_reason: row.post_quote_next_reason,
+    post_sale_stage: isPostSaleStage(row.post_sale_stage) ? row.post_sale_stage : null,
+    post_sale_due_on: row.post_sale_due_on,
+    post_sale_effective_on: row.post_sale_effective_on,
+    post_sale_note: row.post_sale_note,
+    post_sale_version: row.post_sale_version,
     notes: row.notes,
     created_at: row.created_at,
     updated_at: row.updated_at,

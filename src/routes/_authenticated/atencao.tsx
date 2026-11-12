@@ -5,6 +5,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
+import { PostSaleDue } from "@/components/post-sale/post-sale-due";
 import { AttentionCard } from "@/components/attention/attention-card";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { syncAttentionNow } from "@/lib/attention.functions";
 import { attentionKeys, attentionQuery } from "@/lib/attention.queries";
 import { BUCKET_LABELS } from "@/lib/attention/labels";
+import { postSaleDueKey } from "@/lib/post-sale.queries";
 import type { AttentionBucket, AttentionStatus } from "@/lib/attention/types";
 
 const TABS: { value: string; label: string }[] = [
@@ -61,6 +63,7 @@ function AttentionPage() {
         `Central atualizada: ${result.created} novo(s), ${result.autoResolved} fechado(s) automaticamente.`,
       );
       void queryClient.invalidateQueries({ queryKey: attentionKeys.root });
+      void queryClient.invalidateQueries({ queryKey: postSaleDueKey });
     },
     onError: (error: Error) => toast.error(error.message || "Não foi possível atualizar."),
   });
@@ -83,8 +86,9 @@ function AttentionPage() {
       }
     >
       <div className="space-y-6">
+        <PostSaleDue />
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="flex-wrap">
+          <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1">
             {TABS.map((item) => {
               const count =
                 item.value === "snoozed"

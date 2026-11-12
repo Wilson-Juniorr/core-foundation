@@ -1,12 +1,17 @@
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/domain/datetime";
 import { MESSAGE_STATUS_LABELS } from "@/lib/whatsapp/labels";
+import { getMediaContext, mediaKind, messageMetadata } from "@/lib/whatsapp/message-context";
 import type { ConversationMessage } from "@/lib/whatsapp/types";
 import { MediaPreview } from "./media-preview";
 
 export function MessageBubble({ message }: { message: ConversationMessage }) {
   const outbound = message.direction === "outbound";
   const hasMedia = message.message_type !== "text" && message.message_type !== "unsupported";
+  const kind = mediaKind(message);
+  const media = getMediaContext(message.metadata);
+  const legacyTranscript =
+    kind === "audio" && messageMetadata(message.metadata)["transcript_source"] === "ai";
 
   return (
     <li className={cn("flex", outbound ? "justify-end" : "justify-start")}>
@@ -24,9 +29,27 @@ export function MessageBubble({ message }: { message: ConversationMessage }) {
           <p className="text-xs italic opacity-80">Mensagem não suportada</p>
         )}
 
-        {message.text_content && (
+        {message.text_content && !legacyTranscript && (
           <p className="whitespace-pre-wrap break-words">{message.text_content}</p>
         )}
+        {kind &&
+          (media?.text || legacyTranscript ? (
+            <details className="rounded border border-current/20 p-2">
+              <summary className="cursor-pointer text-xs">
+                {kind === "audio" ? "Transcrição" : "Conteúdo lido"}
+                {media?.status === "partial" ? " · parcial" : ""}
+              </summary>
+              <p className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs">
+                {media?.text ?? message.text_content}
+              </p>
+            </details>
+          ) : (
+            <p className="text-xs opacity-80">
+              {media?.status === "failed"
+                ? (media.reason ?? "Não foi possível ler a mídia.")
+                : "Leitura de mídia pendente"}
+            </p>
+          ))}
 
         <p
           className={cn(

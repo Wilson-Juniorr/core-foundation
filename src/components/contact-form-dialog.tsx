@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, Camera, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -36,6 +36,7 @@ import { flowsQuery, followupKeys } from "@/lib/followup.queries";
 import { startSmartFlowFn } from "@/lib/smart.functions";
 import { smartFlowsQuery, smartKeys } from "@/lib/smart.queries";
 import { AUTONOMY_LABELS } from "@/lib/smart/types";
+import { POST_QUOTE_FLOW_NAME } from "@/lib/smart/post-quote-cadence";
 import { formatPhone, isSendablePhone } from "@/lib/domain/phone";
 
 type FormState = {
@@ -85,6 +86,7 @@ export function ContactFormDialog({
   initialForm?: Partial<FormState> | null;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const create = useServerFn(createContact);
   const update = useServerFn(updateContact);
   const startFlow = useServerFn(startFollowupFlow);
@@ -97,7 +99,9 @@ export function ContactFormDialog({
   const flows = useQuery({ ...flowsQuery(), enabled: open && !contact });
   const activeFlows = (flows.data ?? []).filter((flow) => flow.is_active);
   const smartFlows = useQuery({ ...smartFlowsQuery(), enabled: open && !contact });
-  const activeSmartFlows = (smartFlows.data ?? []).filter((flow) => flow.is_active);
+  const activeSmartFlows = (smartFlows.data ?? []).filter(
+    (flow) => flow.is_active && flow.name !== POST_QUOTE_FLOW_NAME,
+  );
   const phoneUsable = isSendablePhone(form.phone);
 
   useEffect(() => {
@@ -136,25 +140,32 @@ export function ContactFormDialog({
         source: values.source,
         notes: values.notes,
       };
-      if (contact) return update({ data: { id: contact.id, ...payload } });
+      if (contact) {
+        const saved = await update({ data: { id: contact.id, ...payload } });
+        return { contact: saved, opportunity: "not_requested" as const };
+      }
 
       const saved = await create({
         data: {
           ...payload,
           create_opportunity: values.create_opportunity,
           opportunity_title: values.opportunity_title,
-          allow_duplicate: allowDuplicate || duplicateList.length === 0,
+          allow_duplicate: allowDuplicate,
         },
       });
 
-      if (flowId !== NO_FLOW && isSendablePhone(saved.phone)) {
+      if (
+        saved.opportunity !== "failed" &&
+        flowId !== NO_FLOW &&
+        isSendablePhone(saved.contact.phone)
+      ) {
         const [kind, id] = flowId.split(":");
         try {
           if (kind === "smart") {
             await startSmartFlowFn({
               data: {
                 flowId: id,
-                contactId: saved.id,
+                contactId: saved.contact.id,
                 conversationId: null,
                 opportunityId: null,
               },
@@ -164,7 +175,7 @@ export function ContactFormDialog({
             await startFlow({
               data: {
                 flowId: id,
-                contactId: saved.id,
+                contactId: saved.contact.id,
                 conversationId: null,
                 opportunityId: null,
                 replaceExisting: false,
@@ -189,7 +200,27 @@ export function ContactFormDialog({
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: followupKeys.root });
       queryClient.invalidateQueries({ queryKey: smartKeys.root });
-      toast.success(contact ? "Cliente atualizado" : "Cliente criado");
+      if (saved.opportunity === "failed") {
+        toast.warning("Cliente salvo. Falta cadastrar a oportunidade.", {
+          duration: 15000,
+          action: {
+            label: "Abrir ficha",
+            onClick: () =>
+              void navigate({
+                to: "/clientes/$contactId",
+                params: { contactId: saved.contact.id },
+              }),
+          },
+        });
+      } else {
+        toast.success(
+          contact
+            ? "Cliente atualizado"
+            : saved.opportunity === "created"
+              ? "Cliente e oportunidade criados"
+              : "Cliente criado",
+        );
+      }
       onOpenChange(false);
       return saved;
     },

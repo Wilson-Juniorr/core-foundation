@@ -74,6 +74,16 @@ export type WhatsAppProvider = {
     input: { externalChatId: string; limit: number },
   ): Promise<NormalizedWhatsAppMessage[]>;
 
+  requestOlderChatHistory?(
+    creds: ProviderCredentials,
+    input: { externalChatId: string; count: number },
+  ): Promise<boolean>;
+
+  downloadMessageMedia?(
+    creds: ProviderCredentials,
+    input: { messageId: string; audio: boolean },
+  ): Promise<{ url: string; mimeType: string | null } | null>;
+
   normalizeIncomingWebhook(payload: unknown): NormalizedWebhookEvent;
 };
 

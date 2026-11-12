@@ -29,20 +29,35 @@ export async function completeStructured<T>(input: {
   schema: unknown;
   /** Imagens (data URLs ou URLs públicas) enviadas junto do texto para modelos com visão. */
   images?: string[];
+  audio?: { data: string; format: string };
+  pdf?: { data: string; filename: string };
+  timeoutMs?: number;
 }): Promise<GatewayResult<T>> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new AiGatewayError("IA não configurada.", 401, false);
 
-  const userContent =
-    input.images && input.images.length > 0
+  const attachments = [
+    ...(input.images ?? []).map((url) => ({ type: "image_url", image_url: { url } })),
+    ...(input.audio ? [{ type: "input_audio", input_audio: input.audio }] : []),
+    ...(input.pdf
       ? [
-          { type: "text", text: input.user },
-          ...input.images.map((url) => ({ type: "image_url", image_url: { url } })),
+          {
+            type: "file",
+            file: {
+              filename: input.pdf.filename,
+              file_data: `data:application/pdf;base64,${input.pdf.data}`,
+            },
+          },
         ]
-      : input.user;
+      : []),
+  ];
+  const userContent = attachments.length
+    ? [{ type: "text", text: input.user }, ...attachments]
+    : input.user;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
+    ...(input.timeoutMs ? { signal: AbortSignal.timeout(input.timeoutMs) } : {}),
     headers: {
       "Content-Type": "application/json",
       "Lovable-API-Key": apiKey,

@@ -111,18 +111,6 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                       messageType: event.message.type,
                       at: event.message.timestamp,
                     });
-
-                    // Áudio entra no contexto: transcrever ou marcar como desconhecido.
-                    if (event.message.type === "audio" && message?.id) {
-                      const { ingestAudioContext } = await import("@/lib/smart/audio.server");
-                      await ingestAudioContext(supabaseAdmin, {
-                        userId: connection.user_id,
-                        conversationId: conversation.id,
-                        contactId: conversation.contact_id,
-                        messageId: message.id,
-                        direction: "inbound",
-                      });
-                    }
                   } catch (smartError) {
                     waLog.error("smart_inbound_failed", {
                       connection_id: connection.id,
@@ -210,6 +198,18 @@ export const Route = createFileRoute("/api/public/whatsapp/$connectionId")({
                       text: event.message.text ?? null,
                       messageType: event.message.type,
                       at: event.message.timestamp,
+                    });
+                  }
+                  if (
+                    conversation?.contact_id &&
+                    ["audio", "image", "document"].includes(event.message.type)
+                  ) {
+                    const { enqueueAnalysis } = await import("@/lib/ai/analysis.server");
+                    await enqueueAnalysis(supabaseAdmin, {
+                      userId: connection.user_id,
+                      contactId: conversation.contact_id,
+                      conversationId: conversation.id,
+                      reason: "outbound_media",
                     });
                   }
                 } catch (smartError) {

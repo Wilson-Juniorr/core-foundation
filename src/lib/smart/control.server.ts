@@ -19,6 +19,7 @@ import {
   humanCooldownUntil,
 } from "./rules";
 import type { ControlOwner, ControlState, NextResponsible } from "./types";
+import { isPostQuoteManuallyPaused, POST_QUOTE_POLICY } from "./post-quote-cadence";
 
 type Admin = SupabaseClient<Database>;
 type ControlRow = Database["public"]["Tables"]["conversation_control"]["Row"];
@@ -226,12 +227,17 @@ export async function registerHumanIntervention(
     const { RESUMABLE_SMART_STATES, markHandoff } = await import("./return.server");
     const { data: smartRuns } = await db
       .from("followup_runs")
-      .select("id, status, smart_state, followup_flows!inner(kind)")
+      .select(
+        "id, status, smart_state, policy_key, stop_reason, next_contact_reason, followup_flows!inner(kind)",
+      )
       .eq("conversation_id", input.conversationId)
       .in("status", ["active", "paused"])
       .eq("followup_flows.kind", "smart");
     const resumable = (smartRuns ?? []).filter(
-      (run) => run.status === "active" || RESUMABLE_SMART_STATES.includes(run.smart_state ?? ""),
+      (run) =>
+        run.status === "active" ||
+        isPostQuoteManuallyPaused(run) ||
+        RESUMABLE_SMART_STATES.includes(run.smart_state ?? ""),
     );
     if (resumable.length > 0) {
       const { extractAndStoreCommitments } = await import("./commitments.server");
@@ -301,14 +307,16 @@ export async function registerCustomerMessage(
     at: string;
   },
 ): Promise<void> {
-  await ensureControl(db, input.userId, input.conversationId);
+  const previous = await ensureControl(db, input.userId, input.conversationId);
+  if (previous.last_inbound_at && Date.parse(input.at) < Date.parse(previous.last_inbound_at))
+    return;
 
   const closing = detectClosingSignal(input.text ?? null);
   const irritated = detectIrritation(input.text ?? null);
   const refused = detectExplicitRefusal(input.text ?? null);
   const audioWithoutText = input.messageType === "audio" && !(input.text ?? "").trim();
 
-  const state: ControlState = closing || irritated ? "waiting_human" : "waiting_human";
+  const state: ControlState = "waiting_human";
   const nextResponsible: NextResponsible = "human";
 
   await patchControl(db, input.conversationId, {
@@ -325,11 +333,23 @@ export async function registerCustomerMessage(
     ...(input.messageId ? { last_analyzed_message_id: input.messageId } : {}),
   });
 
+  await db
+    .from("scheduled_actions")
+    .update({
+      status: "stale",
+      last_error: "new_customer_reply",
+      decision_reason: "Cliente respondeu. A mensagem preparada perdeu o contexto.",
+    })
+    .eq("conversation_id", input.conversationId)
+    .in("status", ["scheduled", "needs_approval", "blocked"])
+    .not("smart_strategy", "is", null)
+    .or("send_state.is.null,send_state.neq.uncertain");
+
   await refreshPressure(db, input.userId, input.conversationId);
 
   // Compromissos declarados pelo cliente.
   const { extractAndStoreCommitments } = await import("./commitments.server");
-  await extractAndStoreCommitments(db, {
+  const newCommitments = await extractAndStoreCommitments(db, {
     userId: input.userId,
     conversationId: input.conversationId,
     contactId: input.contactId ?? null,
@@ -339,12 +359,56 @@ export async function registerCustomerMessage(
   });
 
   // Debounce: mensagens em sequência levam a uma única reavaliação.
-  const { data: runs } = await db
+  const { data: smartRuns } = await db
     .from("followup_runs")
-    .select("id, smart_state, followup_flows!inner(kind)")
+    .select(
+      "id, status, smart_state, policy_key, stop_reason, next_contact_reason, followup_flows!inner(kind)",
+    )
     .eq("conversation_id", input.conversationId)
     .in("status", ["active", "paused"])
     .eq("followup_flows.kind", "smart");
+  const refusesPostQuote =
+    (refused || /^\s*agora\s+n[ãa]o\b/i.test(input.text ?? "")) &&
+    !closing &&
+    !newCommitments.some(
+      (item) => item.due_at || item.due_window_end || item.commitment_type === "date_review",
+    );
+  const runs = [];
+  for (const run of smartRuns ?? []) {
+    if (run.policy_key === POST_QUOTE_POLICY && refusesPostQuote) {
+      const { error } = await db
+        .from("followup_runs")
+        .update({
+          status: "stopped",
+          smart_state: "completed",
+          stopped_at: input.at,
+          stop_reason: "post_quote_customer_declined",
+          next_evaluation_at: null,
+          next_contact_at: null,
+          next_contact_reason: "Cliente preferiu encerrar o acompanhamento.",
+          next_contact_responsible: "none",
+        })
+        .eq("id", run.id)
+        .in("status", ["active", "paused"]);
+      if (error) throw new Error(error.message);
+      await db
+        .from("scheduled_actions")
+        .update({ status: "cancelled", last_error: "customer_declined" })
+        .eq("flow_run_id", run.id)
+        .in("status", ["scheduled", "needs_approval", "stale", "blocked"])
+        .or("send_state.is.null,send_state.neq.uncertain");
+      await writeAudit(db, input.userId, {
+        action: "smart_refusal_detected",
+        summary: "Cliente recusou e o pós-cotação foi encerrado.",
+        entityType: "followup_run",
+        entityId: run.id,
+        actor: "system",
+        metadata: { message_id: input.messageId ?? null },
+      });
+    } else if (!isPostQuoteManuallyPaused(run)) {
+      runs.push(run);
+    }
+  }
 
   /* Saída do agente: preço, pergunta técnica, fechamento e incômodo são seus.
      Se a conversa já está com você, o agente segura até você responder. */
@@ -425,7 +489,7 @@ export async function registerCustomerMessage(
           ? "closing"
           : irritated
             ? "needs_human"
-            : refused
+            : refused && run.policy_key !== POST_QUOTE_POLICY
               ? run.smart_state === "refusal_recovery" || run.smart_state === "declining"
                 ? "declining"
                 : "refusal_recovery"
@@ -448,7 +512,7 @@ export async function registerCustomerMessage(
     });
   }
 
-  if (refused && !irritated) {
+  if (refused && !irritated && runs.some((run) => run.policy_key !== POST_QUOTE_POLICY)) {
     await writeAudit(db, input.userId, {
       action: "smart_refusal_detected",
       summary:

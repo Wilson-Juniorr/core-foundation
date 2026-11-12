@@ -8,7 +8,13 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   // previewAuthStorage.ts é gerado automaticamente pela plataforma e não pode ser editado.
   {
-    ignores: ["dist", ".output", ".vinxi", "src/integrations/supabase/previewAuthStorage.ts"],
+    ignores: [
+      "dist",
+      ".output",
+      ".vinxi",
+      ".agents/skills/**",
+      "src/integrations/supabase/previewAuthStorage.ts",
+    ],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

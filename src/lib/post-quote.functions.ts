@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { POST_QUOTE_NOTE_MAX, POST_QUOTE_NOTE_MIN } from "./smart/post-quote-history";
 const contactSchema = z.object({ contactId: z.string().uuid() });
 export const postQuoteViewFn = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -39,7 +40,14 @@ export const postQuoteViewFn = createServerFn({ method: "GET" })
   });
 export const activatePostQuoteFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(contactSchema.extend({ opportunityId: z.string().uuid() }).parse)
+  .inputValidator(
+    contactSchema.extend({
+      opportunityId: z.string().uuid(),
+      contextNote: z.string().trim().min(POST_QUOTE_NOTE_MIN).max(POST_QUOTE_NOTE_MAX).optional(),
+      recoverRunId: z.string().uuid().optional(),
+      lookupOnly: z.boolean().optional(),
+    }).parse,
+  )
   .handler(async ({ context, data }) => {
     const { data: contact } = await context.supabase
       .from("contacts")
@@ -50,7 +58,13 @@ export const activatePostQuoteFn = createServerFn({ method: "POST" })
     if (!contact) throw new Error("Cliente não encontrado.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { activatePostQuote } = await import("./smart/post-quote-runtime.server");
-    return activatePostQuote(supabaseAdmin, context.userId, data.contactId, data.opportunityId);
+    return activatePostQuote(
+      supabaseAdmin,
+      context.userId,
+      data.contactId,
+      data.opportunityId,
+      data,
+    );
   });
 export const controlPostQuoteFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

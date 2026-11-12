@@ -24,6 +24,7 @@ import type {
   TimelineEvent,
 } from "./crm.types";
 
+import { isPostSaleStage } from "./domain/post-sale";
 import type { ExtractedContact } from "./crm/contact-vision.server";
 
 export const listContacts = createServerFn({ method: "GET" })
@@ -159,7 +160,7 @@ export const getContactSignals = createServerFn({ method: "GET" })
 export const createContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => contactInputSchema.parse(input))
-  .handler(async ({ data, context }): Promise<Contact> => {
+  .handler(async ({ data, context }) => {
     const { normalizePhone } = await import("./domain/phone");
     const { findDuplicateContacts: find, logEvent } = await import("./crm.server");
 
@@ -195,9 +196,10 @@ export const createContact = createServerFn({ method: "POST" })
       metadata: { name: row.name },
     });
 
-    // Cadastro por print: já cria a oportunidade na primeira etapa do pipeline.
+    let opportunity: "created" | "failed" | "not_requested" = "not_requested";
     if (data.create_opportunity) {
-      const { data: firstStage } = await context.supabase
+      opportunity = "failed";
+      const { data: firstStage, error: stageError } = await context.supabase
         .from("pipeline_stages")
         .select("id, name")
         .eq("is_active", true)
@@ -205,6 +207,7 @@ export const createContact = createServerFn({ method: "POST" })
         .limit(1)
         .maybeSingle();
 
+      if (stageError) console.error("Falha ao consultar etapas do pipeline", stageError.code);
       if (firstStage) {
         const title = data.opportunity_title?.trim() || `${row.name} — Novo negócio`;
         const { data: oppRow, error: oppError } = await context.supabase
@@ -220,8 +223,9 @@ export const createContact = createServerFn({ method: "POST" })
           .single();
 
         if (oppError) {
-          console.error("Falha ao criar oportunidade automática", oppError.message);
+          console.error("Falha ao criar oportunidade automática", oppError.code);
         } else {
+          opportunity = "created";
           await logEvent(context.supabase, context.userId, {
             event_type: "opportunity_created",
             contact_id: row.id,
@@ -232,7 +236,7 @@ export const createContact = createServerFn({ method: "POST" })
       }
     }
 
-    return row as Contact;
+    return { contact: row as Contact, opportunity };
   });
 
 /** Cadastro por print: lê as imagens e devolve os campos do cliente para revisão. */
@@ -401,6 +405,7 @@ export const updateOpportunity = createServerFn({ method: "POST" })
       context.userId,
       {
         ...before,
+        post_sale_stage: isPostSaleStage(before.post_sale_stage) ? before.post_sale_stage : null,
         estimated_value: before.estimated_value === null ? null : Number(before.estimated_value),
       },
       after,
