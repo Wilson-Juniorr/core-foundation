@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import {
   BellRing,
   BarChart3,
@@ -16,11 +16,11 @@ import {
   ShieldCheck,
   Users,
   Workflow,
+  X,
 } from "lucide-react";
 
 import { GlobalSearch } from "@/components/global-search";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { getAutomationPolicy } from "@/lib/automation.functions";
 import { cn } from "@/lib/utils";
@@ -163,6 +163,8 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuId = useId();
+  const mobileTrigger = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -181,22 +183,23 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="bg-card sticky top-0 z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3 sm:px-6">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                aria-label="Abrir navegação"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="bg-sidebar w-72 border-0 p-0">
-              <SheetTitle className="sr-only">Navegação</SheetTitle>
-              <NavContent onNavigate={() => setMobileOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          <Button
+            ref={mobileTrigger}
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            aria-label={mobileOpen ? "Fechar navegação" : "Abrir navegação"}
+            aria-expanded={mobileOpen}
+            aria-controls={mobileMenuId}
+            onClick={() => setMobileOpen((open) => !open)}
+          >
+            {mobileOpen ? (
+              <X className="size-5" aria-hidden />
+            ) : (
+              <Menu className="size-5" aria-hidden />
+            )}
+          </Button>
 
           <div className="min-w-0 flex-1">
             <h1 className="font-display truncate text-lg font-bold tracking-tight">{title}</h1>
@@ -216,6 +219,18 @@ export function AppShell({
               {actions}
             </div>
           )}
+          <div
+            id={mobileMenuId}
+            hidden={!mobileOpen}
+            className="order-last w-full max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-lg border lg:hidden"
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return;
+              setMobileOpen(false);
+              mobileTrigger.current?.focus();
+            }}
+          >
+            {mobileOpen && <NavContent onNavigate={() => setMobileOpen(false)} />}
+          </div>
         </header>
 
         <OperationBanner />
