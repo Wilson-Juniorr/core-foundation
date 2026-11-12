@@ -30,3 +30,5 @@ jobs:
           bun-version: "1.4.4"
       - run: bun install --frozen-lockfile
       - run: bun run check
+      - name: Navegação e pós-venda no Chrome
+        run: node scripts/smoke-pilot.mjs
