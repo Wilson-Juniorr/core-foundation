@@ -237,7 +237,7 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
     throw new Error(
-      `Timed out for ${expression}. Browser: ${await js("document.body.innerText.slice(0, 1800)")}\n${errors.join("\n")}`,
+      `Timed out for ${expression}. Browser: ${await js("document.body?.innerText.slice(0, 1800)")}\n${errors.join("\n")}`,
     );
   }
   async function clickElement(expression) {
@@ -270,7 +270,7 @@ try {
     mobile: false,
   });
   await command("Page.navigate", { url: `${root}/clientes/${contact.id}` });
-  await waitFor("document.body.innerText.includes('Plano família')");
+  await waitFor("document.body?.innerText.includes('Plano família')");
   assert.equal(
     await js("document.querySelector('[role=tab][aria-selected=true]').textContent"),
     "Resumo",
@@ -279,12 +279,12 @@ try {
   await button("Mais ferramentas");
   assert.equal(await js("document.querySelectorAll('aside nav a').length"), 11);
   await button("Mais ferramentas");
-  await waitFor("document.body.innerText.includes('WhatsApp desconectado')");
-  await waitFor("document.body.innerText.includes('Modo teste ativo')");
+  await waitFor("document.body?.innerText.includes('WhatsApp desconectado')");
+  await waitFor("document.body?.innerText.includes('Modo teste ativo')");
   await button("Pós-venda");
-  await waitFor("document.body.innerText.includes('Iniciar pós-venda')");
+  await waitFor("document.body?.innerText.includes('Iniciar pós-venda')");
   await button("Iniciar pós-venda");
-  await waitFor("document.body.innerText.includes('Mesmo sem histórico do WhatsApp')");
+  await waitFor("document.body?.innerText.includes('Mesmo sem histórico do WhatsApp')");
   await js(`(() => {
     const input = document.querySelector('input[type=date]');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '2024-01-15');
@@ -294,35 +294,38 @@ try {
     notes.dispatchEvent(new Event('input', { bubbles: true }));
   })()`);
   await button("Salvar pós-venda");
-  await waitFor("document.body.innerText.includes('Conferir emissão em 15/01/2024')");
+  await waitFor("document.body?.innerText.includes('Conferir emissão em 15/01/2024')");
   assert.equal(patchCount, 1);
   assert.equal(sale.post_sale_note, "Aguardando retorno da operadora.");
   await button("Histórico");
-  await waitFor("document.body.innerText.includes('Nenhuma conversa está vinculada')");
-  await waitFor("document.body.innerText.includes('Pós-venda atualizado')");
+  await waitFor("document.body?.innerText.includes('Nenhuma conversa está vinculada')");
+  await waitFor("document.body?.innerText.includes('Pós-venda atualizado')");
   await click('aside a[href="/atencao"]');
-  await waitFor("document.body.innerText.includes('Pós-vendas com prazo')");
-  assert.ok(await js("document.body.innerText.includes('Cliente Piloto')"));
+  await waitFor("document.body?.innerText.includes('Pós-vendas com prazo')");
+  assert.ok(await js("document.body?.innerText.includes('Cliente Piloto')"));
   await click('a[href*="aba=pos-venda"]');
-  await waitFor("document.body.innerText.includes('Conferir emissão em 15/01/2024')");
+  await waitFor("document.body?.innerText.includes('Conferir emissão em 15/01/2024')");
   await command("Emulation.setDeviceMetricsOverride", {
     width: 375,
     height: 800,
     deviceScaleFactor: 1,
     mobile: false,
   });
-  await waitFor("window.innerWidth === 375");
+  await command("Page.navigate", { url: `${root}/clientes/${contact.id}?aba=pos-venda` });
+  await waitFor(
+    "window.innerWidth === 375 && document.body?.innerText.includes('Conferir emissão em 15/01/2024')",
+  );
   assert.equal(await js("document.documentElement.scrollWidth"), 375);
   const mobileTrigger = 'button[aria-label="Abrir navegação"]';
   await waitFor(
     `document.querySelector(${JSON.stringify(mobileTrigger)})?.getBoundingClientRect().width > 0`,
   );
-  await click(mobileTrigger);
+  await js(`document.querySelector(${JSON.stringify(mobileTrigger)}).click()`);
   await waitFor(
     `document.querySelector('button[aria-label="Fechar navegação"]')?.getAttribute("aria-expanded") === "true"`,
   );
-  await click('header nav a[href="/atencao"]');
-  await waitFor("document.body.innerText.includes('Pós-vendas com prazo')");
+  await js(`document.querySelector('header nav a[href="/atencao"]').click()`);
+  await waitFor("document.body?.innerText.includes('Pós-vendas com prazo')");
   assert.equal(await js("document.documentElement.scrollWidth"), 375);
   console.log(
     "Chrome smoke passed: desktop and 375px, navigation, live warnings, no WhatsApp history, post-sale save, timeline, due reminder, deep link.",
