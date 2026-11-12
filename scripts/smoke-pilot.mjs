@@ -240,10 +240,23 @@ try {
       `Timed out for ${expression}. Browser: ${await js("document.body.innerText.slice(0, 1800)")}\n${errors.join("\n")}`,
     );
   }
-  const click = (selector) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  async function clickElement(expression) {
+    const point = await js(`(() => {
+      const element = ${expression};
+      if (!element) return null;
+      element.scrollIntoView({ block: "center" });
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+    })()`);
+    assert.ok(point, `Element was not found: ${expression}`);
+    for (const type of ["mousePressed", "mouseReleased"]) {
+      await command("Input.dispatchMouseEvent", { type, button: "left", clickCount: 1, ...point });
+    }
+  }
+  const click = (selector) => clickElement(`document.querySelector(${JSON.stringify(selector)})`);
   const button = (label) =>
-    js(
-      `[...document.querySelectorAll('button')].find(e => e.textContent.trim() === ${JSON.stringify(label)}).click()`,
+    clickElement(
+      `[...document.querySelectorAll('button')].find(e => e.textContent.trim() === ${JSON.stringify(label)})`,
     );
   await command("Page.enable");
   await command("Runtime.enable");
