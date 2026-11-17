@@ -25,11 +25,20 @@ export const requestAnalysis = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => analyzeContactSchema.parse(input))
   .handler(async ({ data, context }): Promise<{ status: string; reason?: string }> => {
-    const { analyzeContact } = await import("./ai/analysis.server");
+    const { analyzeContact, enqueueAnalysis } = await import("./ai/analysis.server");
     const outcome = await analyzeContact(context.userId, data.contactId, {
       force: data.force ?? true,
       conversationId: data.conversationId ?? null,
     });
+    if (outcome.reason === "more_messages") {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await enqueueAnalysis(supabaseAdmin, {
+        userId: context.userId,
+        contactId: data.contactId,
+        conversationId: data.conversationId ?? null,
+        reason: "manual",
+      });
+    }
     return { status: outcome.status, ...(outcome.reason ? { reason: outcome.reason } : {}) };
   });
 

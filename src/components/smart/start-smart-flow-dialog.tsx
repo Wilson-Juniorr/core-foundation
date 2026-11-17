@@ -22,6 +22,7 @@ import {
 import { startSmartFlowFn } from "@/lib/smart.functions";
 import { smartFlowsQuery, smartKeys } from "@/lib/smart.queries";
 import { AUTONOMY_LABELS } from "@/lib/smart/types";
+import { POST_QUOTE_FLOW_NAME } from "@/lib/smart/post-quote-cadence";
 
 /** Inicia um acompanhamento inteligente para o cliente. */
 export function StartSmartFlowDialog({
@@ -41,11 +42,13 @@ export function StartSmartFlowDialog({
   const flows = useQuery(smartFlowsQuery());
   const [flowId, setFlowId] = useState<string | null>(null);
 
-  const active = (flows.data ?? []).filter((flow) => flow.is_active);
+  const active = (flows.data ?? []).filter(
+    (flow) => flow.is_active && flow.name !== POST_QUOTE_FLOW_NAME,
+  );
 
   useEffect(() => {
     const first = active[0];
-    if (open && !flowId && first) setFlowId(first.id);
+    if (open && !active.some((flow) => flow.id === flowId)) setFlowId(first?.id ?? null);
   }, [open, flowId, active]);
 
   const start = useMutation({

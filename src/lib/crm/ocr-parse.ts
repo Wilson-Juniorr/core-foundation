@@ -9,9 +9,12 @@ export type LocalExtraction = {
   phone: string;
   email: string;
   notes: string;
+  phoneOptions: string[];
+  emailOptions: string[];
+  nameOptions: string[];
 };
 
-const EMAIL_RE = /[\w.+-]+\s?@\s?[\w-]+\s?\.\s?[\w.-]{2,}/;
+const EMAIL_RE = /[\w.+-]+\s?@\s?[\w-]+\s?\.\s?[\w.-]{2,}/g;
 
 /** DDDs válidos no Brasil (evita capturar horários, datas e números avulsos). */
 const VALID_DDD = new Set([
@@ -26,7 +29,10 @@ const UI_NOISE =
 
 /** Rótulos comuns em fichas/cartões que precedem o valor real. */
 const NAME_LABEL = /^(nome|cliente|contato|raz[ãa]o social|respons[áa]vel)\s*[:-]\s*/i;
-const PHONE_LABEL = /(telefone|celular|whats\s?app|whats|fone|tel|contato)\s*[:-]?/i;
+const PHONE_LABEL = /^(?:telefone|celular|whats\s?app|whats|fone|tel|contato)\b\s*[:-]?\s*/i;
+const CONVERSATION_LINE =
+  /^(?:oi|ol[áa]|bom\s+dia|boa\s+tarde|boa\s+noite|tudo\s+bem|quero|preciso|gostaria|meu|minha|me\s|para\s|plano|cota[çc][ãa]o|proposta|regi[ãa]o|telefone|origem|vendedor|corretor)\b/i;
+const DOCUMENT_NUMBER = /\b(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})\b/g;
 
 /** Correções de confusões clássicas do OCR dentro de sequências numéricas. */
 function fixDigits(value: string): string {
@@ -73,71 +79,90 @@ function scoreName(clean: string, index: number, total: number): number {
   return score;
 }
 
-function extractPhones(rawText: string): string[] {
-  const found: string[] = [];
-  // Trabalha linha a linha para poder priorizar linhas rotuladas.
-  const lines = rawText.split(/\r?\n/);
-  const candidates: { value: string; boost: number }[] = [];
-
+function extractPhones(lines: string[]): string[] {
+  const found = new Set<string>();
   for (const line of lines) {
-    const boost = PHONE_LABEL.test(line) ? 1 : 0;
-    const normalized = fixDigits(line.replace(/[^\dOoIil|!SsBbZzGg()+\s.-]/g, " "));
+    if (/^(?:cpf|cnpj|rg|cep)\s*[:.-]?\s*\d/i.test(line)) continue;
+    const normalized = fixDigits(line.replace(PHONE_LABEL, "").replace(DOCUMENT_NUMBER, ""));
     const matches = normalized.matchAll(
-      /(\+?55)?[\s.-]*\(?(\d{2})\)?[\s.-]*(9?\d{4})[\s.-]*(\d{4})/g,
+      /(?<![\w.+-])(?:\+?55[\s.-]*)?\(?(\d{2})\)?[\s.-]*(9\d{4}|[2-5]\d{3})[\s.-]*(\d{4})(?![\w]|[.-]\d)/g,
     );
     for (const match of matches) {
-      const ddd = Number(match[2]);
+      const ddd = Number(match[1]);
       if (!VALID_DDD.has(ddd)) continue;
-      const digits = `${match[2]}${match[3]}${match[4]}`;
-      if (digits.length < 10 || digits.length > 11) continue;
-      candidates.push({ value: `+55${digits}`, boost: boost + (digits.length === 11 ? 1 : 0) });
+      const normalizedPhone = normalizePhone(`+55${match[1]}${match[2]}${match[3]}`);
+      if (normalizedPhone) found.add(normalizedPhone);
     }
   }
-
-  candidates.sort((a, b) => b.boost - a.boost);
-  for (const candidate of candidates) {
-    const normalized = normalizePhone(candidate.value);
-    if (normalized && !found.includes(normalized)) found.push(normalized);
-  }
-  return found;
+  return [...found];
 }
 
 export function parseContactFromText(text: string): LocalExtraction {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter((line) => line.length > 0);
+  const lines = [
+    ...new Set(
+      text
+        .split(/\r?\n/)
+        .map((line) => line.replace(/\s+/g, " ").trim())
+        .filter((line) => line.length > 0),
+    ),
+  ];
 
-  const email = (text.match(EMAIL_RE)?.[0] ?? "").replace(/\s/g, "").toLowerCase();
-  const phone = extractPhones(text)[0] ?? "";
+  const emailOptions = [
+    ...new Set(
+      Array.from(text.matchAll(EMAIL_RE), ([email]) => email.replace(/\s/g, "").toLowerCase()),
+    ),
+  ];
+  const phoneOptions = extractPhones(lines);
 
   let bestName = "";
   let bestScore = 0;
+  const labelledNames = new Set<string>();
   lines.forEach((line, index) => {
-    if (UI_NOISE.test(line) && !NAME_LABEL.test(line)) return;
+    const labelled = NAME_LABEL.test(line);
+    if (!labelled && (index > 2 || UI_NOISE.test(line) || CONVERSATION_LINE.test(line))) return;
+    if (!labelled && /[!?;,:]/.test(line)) return;
     const clean = cleanNameCandidate(line);
     if (!clean) return;
-    const score = scoreName(clean, index, lines.length) + (NAME_LABEL.test(line) ? 5 : 0);
+    const score = scoreName(clean, index, lines.length);
+    if (score < 0) return;
+    if (labelled) {
+      labelledNames.add(titleCase(clean));
+      return;
+    }
     if (score > bestScore) {
       bestScore = score;
-      bestName = clean;
+      bestName = titleCase(clean);
     }
   });
+  const nameOptions = labelledNames.size ? [...labelledNames] : bestName ? [bestName] : [];
 
   const notes = lines
-    .filter((line) => !UI_NOISE.test(line) || /\p{L}{4,}/u.test(line))
+    .filter(
+      (line) =>
+        !NAME_LABEL.test(line) &&
+        !PHONE_LABEL.test(line) &&
+        !/^(cpf|cnpj|rg|cep|e-mail|email)\b/i.test(line),
+    )
     .slice(0, 10)
     .join(" · ")
     .slice(0, 500);
 
   return {
-    name: bestName ? titleCase(bestName) : "",
-    phone,
-    email,
+    name: nameOptions.length === 1 ? nameOptions[0]! : "",
+    phone: phoneOptions.length === 1 ? phoneOptions[0]! : "",
+    email: emailOptions.length === 1 ? emailOptions[0]! : "",
     notes,
+    phoneOptions,
+    emailOptions,
+    nameOptions,
   };
 }
 
 export function extractionIsWeak(result: LocalExtraction): boolean {
-  return !result.phone && !result.email;
+  return (
+    !result.name ||
+    (!result.phone && !result.email) ||
+    result.phoneOptions.length > 1 ||
+    result.emailOptions.length > 1
+  );
 }

@@ -1,4 +1,5 @@
 import type { OpportunityStatus } from "./domain/opportunity-status";
+import type { PostSaleStage } from "./domain/post-sale";
 
 /** Valor serializável usado no metadata flexível dos eventos de timeline. */
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -33,6 +34,11 @@ export type Opportunity = {
   next_action_at: string | null;
   post_quote_next_at?: string | null;
   post_quote_next_reason?: string | null;
+  post_sale_stage?: PostSaleStage | null;
+  post_sale_due_on?: string | null;
+  post_sale_effective_on?: string | null;
+  post_sale_note?: string | null;
+  post_sale_version?: number;
   notes: string | null;
   created_at: string;
   updated_at: string;

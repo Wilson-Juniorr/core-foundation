@@ -21,11 +21,12 @@ export const getAutomationPolicy = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AutomationPolicySettings> => {
     const { DEFAULT_POLICY } = await import("./automation/policy.defaults");
-    const { data } = await context.supabase
+    const { data, error } = await context.supabase
       .from("user_settings")
       .select(POLICY_COLUMNS)
       .eq("user_id", context.userId)
       .maybeSingle();
+    if (error) throw new Error("Não foi possível consultar o estado das automações.");
     if (!data) return { ...DEFAULT_POLICY };
     return {
       automation_paused: data.automation_paused,

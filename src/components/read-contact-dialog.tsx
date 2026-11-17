@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { extractContactFromImages } from "@/lib/crm.functions";
-import { extractionIsWeak, parseContactFromText } from "@/lib/crm/ocr-parse";
+import { extractionIsWeak, parseContactFromText, type LocalExtraction } from "@/lib/crm/ocr-parse";
 
 export type ReadResult = {
   name: string;
@@ -48,6 +48,27 @@ export function ReadContactDialog({
   const [images, setImages] = useState<string[]>([]);
   const [localBusy, setLocalBusy] = useState(false);
   const [needsAi, setNeedsAi] = useState(false);
+  const [review, setReview] = useState<LocalExtraction | null>(null);
+
+  function close() {
+    setImages([]);
+    setNeedsAi(false);
+    setReview(null);
+    onOpenChange(false);
+  }
+
+  function applyLocalResult(result: LocalExtraction) {
+    onExtracted({
+      name: result.name,
+      phone: result.phone,
+      email: result.email,
+      source: "Print",
+      notes: result.notes,
+      opportunity_title: "",
+      confidence: extractionIsWeak(result) ? 0.3 : 0.8,
+    });
+    close();
+  }
 
   const mutation = useMutation({
     mutationFn: () => read({ data: { images } }),
@@ -62,7 +83,7 @@ export function ReadContactDialog({
         confidence: data.confidence ?? 0,
       };
       onExtracted(result);
-      onOpenChange(false);
+      close();
     },
     onError: () => {
       toast.error("Não foi possível ler o print. Tente uma imagem mais nítida.");
@@ -72,54 +93,38 @@ export function ReadContactDialog({
   async function readLocally() {
     setLocalBusy(true);
     setNeedsAi(false);
+    setReview(null);
     try {
-      const [{ default: Tesseract }, { preprocessForOcr }] = await Promise.all([
+      const [{ createWorker, PSM }, { preprocessForOcr }] = await Promise.all([
         import("tesseract.js"),
         import("@/lib/crm/ocr-image"),
       ]);
 
-      let text = "";
-      for (const image of images) {
-        const enhanced = await preprocessForOcr(image);
-        // Duas passadas: layout em blocos (prints de conversa) e coluna única
-        // (cartões/fichas). Juntar os textos aumenta muito o acerto.
-        for (const psm of ["6", "4"]) {
-          const { data } = await Tesseract.recognize(enhanced, "por+eng", {
-            // @ts-expect-error opções aceitas em runtime pelo tesseract.js
-            tessedit_pageseg_mode: psm,
+      const worker = await createWorker(["por", "eng"]);
+      try {
+        const enhanced = await Promise.all(images.map(preprocessForOcr));
+        const texts: string[] = [];
+        for (const mode of [PSM.SINGLE_BLOCK, PSM.SINGLE_COLUMN]) {
+          await worker.setParameters({
+            tessedit_pageseg_mode: mode,
             preserve_interword_spaces: "1",
           });
-          text += `\n${data.text}`;
+          for (const image of enhanced) {
+            const { data } = await worker.recognize(image);
+            texts.push(data.text);
+          }
+          if (!extractionIsWeak(parseContactFromText(texts.join("\n")))) break;
         }
+        const parsed = parseContactFromText(texts.join("\n"));
+        if (extractionIsWeak(parsed)) {
+          setReview(parsed);
+          setNeedsAi(true);
+        } else {
+          applyLocalResult(parsed);
+        }
+      } finally {
+        await worker.terminate();
       }
-
-      const parsed = parseContactFromText(text);
-      if (extractionIsWeak(parsed)) {
-        setNeedsAi(true);
-        toast.warning(
-          "A leitura gratuita não encontrou telefone nem e-mail. Você pode revisar manualmente ou usar a IA.",
-        );
-        onExtracted({
-          name: parsed.name,
-          phone: parsed.phone,
-          email: parsed.email,
-          source: "Print",
-          notes: parsed.notes,
-          opportunity_title: "",
-          confidence: 0.3,
-        });
-        return;
-      }
-      onExtracted({
-        name: parsed.name,
-        phone: parsed.phone,
-        email: parsed.email,
-        source: "Print",
-        notes: parsed.notes,
-        opportunity_title: "",
-        confidence: 0.8,
-      });
-      onOpenChange(false);
     } catch {
       setNeedsAi(true);
       toast.error("Falha na leitura local. Tente novamente ou use a leitura com IA.");
@@ -138,6 +143,7 @@ export function ReadContactDialog({
     const urls = await Promise.all(files.slice(0, 3).map(fileToDataUrl));
     setImages((prev) => [...prev, ...urls].slice(0, 3));
     setNeedsAi(false);
+    setReview(null);
   }
 
   useEffect(() => {
@@ -156,6 +162,7 @@ export function ReadContactDialog({
       const urls = await Promise.all(files.slice(0, 3).map(fileToDataUrl));
       setImages((prev) => [...prev, ...urls].slice(0, 3));
       setNeedsAi(false);
+      setReview(null);
       toast.success(files.length > 1 ? "Prints colados!" : "Print colado!");
     }
 
@@ -165,13 +172,18 @@ export function ReadContactDialog({
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !localBusy && !mutation.isPending) close();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Cadastrar por print</DialogTitle>
           <DialogDescription>
-            Envie um print de conversa, cartão ou ficha. A IA lê os dados e preenche o cadastro
-            automaticamente para você revisar.
+            Cole ou envie um print. A leitura gratuita preenche os dados encontrados para você
+            revisar.
           </DialogDescription>
         </DialogHeader>
 
@@ -190,6 +202,7 @@ export function ReadContactDialog({
 
           <button
             type="button"
+            disabled={localBusy || mutation.isPending}
             onClick={() => inputRef.current?.click()}
             className="flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-center transition-colors hover:bg-secondary/50"
           >
@@ -218,7 +231,12 @@ export function ReadContactDialog({
                     size="icon"
                     className="absolute right-1 top-1 size-6"
                     aria-label={`Remover imagem ${index + 1}`}
-                    onClick={() => setImages((prev) => prev.filter((_, i) => i !== index))}
+                    disabled={localBusy || mutation.isPending}
+                    onClick={() => {
+                      setImages((prev) => prev.filter((_, i) => i !== index));
+                      setReview(null);
+                      setNeedsAi(false);
+                    }}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
@@ -227,12 +245,44 @@ export function ReadContactDialog({
             </div>
           ) : null}
 
+          {review && (
+            <div className="space-y-2 rounded-md border p-3">
+              <p className="text-sm">
+                Confira os campos em dúvida. Você pode completar o restante no cadastro.
+              </p>
+              {(
+                [
+                  ["name", "Nome", review.nameOptions],
+                  ["phone", "Telefone", review.phoneOptions],
+                  ["email", "E-mail", review.emailOptions],
+                ] as const
+              )
+                .filter(([, , choices]) => choices.length > 1)
+                .map(([field, label, choices]) => (
+                  <label key={field} className="block space-y-1 text-sm">
+                    <span>{label}</span>
+                    <select
+                      className="w-full rounded-md border bg-background p-2"
+                      value={review[field]}
+                      onChange={(event) => setReview({ ...review, [field]: event.target.value })}
+                    >
+                      <option value="">Preencher no cadastro</option>
+                      {choices.map((choice) => (
+                        <option key={choice} value={choice}>
+                          {choice}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+            </div>
+          )}
           <div className="space-y-2">
             <Button
               type="button"
               className="w-full"
               disabled={images.length === 0 || localBusy || mutation.isPending}
-              onClick={() => void readLocally()}
+              onClick={() => (review ? applyLocalResult(review) : void readLocally())}
             >
               {localBusy ? (
                 <>
@@ -242,12 +292,12 @@ export function ReadContactDialog({
               ) : (
                 <>
                   <ImagePlus className="size-4" />
-                  Ler print (grátis, sem créditos)
+                  {review ? "Continuar para o cadastro" : "Ler print"}
                 </>
               )}
             </Button>
 
-            {images.length > 0 ? (
+            {needsAi && images.length > 0 ? (
               <Button
                 type="button"
                 variant="outline"
@@ -263,17 +313,14 @@ export function ReadContactDialog({
                 ) : (
                   <>
                     <ScanText className="size-4" />
-                    {needsAi
-                      ? "Leitura com IA (usa créditos)"
-                      : "Melhorar leitura com IA (usa créditos)"}
+                    Tentar com IA (usa créditos)
                   </>
                 )}
               </Button>
             ) : null}
 
             <p className="text-center text-xs text-muted-foreground">
-              A leitura roda no seu aparelho e não gasta créditos. A IA fica como reserva quando o
-              print estiver difícil de ler.
+              A leitura inicial roda no seu aparelho e não usa créditos.
             </p>
           </div>
         </div>

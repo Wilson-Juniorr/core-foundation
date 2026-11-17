@@ -3,6 +3,7 @@ import { getRequestUrl } from "@tanstack/react-start/server";
 
 import type { Database } from "@/integrations/supabase/types";
 import { logEvent } from "@/lib/crm.server";
+import { type DispatchCheck, WhatsAppDispatchCancelled } from "./dispatch";
 import { messagePreview } from "./labels";
 import { ProviderError, userFacingProviderError, waLog } from "./log.server";
 import { getWhatsAppProvider, type ProviderCredentials } from "./provider.server";
@@ -494,7 +495,7 @@ export async function syncHistory(
 
 const MESSAGE_PAGE_SIZE = 60;
 const MESSAGE_COLUMNS =
-  "id, external_message_id, direction, message_type, text_content, media_url, media_mime_type, media_filename, media_duration, status, sent_at, delivered_at, read_at";
+  "id, external_message_id, direction, message_type, text_content, media_url, media_mime_type, media_filename, media_duration, status, sent_at, delivered_at, read_at, metadata";
 
 export async function loadConversationDetail(
   supabase: Client,
@@ -660,14 +661,13 @@ async function noteHumanIntervention(
       messageType: input.messageType,
     });
 
-    if (input.messageType === "audio") {
-      const { ingestAudioContext } = await import("@/lib/smart/audio.server");
-      await ingestAudioContext(db as never, {
+    if (input.contactId && ["audio", "image", "document"].includes(input.messageType)) {
+      const { enqueueAnalysis } = await import("@/lib/ai/analysis.server");
+      await enqueueAnalysis(db, {
         userId,
         conversationId: input.conversationId,
         contactId: input.contactId,
-        messageId: input.messageId,
-        direction: "outbound",
+        reason: "outbound_media",
       });
     }
   } catch (error) {
@@ -678,14 +678,85 @@ async function noteHumanIntervention(
   }
 }
 
+type ScheduledDispatch = {
+  scheduledActionId?: string;
+  beforeDispatch?: DispatchCheck;
+};
+
+async function prepareScheduledDispatch(
+  db: Awaited<ReturnType<typeof admin>>,
+  userId: string,
+  messageId: string,
+  input: ScheduledDispatch,
+  mediaPath?: string,
+) {
+  if (!input.scheduledActionId) return;
+
+  const removePreparedMessage = async () => {
+    await db.from("messages").delete().eq("id", messageId).eq("user_id", userId);
+    if (mediaPath) await db.storage.from(MEDIA_BUCKET).remove([mediaPath]);
+  };
+
+  if (input.beforeDispatch) {
+    let allowed: boolean;
+    try {
+      allowed = await input.beforeDispatch();
+    } catch (error) {
+      await removePreparedMessage();
+      throw error;
+    }
+    if (!allowed) {
+      await removePreparedMessage();
+      throw new WhatsAppDispatchCancelled();
+    }
+  }
+
+  const { data: started, error } = await db.rpc("begin_automation_dispatch", {
+    p_action: input.scheduledActionId,
+    p_user: userId,
+    p_message: messageId,
+  });
+  if (error) throw new Error("Não foi possível confirmar o início do envio.");
+  if (!started) {
+    await removePreparedMessage();
+    throw new WhatsAppDispatchCancelled();
+  }
+}
+
+async function recordScheduledSendFailure(
+  db: Awaited<ReturnType<typeof admin>>,
+  userId: string,
+  actionId: string | undefined,
+  messageId: string,
+  accepted: boolean,
+  error: unknown,
+) {
+  const uncertain =
+    accepted ||
+    !(error instanceof ProviderError) ||
+    (!error.disconnected && (error.statusCode === null || error.statusCode >= 500));
+  await db
+    .from("messages")
+    .update({ status: uncertain ? "pending" : "failed" })
+    .eq("id", messageId);
+  if (actionId)
+    await db
+      .from("scheduled_actions")
+      .update({
+        send_state: uncertain ? "uncertain" : "rejected",
+        last_error: uncertain ? "send_result_uncertain" : null,
+      })
+      .eq("id", actionId)
+      .eq("user_id", userId);
+}
+
 export async function sendText(
   userId: string,
   input: {
     conversationId: string;
     text: string;
     source?: SendSource | undefined;
-    scheduledActionId?: string;
-  },
+  } & ScheduledDispatch,
 ): Promise<{ messageId: string }> {
   const { db, connection, creds, conversation } = await conversationForSend(
     userId,
@@ -711,19 +782,7 @@ export async function sendText(
     .single();
   if (insertError) throw new Error(insertError.message);
 
-  if (input.scheduledActionId) {
-    const { error } = await db
-      .from("scheduled_actions")
-      .update({
-        message_id: pending.id,
-        send_state: "started",
-        send_started_at: new Date().toISOString(),
-      })
-      .eq("id", input.scheduledActionId)
-      .eq("user_id", userId)
-      .eq("status", "processing");
-    if (error) throw new Error(error.message);
-  }
+  await prepareScheduledDispatch(db, userId, pending.id, input);
   let accepted = false;
   try {
     const result = await provider.sendTextMessage(creds, {
@@ -756,24 +815,14 @@ export async function sendText(
     waLog.info("message_sent", { connection_id: connection.id, type: "text", source });
     return { messageId: pending.id };
   } catch (error) {
-    const { ProviderError } = await import("./log.server");
-    const uncertain =
-      accepted ||
-      !(error instanceof ProviderError) ||
-      (!error.disconnected && (error.statusCode === null || error.statusCode >= 500));
-    await db
-      .from("messages")
-      .update({ status: uncertain ? "pending" : "failed" })
-      .eq("id", pending.id);
-    if (input.scheduledActionId)
-      await db
-        .from("scheduled_actions")
-        .update({
-          send_state: uncertain ? "uncertain" : "rejected",
-          last_error: uncertain ? "send_result_uncertain" : null,
-        })
-        .eq("id", input.scheduledActionId)
-        .eq("user_id", userId);
+    await recordScheduledSendFailure(
+      db,
+      userId,
+      input.scheduledActionId,
+      pending.id,
+      accepted,
+      error,
+    );
     waLog.error("message_send_failed", { connection_id: connection.id, type: "text", source });
     await noteSendFailure(db, connection.id, error);
     throw new Error(userFacingProviderError(error));
@@ -790,7 +839,7 @@ export async function sendMedia(
     filename: string;
     caption: string | null;
     source?: SendSource | undefined;
-  },
+  } & ScheduledDispatch,
 ): Promise<{ messageId: string }> {
   const { db, connection, creds, conversation } = await conversationForSend(
     userId,
@@ -828,8 +877,13 @@ export async function sendMedia(
     })
     .select("id")
     .single();
-  if (insertError) throw new Error(insertError.message);
+  if (insertError) {
+    await db.storage.from(MEDIA_BUCKET).remove([path]);
+    throw new Error(insertError.message);
+  }
 
+  await prepareScheduledDispatch(db, userId, pending.id, input, path);
+  let accepted = false;
   try {
     const result = await provider.sendMediaMessage(creds, {
       phoneNumber: conversation.phone_number!,
@@ -842,6 +896,7 @@ export async function sendMedia(
       },
     });
 
+    accepted = true;
     await db
       .from("messages")
       .update({ status: result.status, external_message_id: result.externalMessageId })
@@ -866,7 +921,18 @@ export async function sendMedia(
     waLog.info("message_sent", { connection_id: connection.id, type: input.type, source });
     return { messageId: pending.id };
   } catch (error) {
-    await db.from("messages").update({ status: "failed" }).eq("id", pending.id);
+    if (input.scheduledActionId) {
+      await recordScheduledSendFailure(
+        db,
+        userId,
+        input.scheduledActionId,
+        pending.id,
+        accepted,
+        error,
+      );
+    } else {
+      await db.from("messages").update({ status: "failed" }).eq("id", pending.id);
+    }
     waLog.error("message_send_failed", {
       connection_id: connection.id,
       type: input.type,
