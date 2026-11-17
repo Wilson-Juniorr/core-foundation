@@ -8,7 +8,7 @@ import {
   POST_QUOTE_MANUAL_PAUSE_LABEL,
   POST_QUOTE_POLICY,
 } from "./post-quote-cadence";
-import { ensureControl, loadControl, patchControl } from "./control.server";
+import { loadControl, patchControl } from "./control.server";
 import { pendingCommitments } from "./commitments.server";
 import { applyCustomerOptOut } from "@/lib/automation/optout.server";
 import { messageContextText } from "@/lib/whatsapp/message-context";
@@ -128,18 +128,13 @@ export async function activatePostQuote(
     const sync = await recoverPostQuoteMessages(db, scope, !options.lookupOnly);
     imported = sync === "imported" || sync === "requested";
     messages = await loadPostQuoteMessages(db, scope);
-    if (!hasPostQuoteHistory(messages) && !optOutInHistory(messages))
-      return { status: "history_required" as const, sync };
   }
   const optOut = optOutInHistory(messages);
   if (optOut) {
     await applyCustomerOptOut(db, { ...scope, quote: messageContextText(optOut) ?? "" });
     throw new Error("O cliente pediu para parar no WhatsApp. Pós-cotação bloqueado.");
   }
-  if (imported) {
-    await ensureControl(db, userId, conversationId);
-    await patchControl(db, conversationId, { force_approval_next: true });
-  }
+
   if (live) {
     const { data: updated, error } = await db
       .from("followup_runs")
@@ -149,7 +144,7 @@ export async function activatePostQuote(
         next_evaluation_at: new Date().toISOString(),
         next_contact_responsible: "system",
         next_contact_reason: contextNote
-          ? "Resumo registrado. O próximo envio exige aprovação."
+          ? "Resumo registrado. Reavaliando o próximo contato."
           : "Histórico disponível. Reavaliando o próximo contato.",
       })
       .eq("id", live.id)

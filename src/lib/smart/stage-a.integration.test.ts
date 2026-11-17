@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { testDatabase } from "./stage-a-db.fixture";
-import { startSmartFlow, evaluateSmartRun, smartPreSendCheck } from "./engine.server";
+import {
+  startSmartFlow,
+  evaluateSmartRun,
+  evaluateDueSmartRuns,
+  smartPreSendCheck,
+} from "./engine.server";
 import { executeClaimedAction } from "../followup/engine.server";
 import { loadControl, patchControl, registerCustomerMessage } from "./control.server";
 import { nextSilenceContact, POST_QUOTE_FLOW_NAME } from "./post-quote-cadence";
@@ -134,7 +139,7 @@ describe("Stage A actual engine + isolated PostgreSQL + fake provider", () => {
     expect(run["next_contact_at"]).toEqual(new Date("2026-03-13T18:00:00Z"));
     expect(fake.send).toHaveBeenCalledTimes(1);
   });
-  it("does not activate without an imported quote and allows the confirmed note", async () => {
+  it("activates with the next date even when WhatsApp history is unavailable", async () => {
     await fixture.pg.query(
       "INSERT INTO conversations(id,user_id,contact_id,external_chat_id,whatsapp_connection_id) VALUES($1,$2,$3,'5511999999999@s.whatsapp.net',$4)",
       [conv, user, contact, crypto.randomUUID()],
@@ -143,48 +148,70 @@ describe("Stage A actual engine + isolated PostgreSQL + fake provider", () => {
       POST_QUOTE_FLOW_NAME,
       flow,
     ]);
-    expect(await activatePostQuote(db(), user, contact, opp)).toEqual({
-      status: "history_required",
-      sync: "unavailable",
-    });
-    expect((await fixture.pg.query("SELECT id FROM followup_runs")).rows).toHaveLength(0);
-    const result = await activatePostQuote(db(), user, contact, opp, {
-      contextNote: "Enviei a opção Porto P220. Cliente vai decidir com a esposa.",
-    });
-    expect(result).toMatchObject({ status: "activated", contextNote: true });
+    const result = await activatePostQuote(db(), user, contact, opp);
+    expect(result).toMatchObject({ status: "activated", contextNote: false });
     if (result.status !== "activated") throw new Error("Ciclo não ativado");
-    expect((await runFor(result.runId))["post_quote_context_note"]).toContain("Porto P220");
+    expect((await runFor(result.runId))["next_contact_at"]).toEqual(
+      new Date("2026-03-10T13:00:00Z"),
+    );
     expect(fake.send).not.toHaveBeenCalled();
   });
-  it("suspends evaluation when the proposal is missing and keeps the attempt unspent", async () => {
+  it("schedules without proposal history and keeps the attempt unspent until acceptance", async () => {
     const { runId } = await start({ history: false });
     vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
-    expect(await evaluateSmartRun(db(), runId)).toBe("post_quote_history_required");
-    expect(await actionFor(runId)).toBeUndefined();
+    expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
+    expect((await actionFor(runId))["status"]).toBe("scheduled");
     expect((await runFor(runId))["contacts_done"]).toBe(0);
-    expect(fake.decision).not.toHaveBeenCalled();
+    expect(fake.decision).toHaveBeenCalled();
   });
-  it("uses the consultant's proposal summary with mandatory approval", async () => {
+  it("uses the consultant summary without forcing approval just for missing history", async () => {
     const note = "Enviei a opção Porto P220. Cliente vai avaliar com a esposa.";
     const { runId } = await start({ history: false, note });
     vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
-    expect(await evaluateSmartRun(db(), runId)).toBe("needs_approval");
+    expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
     expect(fake.decision.mock.calls[0]?.[1]).toMatchObject({ postQuoteContextNote: note });
-    expect((await actionFor(runId))["status"]).toBe("needs_approval");
+    expect((await actionFor(runId))["status"]).toBe("scheduled");
     expect(fake.send).not.toHaveBeenCalled();
   });
-  it("discards an already scheduled action if the history is no longer available", async () => {
+  it("keeps a scheduled action when history is unavailable and no new reply exists", async () => {
     const { runId } = await start();
     vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
     expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
     await fixture.pg.query("DELETE FROM messages WHERE conversation_id=$1", [conv]);
     const action = await actionFor(runId);
     expect(await smartPreSendCheck(db(), action as never)).toMatchObject({
-      allowed: false,
-      verdict: "stale",
+      allowed: true,
+      verdict: "send",
     });
     expect((await runFor(runId))["contacts_done"]).toBe(0);
     expect(fake.send).not.toHaveBeenCalled();
+  });
+  it("repairs an active cycle without an evaluation date but never resumes a manual pause", async () => {
+    const { runId } = await start({ history: false });
+    await fixture.pg.query(
+      "UPDATE followup_runs SET next_evaluation_at=NULL,next_contact_at=NULL WHERE id=$1",
+      [runId],
+    );
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateDueSmartRuns(db())).toMatchObject({
+      evaluated: 1,
+      results: { scheduled: 1 },
+    });
+    expect((await runFor(runId))["next_contact_at"]).not.toBeNull();
+    await controlPostQuote(db(), user, { runId, command: "pause" });
+    expect(await evaluateDueSmartRuns(db())).toMatchObject({ evaluated: 0 });
+    expect((await runFor(runId))["status"]).toBe("paused");
+  });
+  it("recovers the former missing-history block without resetting the contact counter", async () => {
+    const { runId } = await start({ history: false });
+    await fixture.pg.query(
+      "UPDATE followup_runs SET smart_state='blocked',contacts_done=2,last_contact_accepted_at='2026-03-03T13:00:00Z',next_contact_at='2026-03-06T13:00:00Z',next_contact_reason='Sem contexto da cotação. Busque o histórico no WhatsApp ou registre um resumo.' WHERE id=$1",
+      [runId],
+    );
+    vi.setSystemTime(new Date("2026-03-10T13:00:00Z"));
+    expect(await evaluateSmartRun(db(), runId)).toBe("scheduled");
+    expect((await actionFor(runId))["logical_contact"]).toBe(3);
+    expect((await runFor(runId))["contacts_done"]).toBe(2);
   });
   it("operational update does not stale text; real context changes atomically", async () => {
     await patchControl(db(), conv, { decision_reason: "operational" }, { bumpVersion: false });

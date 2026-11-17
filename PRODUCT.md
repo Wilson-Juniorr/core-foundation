@@ -27,7 +27,7 @@ A disponibilidade de um fluxo na interface depende da configuração e da versã
 
 - Abra o cliente, marque a oportunidade como ganha e entre em **Pós-venda**. Registre a etapa confirmada e o prazo. O padrão para conferir emissão é de dois dias corridos e pode ser alterado.
 - Ao registrar a vigência confirmada, o sistema marca a conferência de acesso ao plano para sete dias corridos depois da vigência. Os prazos do dia e atrasados aparecem em **Precisa de Mim**.
-- A nota interna guarda os fatos confirmados quando o WhatsApp está sem histórico. O envio ao cliente é manual nesta etapa. O pós-cotação fica em **Acompanhamento** e permite recuperar histórico ou preparar uma mensagem a partir do resumo confirmado, mediante aprovação.
+- A nota interna guarda os fatos confirmados quando o WhatsApp está sem histórico. O envio ao cliente é manual nesta etapa. O pós-cotação fica em **Acompanhamento** e tenta recuperar o histórico, aproveita trechos disponíveis e permite acompanhamento neutro sem histórico. Resumo é opcional; falta de histórico por si só não exige aprovação. Aprovações explícitas, respostas pendentes, compromissos e pedidos de parada continuam soberanos.
 - Antes de disponibilizar as mudanças, confira a ordem das migrações de 0006 a 0009 e rode o piloto com um número controlado. A interface sinaliza desconexão, modo teste, parada e aprovação obrigatória.
 
 ## Próxima validação

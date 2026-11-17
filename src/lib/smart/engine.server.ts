@@ -1,5 +1,4 @@
-import { hasPostQuoteHistory, loadPostQuoteMessages } from "./post-quote-history.server";
-import { POST_QUOTE_HISTORY_REQUIRED } from "./post-quote-history";
+import { loadPostQuoteMessages } from "./post-quote-history.server";
 /**
  * Smart Flow — orquestrador de acompanhamento.
  *
@@ -90,21 +89,6 @@ async function loadRecentMessages(db: Admin, conversationId: string) {
     .limit(25);
   if (error) throw new Error(error.message);
   return data ?? [];
-}
-
-async function markPostQuoteHistoryMissing(db: Admin, runId: string, now: Date) {
-  const { error } = await db
-    .from("followup_runs")
-    .update({
-      smart_state: "blocked",
-      next_contact_reason: POST_QUOTE_HISTORY_REQUIRED,
-      next_contact_responsible: "human",
-      next_evaluation_at: new Date(now.getTime() + HOUR_MS).toISOString(),
-    })
-    .eq("id", runId)
-    .eq("status", "active")
-    .is("post_quote_context_note", null);
-  if (error) throw new Error(error.message);
 }
 
 async function loadConfig(db: Admin, flowId: string) {
@@ -462,6 +446,19 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
     await completeRun(db, run, "Ciclo de oito contatos concluído.");
     return "cycle_completed";
   }
+  if (postQuote && cadence && !run.next_contact_at) {
+    const { error } = await db
+      .from("followup_runs")
+      .update({
+        next_contact_at: cadence.at.toISOString(),
+        next_contact_reason: cadence.goal,
+        next_contact_responsible: "system",
+      })
+      .eq("id", run.id)
+      .eq("status", "active")
+      .is("next_contact_at", null);
+    if (error) throw new Error(error.message);
+  }
   const runRef = {
     id: run.id,
     user_id: run.user_id,
@@ -691,9 +688,14 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
   const messages = postQuote
     ? await loadPostQuoteMessages(db, { userId: run.user_id, conversationId: run.conversation_id })
     : await loadRecentMessages(db, run.conversation_id);
-  const hasHistory = !postQuote || hasPostQuoteHistory(messages);
   const mediaStatuses = (messages ?? [])
-    .filter((message) => message.status !== "pending" && message.status !== "failed")
+    // A proposta enviada pode estar ilegível; uma resposta do cliente não pode ser ignorada.
+    .filter(
+      (message) =>
+        (!postQuote || message.direction === "inbound") &&
+        message.status !== "pending" &&
+        message.status !== "failed",
+    )
     .map(messageMediaStatus);
   if (mediaStatuses.some((status) => status === "pending" || status === "processing")) {
     const { enqueueAnalysis } = await import("@/lib/ai/analysis.server");
@@ -717,11 +719,6 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
   const mediaNeedsReview = mediaStatuses.some(
     (status) => status === "partial" || status === "failed",
   );
-
-  if (!hasHistory && !run.post_quote_context_note) {
-    await markPostQuoteHistoryMissing(db, run.id, now);
-    return "post_quote_history_required";
-  }
 
   const { data: memory } = await db
     .from("customer_memory")
@@ -771,6 +768,7 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
 
   const decision = await decideNextStep(db, {
     consultantNotes: notes,
+    postQuoteContact: postQuote ? cadence?.contact : undefined,
     postQuoteContextNote: postQuote ? run.post_quote_context_note : null,
     activeConditions,
     config,
@@ -941,9 +939,6 @@ async function evaluateClaimedSmartRun(db: Admin, runId: string): Promise<string
   const needsApproval =
     Boolean(forcedStrategy) ||
     mediaNeedsReview ||
-    (postQuote &&
-      Boolean(run.post_quote_context_note) &&
-      (run.contacts_done === 0 || !hasHistory)) ||
     control.force_approval_next ||
     config.autonomy !== "auto" ||
     quality.verdict === "review" ||
@@ -1068,7 +1063,16 @@ export async function evaluateDueSmartRuns(
   limit = 20,
 ): Promise<{ evaluated: number; results: Record<string, number> }> {
   const nowIso = new Date().toISOString();
-  const { data: runs } = await db
+  // Repara somente ciclos ativos sem avaliação. Pausas manuais e contadores
+  // permanecem intactos; a avaliação ainda aplica todas as barreiras de envio.
+  const { error: repairError } = await db
+    .from("followup_runs")
+    .update({ next_evaluation_at: nowIso })
+    .eq("status", "active")
+    .eq("policy_key", POST_QUOTE_POLICY)
+    .is("next_evaluation_at", null);
+  if (repairError) throw new Error(repairError.message);
+  const { data: runs, error: queryError } = await db
     .from("followup_runs")
     .select("id, followup_flows!inner(kind)")
     .eq("status", "active")
@@ -1078,6 +1082,7 @@ export async function evaluateDueSmartRuns(
     .order("next_evaluation_at", { ascending: true })
     .limit(limit);
 
+  if (queryError) throw new Error(queryError.message);
   const results: Record<string, number> = {};
   for (const run of runs ?? []) {
     try {
@@ -1085,6 +1090,15 @@ export async function evaluateDueSmartRuns(
       results[outcome] = (results[outcome] ?? 0) + 1;
     } catch (error) {
       results["error"] = (results["error"] ?? 0) + 1;
+      await db
+        .from("followup_runs")
+        .update({
+          next_evaluation_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+          next_contact_reason:
+            "Falha temporária ao preparar o acompanhamento. Nova tentativa em cinco minutos.",
+        })
+        .eq("id", run.id)
+        .eq("status", "active");
       await writeAudit(db, "00000000-0000-0000-0000-000000000000", {
         action: "smart_flow_paused",
         summary: "Falha ao reavaliar um acompanhamento inteligente.",
@@ -1163,30 +1177,6 @@ export async function smartPreSendCheck(db: Admin, action: ActionRow): Promise<S
     : null;
   if (runResult?.error) throw new Error(runResult.error.message);
   const run = runResult?.data;
-  if (run?.policy_key === POST_QUOTE_POLICY && !run.post_quote_context_note) {
-    const messages = await loadPostQuoteMessages(db, {
-      userId: action.user_id,
-      conversationId: action.conversation_id,
-    });
-    if (!hasPostQuoteHistory(messages)) {
-      const { error } = await db
-        .from("scheduled_actions")
-        .update({
-          status: "stale",
-          last_error: "post_quote_history_required",
-          decision_reason: POST_QUOTE_HISTORY_REQUIRED,
-        })
-        .eq("id", action.id);
-      if (error) throw new Error(error.message);
-      await markPostQuoteHistoryMissing(db, run.id, now);
-      return {
-        allowed: false,
-        verdict: "stale",
-        reason: POST_QUOTE_HISTORY_REQUIRED,
-        deferUntil: null,
-      };
-    }
-  }
   const config = run ? await loadConfig(db, run.flow_id) : null;
 
   let opportunityClosed = false;

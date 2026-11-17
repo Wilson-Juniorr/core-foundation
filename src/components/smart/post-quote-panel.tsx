@@ -84,30 +84,14 @@ export function PostQuotePanel({
       recoverRunId?: string;
       lookupOnly?: boolean;
     }) => activate({ data: { contactId, ...data } }),
-    onSuccess: (result, input) => {
+    onSuccess: (result) => {
       invalidate();
-      if (result.status === "history_required") {
-        setHistoryIssue({
-          opportunityId: input.opportunityId,
-          unavailable: result.sync === "unavailable",
-          ...(result.sync === "requested"
-            ? { requestedAt: Date.now() }
-            : input.lookupOnly && historyIssue?.requestedAt
-              ? { requestedAt: historyIssue.requestedAt }
-              : {}),
-        });
-        return;
-      }
       setHistoryIssue(undefined);
       setContextNote("");
       toast.success(
-        result.contextNote
-          ? "Resumo salvo. Confira a próxima mensagem em Follow-ups → Aprovações."
-          : result.imported
-            ? "Histórico recuperado. O próximo envio exige sua aprovação."
-            : result.status === "recovered"
-              ? "Histórico recuperado."
-              : "Pós-cotação ativado.",
+        result.status === "recovered"
+          ? "Acompanhamento retomado com o contexto disponível."
+          : "Pós-cotação ativado. A próxima data aparece na ficha; o histórico será usado quando disponível.",
       );
     },
     onError: (e) => toast.error(e.message),
@@ -255,7 +239,7 @@ export function PostQuotePanel({
             disabled={start.isPending}
             onClick={() => start.mutate({ ...historyInput, lookupOnly: historyRequested })}
           >
-            {historyRequested ? "Verificar histórico" : "Buscar histórico novamente"}
+            {historyRequested ? "Verificar histórico" : "Retomar com o contexto disponível"}
           </Button>
           <label className="block space-y-2">
             <span>Resumo desta cotação</span>
@@ -267,14 +251,14 @@ export function PostQuotePanel({
             />
           </label>
           <p className="text-muted-foreground">
-            Confira no WhatsApp se o cliente ainda espera seu retorno. Com o resumo, você aprova os
-            envios enquanto a cotação não estiver disponível no histórico.
+            O resumo é opcional. Sem histórico completo, o agente usa mensagens neutras e respeita
+            os compromissos registrados.
           </p>
           <Button
             disabled={start.isPending || contextNote.trim().length < POST_QUOTE_NOTE_MIN}
             onClick={() => start.mutate({ ...historyInput, contextNote: contextNote.trim() })}
           >
-            {needsRecovery ? "Salvar resumo e reavaliar" : "Ativar com resumo e aprovação"}
+            {needsRecovery ? "Salvar resumo e reavaliar" : "Ativar com resumo"}
           </Button>
         </div>
       )}
