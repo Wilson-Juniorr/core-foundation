@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/integrations/supabase/types";
 import { logEvent } from "@/lib/crm.server";
+import { type DispatchCheck, WhatsAppDispatchCancelled } from "@/lib/whatsapp/dispatch";
 import { waLog } from "@/lib/whatsapp/log.server";
 import { firstNameOf, PlaceholderError, renderContent } from "./labels";
 import {
@@ -502,6 +503,11 @@ export async function pauseRun(userId: string, runId: string): Promise<void> {
   if (run.status !== "active") {
     throw new FollowupError("Somente acompanhamentos ativos podem ser pausados.", "invalid_state");
   }
+  if (run.policy_key === "post_quote_v1") {
+    const { controlPostQuote } = await import("@/lib/smart/post-quote-runtime.server");
+    await controlPostQuote(db, userId, { runId, command: "pause" });
+    return;
+  }
 
   // As ações continuam agendadas; o executor ignora runs pausados e o retomar
   // recalcula o horário preservando o intervalo restante.
@@ -613,6 +619,11 @@ export async function cancelRun(
     .maybeSingle();
   if (!run) throw new FollowupError("Acompanhamento não encontrado.", "not_found");
   if (!["active", "paused"].includes(run.status)) return;
+  if (run.policy_key === "post_quote_v1" && reason === "manually_cancelled") {
+    const { controlPostQuote } = await import("@/lib/smart/post-quote-runtime.server");
+    await controlPostQuote(db, userId, { runId, command: "end" });
+    return;
+  }
 
   const cancelled = await cancelFutureActions(db, runId, "cancelled", reason);
 
@@ -953,6 +964,46 @@ export async function executeClaimedAction(
     }
   }
 
+  const [contactState, opportunityState] = await Promise.all([
+    action.contact_id
+      ? db
+          .from("contacts")
+          .select("is_archived")
+          .eq("id", action.contact_id)
+          .eq("user_id", action.user_id)
+          .maybeSingle()
+      : null,
+    action.opportunity_id
+      ? db
+          .from("opportunities")
+          .select("status")
+          .eq("id", action.opportunity_id)
+          .eq("user_id", action.user_id)
+          .maybeSingle()
+      : null,
+  ]);
+  if (contactState?.error || opportunityState?.error) {
+    await releaseAction(db, action, {
+      status: "scheduled",
+      scheduled_for: new Date(now.getTime() + 60_000).toISOString(),
+      last_error: "send_context_unavailable",
+    });
+    return "rescheduled";
+  }
+  if (
+    (contactState && (!contactState.data || contactState.data.is_archived)) ||
+    (opportunityState && opportunityState.data?.status !== "open")
+  ) {
+    await releaseAction(db, action, {
+      status: "cancelled",
+      last_error:
+        contactState && (!contactState.data || contactState.data.is_archived)
+          ? "contact_archived"
+          : "opportunity_closed",
+    });
+    return "cancelled";
+  }
+
   // Janela permitida: nunca enviamos fora do horário configurado.
   const step = action.flow_step_id
     ? (await db.from("followup_flow_steps").select("*").eq("id", action.flow_step_id).maybeSingle())
@@ -1042,7 +1093,15 @@ export async function executeClaimedAction(
   const { recordDecision } = await import("@/lib/automation/audit.server");
   const { resolveAdaptiveContent } = await import("@/lib/automation/adaptive.server");
 
-  const policy = await loadPolicySettings(db, action.user_id);
+  const policy = await loadPolicySettings(db, action.user_id).catch(() => null);
+  if (!policy) {
+    await releaseAction(db, action, {
+      status: "scheduled",
+      scheduled_for: new Date(now.getTime() + 60_000).toISOString(),
+      last_error: "automation_policy_unavailable",
+    });
+    return "rescheduled";
+  }
   const evaluation = await evaluatePolicy(db, policy, {
     userId: action.user_id,
     conversationId: action.conversation_id,
@@ -1132,10 +1191,12 @@ export async function executeClaimedAction(
         : adaptive.kind === "handoff"
           ? "handoff"
           : "blocked";
+    const needsSmartApproval = decision === "approval_required" && Boolean(action.smart_strategy);
     await releaseAction(db, action, {
-      status: "blocked",
+      status: needsSmartApproval ? "needs_approval" : "blocked",
       last_error: decision,
       draft_id: adaptive.draftId,
+      ...(needsSmartApproval ? { requires_approval: true, decision_reason: adaptive.reason } : {}),
     });
     await recordDecision(db, {
       ...auditBase,
@@ -1149,7 +1210,11 @@ export async function executeClaimedAction(
     if (run) {
       await db
         .from("followup_runs")
-        .update({ status: "paused", paused_at: new Date().toISOString() })
+        .update(
+          needsSmartApproval
+            ? { smart_state: "waiting_approval" }
+            : { status: "paused", paused_at: new Date().toISOString() },
+        )
         .eq("id", run.id)
         .eq("status", "active");
     }
@@ -1210,28 +1275,35 @@ export async function executeClaimedAction(
     return "skipped";
   }
 
-  /* Última barreira do Smart Flow: reconfere o contexto depois do claim e
-     imediatamente antes do provider, fechando a janela de race condition.
-     Ações clássicas seguem exatamente como antes. */
-  if (action.smart_strategy) {
+  async function checkSmartContext(): Promise<boolean> {
+    if (!action.smart_strategy) return true;
     const { smartPreSendCheck } = await import("@/lib/smart/engine.server");
     const preSend = await smartPreSendCheck(db, effectiveAction);
-    if (!preSend.allowed) {
-      // smartPreSendCheck já gravou status, motivo e auditoria da ação.
-      await recordDecision(db, {
-        ...auditBase,
-        decision: preSend.verdict === "approval" ? "approval_required" : "blocked",
-        blockedBy: `smart_${preSend.verdict}`,
-        reason: preSend.reason,
-        confidence: adaptive.confidence,
-        strategyName: adaptive.strategyName,
-      });
-      return "skipped";
-    }
+    if (preSend.allowed) return true;
+    await recordDecision(db, {
+      ...auditBase,
+      decision: preSend.verdict === "approval" ? "approval_required" : "blocked",
+      blockedBy: `smart_${preSend.verdict}`,
+      reason: preSend.reason,
+      confidence: adaptive.confidence,
+      strategyName: adaptive.strategyName,
+    });
+    return false;
   }
 
   try {
-    const sendResult = await deliverAction(db, effectiveAction, text);
+    if (!(await checkSmartContext())) return "skipped";
+    const sendResult = await deliverAction(db, effectiveAction, text, async () => {
+      const currentPolicy = await loadPolicySettings(db, action.user_id);
+      if (currentPolicy.require_approval_all && !action.dispatch_approved_at) return false;
+      const currentEvaluation = await evaluatePolicy(db, currentPolicy, {
+        userId: action.user_id,
+        conversationId: action.conversation_id,
+        contactId: action.contact_id,
+        flowRunId: action.flow_run_id,
+      });
+      return (await checkSmartContext()) && currentEvaluation.decision === "allowed";
+    });
     if (action.logical_contact) {
       const { recordPostQuoteAccepted } = await import("@/lib/smart/post-quote-runtime.server");
       await recordPostQuoteAccepted(db, effectiveAction, sendResult.messageId);
@@ -1244,6 +1316,7 @@ export async function executeClaimedAction(
 
     await releaseAction(db, action, {
       status: "sent",
+      send_state: "accepted",
       executed_at: new Date().toISOString(),
       message_id: sendResult.messageId,
       last_error: null,
@@ -1295,6 +1368,20 @@ export async function executeClaimedAction(
         .eq("status", "active");
     return "sent";
   } catch (error) {
+    if (error instanceof WhatsAppDispatchCancelled) {
+      // A decisão inteligente pode já ter movido a ação para revisão ou descarte.
+      await db
+        .from("scheduled_actions")
+        .update({
+          status: "scheduled",
+          scheduled_for: new Date(Date.now() + 60_000).toISOString(),
+          last_error: "dispatch_context_changed",
+        })
+        .eq("id", action.id)
+        .eq("status", "processing")
+        .or("send_state.is.null,send_state.eq.rejected");
+      return "skipped";
+    }
     const message = error instanceof Error ? error.message : "Falha desconhecida";
     const { data: attempt } = await db
       .from("scheduled_actions")
@@ -1406,6 +1493,7 @@ async function deliverAction(
   db: Admin,
   action: ActionRow,
   text: string | null,
+  beforeDispatch: DispatchCheck,
 ): Promise<{ messageId: string }> {
   const { sendText, sendMedia } = await import("@/lib/whatsapp/service.server");
 
@@ -1416,6 +1504,7 @@ async function deliverAction(
       text,
       source: "automation",
       scheduledActionId: action.id,
+      beforeDispatch,
     });
   }
 
@@ -1434,6 +1523,8 @@ async function deliverAction(
 
   return sendMedia(action.user_id, {
     source: "automation",
+    scheduledActionId: action.id,
+    beforeDispatch,
     conversationId: action.conversation_id,
     type:
       action.action_type === "audio"

@@ -15,21 +15,28 @@ export async function testDatabase() {
       const name = m[1],
         type = m[2] ?? "";
       const sqlType =
-        name === "id" || name?.endsWith("_id") || name === "evaluation_token"
+        name === "id" ||
+        (name?.endsWith("_id") && name !== "external_chat_id") ||
+        name === "evaluation_token"
           ? "uuid"
           : type.includes("Json")
             ? "jsonb"
-            : type.startsWith("number")
-              ? name?.includes("confidence") || name?.includes("value")
-                ? "numeric"
-                : "integer"
-              : type.startsWith("boolean")
-                ? "boolean"
-                : name?.endsWith("_at") || name?.endsWith("_until") || name === "scheduled_for"
-                  ? "timestamptz"
-                  : table === "followup_runs" && name === "status"
-                    ? "public.followup_run_status"
-                    : "text";
+            : name === "test_mode_allowlist"
+              ? "text[]"
+              : type.startsWith("number")
+                ? name?.includes("confidence") || name?.includes("value")
+                  ? "numeric"
+                  : "integer"
+                : type.startsWith("boolean")
+                  ? "boolean"
+                  : name?.endsWith("_at") ||
+                      name?.endsWith("_until") ||
+                      name === "scheduled_for" ||
+                      name === "contact_not_before"
+                    ? "timestamptz"
+                    : table === "followup_runs" && name === "status"
+                      ? "public.followup_run_status"
+                      : "text";
       const defaults =
         name === "id"
           ? " DEFAULT gen_random_uuid() PRIMARY KEY"
@@ -49,6 +56,11 @@ export async function testDatabase() {
   const sql = readFileSync("drizzle/migrations/0004_post_quote_stage_a.sql", "utf8");
   const functions = sql.slice(sql.indexOf("CREATE OR REPLACE FUNCTION"));
   await pg.exec(functions);
+  await pg.exec(readFileSync("drizzle/migrations/0006_post_quote_late_receipt.sql", "utf8"));
+  await pg.exec("ALTER TABLE followup_runs DROP COLUMN post_quote_context_note");
+  await pg.exec(readFileSync("drizzle/migrations/0007_post_quote_history_context.sql", "utf8"));
+  await pg.exec("ALTER TABLE scheduled_actions DROP COLUMN dispatch_approved_at");
+  await pg.exec(readFileSync("drizzle/migrations/0009_automation_dispatch_guard.sql", "utf8"));
   await pg.exec(
     "CREATE UNIQUE INDEX test_pending ON scheduled_actions(flow_run_id,logical_contact) WHERE logical_contact IS NOT NULL AND status IN ('scheduled','processing','needs_approval','blocked');",
   );
@@ -92,6 +104,12 @@ class Query implements PromiseLike<{ data: unknown; error: unknown }> {
     return `$${this.values.length}`;
   }
   eq(k: string, v: unknown) {
+    if (this.table === "followup_runs" && k === "followup_flows.kind") {
+      this.filters.push(
+        `EXISTS (SELECT 1 FROM followup_flows AS flow WHERE flow.id = followup_runs.flow_id AND flow.kind = ${this.param(v)})`,
+      );
+      return this;
+    }
     this.filters.push(`"${k.split(".")[0]}" = ${this.param(v)}`);
     return this;
   }

@@ -4,6 +4,7 @@ import {
   getContactConversation,
   getConversation,
   getWhatsAppConnection,
+  getWhatsAppOperationalStatus,
   listConversations,
 } from "./whatsapp.functions";
 
@@ -20,6 +21,14 @@ export const whatsappConnectionQuery = () =>
   queryOptions({
     queryKey: whatsappKeys.connection,
     queryFn: () => getWhatsAppConnection(),
+  });
+
+export const whatsappOperationalStatusQuery = () =>
+  queryOptions({
+    queryKey: [...whatsappKeys.connection, "operational-status"],
+    queryFn: () => getWhatsAppOperationalStatus(),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
 export const conversationsQuery = (search: string) =>

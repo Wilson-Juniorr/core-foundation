@@ -39,6 +39,8 @@ const ENDPOINTS = {
   sendMedia: "/send/media",
   chats: "/chat/find",
   chatHistory: "/message/find",
+  olderHistory: "/message/history-sync",
+  downloadMedia: "/message/download",
 } as const;
 
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -196,7 +198,8 @@ export function mapMessageStatus(raw: string | null, fallback: MessageStatus): M
 function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null {
   const message = asRecord(raw);
   const key = asRecord(message["key"]);
-  const content = asRecord(message["message"] ?? message["content"]);
+  const rawContent = message["message"] ?? message["content"];
+  const content = asRecord(typeof rawContent === "string" ? safeJson(rawContent) : rawContent);
 
   const externalChatId =
     pickString(message, ["chatid", "chatId", "remoteJid", "from", "jid"]) ??
@@ -208,7 +211,15 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
     key["fromMe"] === true ||
     pickString(message, ["direction"]) === "outbound";
 
-  const mediaRecord = asRecord(message["media"] ?? content["media"]);
+  const mediaRecord = asRecord(
+    message["media"] ??
+      content["media"] ??
+      content["audioMessage"] ??
+      content["imageMessage"] ??
+      content["documentMessage"] ??
+      asRecord(asRecord(content["documentWithCaptionMessage"])["message"])["documentMessage"] ??
+      content,
+  );
   const type = mapMessageType(
     pickString(message, ["messageType", "type", "msgType"]) ??
       pickString(content, ["type"]) ??
@@ -218,7 +229,8 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
 
   const text =
     pickString(message, ["text", "body", "caption", "conversation"]) ??
-    pickString(content, ["text", "conversation", "caption"]);
+    pickString(content, ["text", "conversation", "caption"]) ??
+    pickString(mediaRecord, ["caption"]);
 
   const phoneNumber =
     phoneFromChatId(externalChatId) ??
@@ -243,7 +255,7 @@ function normalizeMessagePayload(raw: unknown): NormalizedWhatsAppMessage | null
         : {
             url:
               pickString(mediaRecord, ["url", "link", "downloadUrl"]) ??
-              pickString(message, ["mediaUrl", "fileUrl", "url"]),
+              pickString(message, ["mediaUrl", "fileURL", "fileUrl", "url"]),
             mimeType:
               pickString(mediaRecord, ["mimetype", "mimeType"]) ??
               pickString(message, ["mimetype", "mimeType"]),
@@ -529,6 +541,27 @@ export const uazapiProvider: WhatsAppProvider = {
     return list
       .map((entry) => normalizeMessagePayload(entry))
       .filter((message): message is NormalizedWhatsAppMessage => message !== null);
+  },
+
+  async requestOlderChatHistory(creds, input) {
+    const response = asRecord(
+      await request<unknown>(creds, ENDPOINTS.olderHistory, {
+        method: "POST",
+        body: { number: input.externalChatId, count: input.count },
+      }),
+    );
+    return Boolean(pickString(response, ["request_id", "requestId"]));
+  },
+
+  async downloadMessageMedia(creds, input) {
+    const response = asRecord(
+      await request<unknown>(creds, ENDPOINTS.downloadMedia, {
+        method: "POST",
+        body: { id: input.messageId, ...(input.audio ? { generate_mp3: true } : {}) },
+      }),
+    );
+    const url = pickString(response, ["fileURL", "fileUrl"]);
+    return url ? { url, mimeType: pickString(response, ["mimetype", "mimeType"]) } : null;
   },
 
   normalizeIncomingWebhook(payload): NormalizedWebhookEvent {

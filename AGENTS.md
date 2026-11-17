@@ -9,6 +9,14 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
+## Development and verification
+
+- Use the existing TanStack Start, React, TypeScript, Bun, and Supabase setup.
+- Install with `bun install --frozen-lockfile`. Run `bun run check` before handing off a change. It runs lint, type checking, Vitest, and a build with synthetic Supabase settings.
+- For behavior changes, state what must stay true and verify the affected path and relevant failure cases. Keep WhatsApp sends, live data, and database migrations out of local checks.
+- Read the relevant source before changing it. Use [PRODUCT.md](PRODUCT.md) for product scope and [docs/quality.md](docs/quality.md) for verification and review. [docs/setup.md](docs/setup.md) records the toolkit adoption and the available integrations.
+- Review changes to auth, data ownership, retries, scheduling, and sending at their service and persistence boundaries. Record what was tested and what depends on a hosted environment.
+
 ## Follow-up rules
 
 - Policy daily caps and the between-automation cooldown count "touches" (`src/lib/automation/touches.ts`): sends of the same run within 10 min, up to 3, are one touch — so a message and its 1-minute continuation are never split by the cooldown.

@@ -27,7 +27,8 @@ export type ConversationResolution = {
 export class ConversationResolutionError extends Error {
   constructor(
     message: string,
-    public code: "no_phone" | "invalid_phone" | "not_configured" | "disconnected",
+    public code:
+      "no_phone" | "invalid_phone" | "not_configured" | "disconnected" | "contact_conflict",
   ) {
     super(message);
     this.name = "ConversationResolutionError";
@@ -56,6 +57,7 @@ async function linkContact(db: Admin, conversationId: string, contactId: string)
 export async function ensureConversationForContact(
   userId: string,
   contactId: string,
+  options?: { importHistory: boolean },
 ): Promise<ConversationResolution> {
   const db = await adminClient();
 
@@ -92,7 +94,7 @@ export async function ensureConversationForContact(
   }
 
   // 1) Conversa já vinculada ao cliente.
-  const { data: linked } = await db
+  const { data: linked, error: linkedError } = await db
     .from("conversations")
     .select("id, phone_number")
     .eq("whatsapp_connection_id", connection.id)
@@ -100,6 +102,7 @@ export async function ensureConversationForContact(
     .order("last_message_at", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();
+  if (linkedError) throw new Error(linkedError.message);
   if (linked) {
     if (!linked.phone_number) {
       await db.from("conversations").update({ phone_number: phone }).eq("id", linked.id);
@@ -108,13 +111,19 @@ export async function ensureConversationForContact(
   }
 
   // 2) Conversa local com o mesmo telefone normalizado.
-  const { data: byPhone } = await db
+  const { data: byPhone, error: byPhoneError } = await db
     .from("conversations")
-    .select("id")
+    .select("id,contact_id")
     .eq("whatsapp_connection_id", connection.id)
     .eq("phone_number", phone)
     .maybeSingle();
+  if (byPhoneError) throw new Error(byPhoneError.message);
   if (byPhone) {
+    if (byPhone.contact_id && byPhone.contact_id !== contactId)
+      throw new ConversationResolutionError(
+        "Este telefone está vinculado a outro cliente. Confira o cadastro.",
+        "contact_conflict",
+      );
     await linkContact(db, byPhone.id, contactId);
     return { conversationId: byPhone.id, phoneNumber: phone, source: "matched_local" };
   }
@@ -141,34 +150,42 @@ export async function ensureConversationForContact(
           phoneNumber: phone,
           displayName: chat.displayName ?? contact.name,
         });
+        if (conversation.contact_id && conversation.contact_id !== contactId)
+          throw new ConversationResolutionError(
+            "Esta conversa está vinculada a outro cliente. Confira o cadastro.",
+            "contact_conflict",
+          );
         if (conversation.contact_id !== contactId) {
           await linkContact(db, conversation.id, contactId);
         }
 
-        // Importação do histórico é melhor-esforço: não bloqueia o follow-up.
-        try {
-          const { ingestMessage } = await import("./store.server");
-          const history = await provider.fetchChatHistory(creds, {
-            externalChatId: chat.externalChatId,
-            limit: 30,
-          });
-          for (const message of history) {
-            await ingestMessage(db, {
-              userId,
-              connectionId: connection.id,
-              message,
-              countUnread: false,
+        if (options?.importHistory !== false) {
+          // Importação do histórico é melhor-esforço: não bloqueia o follow-up.
+          try {
+            const { ingestMessage } = await import("./store.server");
+            const history = await provider.fetchChatHistory(creds, {
+              externalChatId: chat.externalChatId,
+              limit: 30,
+            });
+            for (const message of history) {
+              await ingestMessage(db, {
+                userId,
+                connectionId: connection.id,
+                message,
+                countUnread: false,
+              });
+            }
+          } catch (historyError) {
+            waLog.warn("history_import_failed", {
+              reason: historyError instanceof Error ? historyError.name : "unknown",
             });
           }
-        } catch (historyError) {
-          waLog.warn("history_import_failed", {
-            reason: historyError instanceof Error ? historyError.name : "unknown",
-          });
         }
 
         return { conversationId: conversation.id, phoneNumber: phone, source: "imported" };
       }
     } catch (lookupError) {
+      if (lookupError instanceof ConversationResolutionError) throw lookupError;
       waLog.warn("chat_lookup_failed", {
         reason: lookupError instanceof Error ? lookupError.name : "unknown",
       });
@@ -183,6 +200,11 @@ export async function ensureConversationForContact(
     phoneNumber: phone,
     displayName: contact.name,
   });
+  if (created.contact_id && created.contact_id !== contactId)
+    throw new ConversationResolutionError(
+      "Esta conversa está vinculada a outro cliente. Confira o cadastro.",
+      "contact_conflict",
+    );
   if (created.contact_id !== contactId) {
     await linkContact(db, created.id, contactId);
   }

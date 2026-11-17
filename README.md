@@ -1,4 +1,15 @@
-# Core Foundation
+# Próximo Passo · Core Foundation
+
+CRM para acompanhar clientes, cotações e próximos passos no WhatsApp. O projeto usa TanStack Start, React, Bun e Supabase.
+
+- [Produto e fluxos](PRODUCT.md)
+- [Como rodar e testar](docs/onboarding.md)
+- [Arquitetura](docs/architecture.md) · [Interface](docs/design.md) · [Qualidade](docs/quality.md)
+- [Configuração do toolkit e ferramentas](docs/setup.md)
+
+## Especificação original do Módulo 01
+
+O texto abaixo registra o escopo original da fundação. O estado atual do produto está em [PRODUCT.md](PRODUCT.md).
 
 MÓDULO 01 — FUNDAÇÃO DO SISTEMA
 
@@ -1157,14 +1168,3 @@ Continue developing this project in the [Lovable editor](https://lovable.dev/pro
 - **Ship faster**: describe what you want to build and Lovable handles the code.
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.
 - **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```

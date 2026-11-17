@@ -6,6 +6,23 @@ import { DEFAULT_TIMEZONE, zonedParts } from "@/lib/followup/time";
 import { isBusinessDay } from "./business-calendar";
 
 export const POST_QUOTE_POLICY = "post_quote_v1";
+export const POST_QUOTE_FLOW_NAME = "Pós-cotação · política v1";
+export const POST_QUOTE_MANUAL_PAUSE = "post_quote_manual_pause";
+export const POST_QUOTE_MANUAL_PAUSE_LABEL = "Pausado por você.";
+
+export function isPostQuoteManuallyPaused(run: {
+  policy_key: string | null;
+  status: string;
+  stop_reason: string | null;
+  next_contact_reason: string | null;
+}): boolean {
+  return (
+    run.policy_key === POST_QUOTE_POLICY &&
+    run.status === "paused" &&
+    (run.stop_reason === POST_QUOTE_MANUAL_PAUSE ||
+      run.next_contact_reason === POST_QUOTE_MANUAL_PAUSE_LABEL)
+  );
+}
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 
